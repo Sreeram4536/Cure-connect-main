@@ -42,7 +42,7 @@ interface AdminContextType {
   users: userData[];
   getAllUsers: () => Promise<void>;
   getUsersPaginated: (page: number, limit: number) => Promise<PaginationData>;
-  toggleBlockUser: (userId: string) => Promise<void>;
+  toggleBlockUser: (userId: string,block: boolean) => Promise<void>;
   appointments: AppointmentTypes[];
   setAppointments: React.Dispatch<React.SetStateAction<AppointmentTypes[]>>;
   getAllAppointments: () => Promise<void>;
@@ -208,26 +208,18 @@ const rejectDoctor = async (doctorId: string) => {
     }
   };
 
-  const toggleBlockUser = async (userId: string) => {
+  const toggleBlockUser = async (userId: string,block:boolean) => {
     try {
-      const user = users.find((u) => u._id === userId);
-      if (!user) {
-        toast.error("User not found");
-        return;
-      }
-
-      const newBlockStatus = !user.isBlocked;
-
-      const { data } = await toggleUserBlockAPI(userId, newBlockStatus, aToken);
-      if (data.success) {
-        toast.success(data.message);
-        getAllUsers();
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      showErrorToast(error);
+    const { data } = await toggleUserBlockAPI(userId, block, aToken);
+    if (data.success) {
+      toast.success(data.message);
+      getAllUsers();
+    } else {
+      toast.error(data.message);
     }
+  } catch (error) {
+    showErrorToast(error);
+  }
   };
 
   const getAllAppointments = async () => {

@@ -1,149 +1,153 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { Home, Users, Calendar, AlertTriangle, UserCheck, MessageSquare, ChevronLeft, ChevronRight, Activity, Shield } from 'lucide-react';
 
 const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const assets = {
-    home_icon: "🏠",
-    people_icon: "👥",
-    appointment_icon: "📅",
-    add_icon: "➕",
-    doctor_request: "⚠️",
-    doctor_icon: "🧑🏻‍⚕️",
-  };
-
   const menuItems = [
     {
       to: "/admin/dashboard",
-      icon: assets.home_icon,
+      icon: Home,
       label: "Dashboard",
-      gradient: "from-blue-500 to-primary"
+      color: "from-blue-500 to-cyan-500",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-200"
     },
     {
       to: "/admin/user-management",
-      icon: assets.people_icon,
+      icon: Users,
       label: "Manage Users",
-      gradient: "from-blue-500 to-primary"
+      color: "from-purple-500 to-pink-500",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-200"
     },
     {
       to: "/admin/appointments",
-      icon: assets.appointment_icon,
+      icon: Calendar,
       label: "Appointments",
-      gradient: "from-blue-500 to-primary"
+      color: "from-green-500 to-emerald-500",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-200"
     },
     {
       to: "/admin/doctor-requests",
-      icon: assets.doctor_request,
+      icon: AlertTriangle,
       label: "Doctor Requests",
-      gradient: "from-blue-500 to-primary"
+      color: "from-orange-500 to-red-500",
+      bgColor: "bg-orange-50",
+      borderColor: "border-orange-200"
     },
-    // {
-    //   to: "/admin/update-doctor",
-    //   icon: assets.people_icon,
-    //   label: "Update Doctor",
-    //   gradient: "from-blue-500 to-primary"
-    // },
     {
       to: "/admin/all-doctors",
-      icon: assets.doctor_icon,
+      icon: UserCheck,
       label: "Doctor List",
-      gradient: "from-blue-500 to-primary"
+      color: "from-indigo-500 to-purple-500",
+      bgColor: "bg-indigo-50",
+      borderColor: "border-indigo-200"
     },
     {
       to: "/admin/inbox",
-      icon: assets.appointment_icon,
+      icon: MessageSquare,
       label: "Inbox",
-      gradient: "from-blue-500 to-primary"
+      color: "from-teal-500 to-cyan-500",
+      bgColor: "bg-teal-50",
+      borderColor: "border-teal-200"
     }
   ];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'} relative group`}>
-      {/* Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-50 via-purple-50 to-transparent opacity-60"></div>
-      <div className="absolute top-10 right-4 w-8 h-8 bg-blue-100 rounded-full opacity-30 animate-pulse"></div>
-      <div className="absolute top-20 right-8 w-4 h-4 bg-purple-100 rounded-full opacity-40 animate-bounce"></div>
+    <div className={`min-h-screen bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 border-r border-white/50 transition-all duration-500 ${isCollapsed ? 'w-20' : 'w-80'} relative overflow-hidden`}>
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0">
+        <div className="absolute top-10 left-4 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-4 w-40 h-40 bg-gradient-to-r from-indigo-400/10 to-pink-400/10 rounded-full blur-3xl animate-bounce"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-gradient-to-r from-cyan-400/10 to-blue-400/10 rounded-full blur-2xl animate-spin"></div>
+      </div>
 
       {/* Header Section */}
-      <div className="relative z-10 p-6 border-b border-gray-100">
+      <div className="relative z-10 p-6 border-b border-white/30 bg-white/20 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-primary rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-              A
+            <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg border border-white/30">
+              <Shield className="w-6 h-6 text-white" />
             </div>
             {!isCollapsed && (
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-primary bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   Admin Panel
                 </h1>
-                <p className="text-sm text-gray-500"></p>
+                <p className="text-xs text-gray-600">Control Center</p>
               </div>
             )}
           </div>
 
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            className="p-2 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 transition-all duration-300 border border-white/30 hover:scale-110"
           >
-            <div className={`w-5 h-5 flex flex-col justify-center items-center transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}>
-              <div className="w-3 h-0.5 bg-gray-600 mb-1"></div>
-              <div className="w-3 h-0.5 bg-gray-600 mb-1"></div>
-              <div className="w-3 h-0.5 bg-gray-600"></div>
-            </div>
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4 text-gray-700" />
+            ) : (
+              <ChevronLeft className="w-4 h-4 text-gray-700" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Navigation Menu */}
       <nav className="relative z-10 p-4">
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {menuItems.map((item, index) => (
-            <li key={index} className="group/item">
+            <li key={index} className="group">
               <NavLink
                 to={item.to}
                 className={({ isActive }) =>
-                  `relative flex items-center gap-4 p-3 rounded-xl transition-all duration-300 group-hover/item:transform group-hover/item:scale-105 overflow-hidden ${
+                  `relative flex items-center gap-4 p-4 rounded-2xl transition-all duration-500 overflow-hidden group-hover:transform group-hover:scale-105 ${
                     isActive
-                      ? 'bg-white shadow-lg border border-gray-200 text-gray-800'
-                      : 'text-gray-600 hover:bg-white/70 hover:shadow-md hover:text-gray-800'
+                      ? 'bg-white shadow-xl border border-white/50 text-gray-800'
+                      : 'text-gray-700 hover:bg-white/60 hover:shadow-lg hover:text-gray-800'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <div className={`absolute inset-0 bg-gradient-to-r ${item.gradient} opacity-0 transition-opacity duration-300 ${isActive ? 'opacity-10' : 'group-hover/item:opacity-5'}`}></div>
+                    {/* Background Gradient */}
+                    <div className={`absolute inset-0 bg-gradient-to-r ${item.color} opacity-0 transition-opacity duration-500 ${isActive ? 'opacity-10' : 'group-hover:opacity-5'}`}></div>
 
+                    {/* Active Indicator */}
                     {isActive && (
-                      <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${item.gradient} rounded-r-full`}></div>
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${item.color} rounded-r-full shadow-lg`}></div>
                     )}
 
-                    <div className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-300 ${
+                    {/* Icon Container */}
+                    <div className={`relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-500 shadow-md ${
                       isActive 
-                        ? `bg-gradient-to-r ${item.gradient} shadow-lg` 
-                        : 'bg-gray-100 group-hover/item:bg-gradient-to-r group-hover/item:' + item.gradient
+                        ? `bg-gradient-to-r ${item.color} shadow-lg` 
+                        : `bg-white/80 group-hover:bg-gradient-to-r group-hover:${item.color}`
                     }`}>
-                      <span className={`text-sm transition-all duration-300 ${
-                        isActive ? 'text-white' : 'text-gray-600 group-hover/item:text-white'
-                      }`}>
-                        {item.icon}
-                      </span>
+                      <item.icon className={`w-5 h-5 transition-all duration-500 ${
+                        isActive ? 'text-white' : 'text-gray-600 group-hover:text-white'
+                      }`} />
                     </div>
 
+                    {/* Label */}
                     {!isCollapsed && (
-                      <span className="font-medium text-sm transition-colors duration-300 group-hover/item:text-gray-800">
+                      <span className="font-semibold text-sm transition-all duration-500 group-hover:text-gray-800">
                         {item.label}
                       </span>
                     )}
 
+                    {/* Tooltip for collapsed state */}
                     {isCollapsed && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all duration-300 whitespace-nowrap z-50">
+                      <div className="absolute left-full ml-4 px-4 py-2 bg-gray-800 text-white text-sm rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap z-50 border border-white/20">
                         {item.label}
-                        <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                        <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45 border-l border-b border-white/20"></div>
                       </div>
                     )}
 
-                    <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${item.gradient} transform scale-x-0 group-hover/item:scale-x-100 transition-transform duration-300 origin-left`}></div>
+                    {/* Bottom Border Animation */}
+                    <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${item.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left rounded-b-2xl`}></div>
                   </>
                 )}
               </NavLink>
@@ -152,28 +156,38 @@ const AdminSidebar = () => {
         </ul>
       </nav>
 
+      {/* Bottom Status Section
       {!isCollapsed && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm">
-            <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/30 bg-white/20 backdrop-blur-sm">
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/30">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="font-semibold text-sm text-gray-800">System Status</span>
             </div>
-            <div>
-              <p className="font-medium text-sm text-gray-800">System Status</p>
-              <p className="text-xs text-green-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                All Systems Operational
-              </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">CPU Usage</span>
+                <span className="font-medium text-green-600">23%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">Memory</span>
+                <span className="font-medium text-blue-600">67%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">Network</span>
+                <span className="font-medium text-purple-600">Active</span>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
+      {/* Collapsed Status Indicator */}
       {isCollapsed && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-          <button className="w-12 h-12 bg-gradient-to-r from-blue-500 to-primary rounded-full shadow-lg flex items-center justify-center text-white hover:shadow-xl transition-all duration-300 hover:scale-110">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-          </button>
+          <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl shadow-lg flex items-center justify-center border border-white/30">
+            <Activity className="w-5 h-5 text-white" />
+          </div>
         </div>
       )}
     </div>

@@ -72,8 +72,14 @@ userRouter.post(
   userController.verifyRazorpay.bind(userController)
 );
 
+// userRouter.get(
+//   "/available-slots",
+//   authRole(["user"]),
+//   userController.getAvailableSlotsForDoctor.bind(userController)
+// );
+
 userRouter.get(
-  "/available-slots",
+  "/doctor/:doctorId/slots",
   authRole(["user"]),
   userController.getAvailableSlotsForDoctor.bind(userController)
 );

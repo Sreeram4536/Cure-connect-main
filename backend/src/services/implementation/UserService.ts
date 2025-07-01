@@ -13,6 +13,8 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.utils";
+import { DoctorSlotService } from "./SlotService";
+import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 
 export interface UserDocument extends userData {
   _id: string;
@@ -207,7 +209,9 @@ console.log("hii");
     await this._userRepository.markAppointmentPaid(appointmentId);
   }
   async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]> {
-  return this._userRepository.getAvailableSlotsByDoctorAndMonth(doctorId, year, month);
-}
+    const slotRepository = new SlotRepository();
+    const slotService = new DoctorSlotService(slotRepository);
+    return slotService.getMonthlySlots(doctorId, year, month);
+  }
 
 }

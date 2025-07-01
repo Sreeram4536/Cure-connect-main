@@ -39,7 +39,7 @@ const DoctorDashboard = () => {
               count: `₹${dashData.totalEarnings}`,
               label: "Total Earnings",
               icon: assets.earning_icon,
-              color: "from-yellow-400 to-orange-500",
+              color: "from-red-400 to-black-500",
               path: "/doctor/earnings",
             },
             {

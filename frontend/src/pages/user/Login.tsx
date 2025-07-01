@@ -74,6 +74,8 @@ const Login = () => {
       }
     } catch (error) {
       showErrorToast(error);
+    } finally {
+      setLoading(false);
     }
   };
 

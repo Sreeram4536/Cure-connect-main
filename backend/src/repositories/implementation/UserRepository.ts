@@ -1,12 +1,15 @@
 import { IUserRepository } from "../../repositories/interface/IUserRepository";
 import userModel from "../../models/userModel";
 import doctorModel from "../../models/doctorModel";
-import slotModel from "../../models/slotModel";
+// import slotModel from "../../models/slotModel";
 import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
 import appointmentModel from "../../models/appointmentModel";
 import { DoctorData } from "../../types/doctor";
 import { BaseRepository } from "../BaseRepository";
 import { UserDocument } from "../../types/user";
+import { generateSlotsForDate } from "../../utils/slot.util";
+import { SlotRuleType } from "../../types/slotRule";
+import slotRuleModel from "../../models/slotRuleModel";
 
 export class UserRepository
   extends BaseRepository<UserDocument>
@@ -34,23 +37,34 @@ export class UserRepository
   async bookAppointment(appointmentData: AppointmentTypes): Promise<void> {
     const { userId, docId, slotDate, slotTime } = appointmentData;
 
+    // const existingappointment = await appointmentModel.countDocuments({
+    //   userId,docId
+    // })
+    // if(existingappointment>=2){
+      
+    // }
+
     // Check doctor availability
     const doctor = await doctorModel.findById(docId);
     if (!doctor || !doctor.available) throw new Error("Doctor not available");
 
-    // Find slot document for the doctor and date
-    const slotDoc = await slotModel.findOne({ doctorId: docId, date: slotDate });
-    if (!slotDoc || slotDoc.isCancelled) throw new Error("No available slots for this date");
+   // 1. Get the doctor's slot rule
+const slotRuleModel = require("../../models/slotRuleModel").default; // adjust import if needed
+const rule = await slotRuleModel.findOne({ doctorId: docId });
+if (!rule) throw new Error("No slot rule set for this doctor");
 
-    // Find the slot in the slots array
-    const slotIndex = slotDoc.slots.findIndex(
-      (slot) => slot.start === slotTime && !slot.booked
-    );
-    if (slotIndex === -1) throw new Error("Slot not available");
+// 2. Generate slots for the requested date using the rule
+const slots = generateSlotsForDate(rule as SlotRuleType, slotDate); // implement this utility
 
-    // Mark the slot as booked
-    slotDoc.slots[slotIndex].booked = true;
-    await slotDoc.save();
+// 3. Check if the requested slotTime is in the generated slots
+const slot = slots.find(s => s.start === slotTime);
+if (!slot) throw new Error("Slot not available");
+
+// 4. Check if the slot is already booked (check appointments for this doctor/date/slotTime)
+const alreadyBooked = await appointmentModel.findOne({ docId, slotDate, slotTime, cancelled: { $ne: true } });
+if (alreadyBooked) throw new Error("Slot already booked");
+
+// 5. Proceed to book the appointment as before
 
     // Prepare user and doctor data
     const userData = await userModel.findById(userId).select("-password");
@@ -96,18 +110,18 @@ export class UserRepository
     appointment.cancelled = true;
     await appointment.save();
 
-    // Unmark the slot as booked in slotModel
-    const { docId, slotDate, slotTime } = appointment;
-    const slotDoc = await slotModel.findOne({ doctorId: docId, date: slotDate });
-    if (slotDoc) {
-      const slotIndex = slotDoc.slots.findIndex(
-        (slot) => slot.start === slotTime && slot.booked
-      );
-      if (slotIndex !== -1) {
-        slotDoc.slots[slotIndex].booked = false;
-        await slotDoc.save();
-      }
-    }
+    // // Unmark the slot as booked in slotModel
+    // const { docId, slotDate, slotTime } = appointment;
+    // const slotDoc = await slotModel.findOne({ doctorId: docId, date: slotDate });
+    // if (slotDoc) {
+    //   const slotIndex = slotDoc.slots.findIndex(
+    //     (slot) => slot.start === slotTime && slot.booked
+    //   );
+    //   if (slotIndex !== -1) {
+    //     slotDoc.slots[slotIndex].booked = false;
+    //     await slotDoc.save();
+    //   }
+    // }
   }
 
 async findPayableAppointment(
@@ -148,7 +162,7 @@ async findPayableAppointment(
   const regexMonth = String(month).padStart(2, "0");
   const regex = new RegExp(`^${year}-${regexMonth}`); // e.g., /^2025-06/
 
-  return slotModel.find({
+  return slotRuleModel.find({
     doctorId,
     date: { $regex: regex },
     isCancelled: false,

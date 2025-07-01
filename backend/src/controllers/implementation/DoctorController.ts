@@ -339,7 +339,7 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
     const doctorId = (req as any).docId;
     const { year, month } = req.query;
     const data = await this._slotService.getMonthlySlots(doctorId, +year!, +month!);
-    res.json({ success: true, data });
+    res.json({ success: true, slots:data });
   } catch (error) {
     res.status(500).json({ success: false, message: (error as Error).message });
   }
@@ -350,7 +350,7 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
     const doctorId = (req as any).docId;
     const { date, slots, isCancelled } = req.body;
     const data = await this._slotService.updateDaySlot(doctorId, date, slots, isCancelled);
-    res.json({ success: true, data });
+    res.json({ success: true, slots:data });
   } catch (error) {
     res.status(500).json({ success: false, message: (error as Error).message });
   }

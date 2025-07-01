@@ -65,14 +65,7 @@ const DoctorProfile = () => {
     toast.error("Speciality is required.");
     return false;
   }
-  // if (
-  //   !formData.experience ||
-  //   isNaN(Number(formData.experience)) ||
-  //   Number(formData.experience) < 0
-  // ) {
-  //   toast.error("Experience must be a valid non-negative number.");
-  //   return false;
-  // }
+  
   // if (!formData.about || formData.about.trim().length < 10) {
   //   toast.error("About section must be at least 10 characters.");
   //   return false;
@@ -85,13 +78,13 @@ const DoctorProfile = () => {
     toast.error("Fees must be a valid non-negative number.");
     return false;
   }
-  // if (
-  //   !formData.address?.line1 ||
-  //   formData.address.line1.trim().length < 5
-  // ) {
-  //   toast.error("Address line 1 must be at least 5 characters.");
-  //   return false;
-  // }
+  if (
+    !formData.address?.line1 ||
+    formData.address.line1.trim().length < 5
+  ) {
+    toast.error("Address line 1 must be at least 5 characters.");
+    return false;
+  }
   return true;
 };
 

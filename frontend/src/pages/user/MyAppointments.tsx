@@ -16,6 +16,7 @@ import type {
   RazorpayPaymentResponse,
 } from "../../types/razorpay";
 import { useNavigate } from "react-router-dom";
+import { Calendar, Clock, MapPin, User, CreditCard, X, CheckCircle, AlertCircle, Video } from "lucide-react";
 
 const MyAppointments = () => {
   const context = useContext(AppContext);
@@ -119,81 +120,142 @@ const MyAppointments = () => {
     }
   }, [token]);
 
+  const getStatusBadge = (appointment: AppointmentTypes) => {
+    if (appointment.cancelled) {
+      return (
+        <div className="flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+          <X className="w-4 h-4 mr-1" />
+          Cancelled
+        </div>
+      );
+    }
+    if (appointment.payment) {
+      return (
+        <div className="flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+          <CheckCircle className="w-4 h-4 mr-1" />
+          Paid
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
+        <AlertCircle className="w-4 h-4 mr-1" />
+        Pending Payment
+      </div>
+    );
+  };
+
   return (
-    <div>
-      <p className="pb-3 mt-12 font-medium text-zinc-700 border-b">
-        My Appointments
-      </p>
-      <div>
-        {appointments.map((item, index) => (
-          <div
-            className="grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-2 border-b"
-            key={index}
-          >
-            <div>
-              <img
-                className="w-32 bg-indigo-50"
-                src={item.docData.image}
-                alt=""
-              />
-            </div>
-            <div className="flex-1 text-sm text-zinc-600">
-              <p className="text-neutral font-semibold">{item.docData.name}</p>
-              <p>{item.docData.speciality}</p>
-              <p className="text-zinc-700 font-medium mt-1">Address:</p>
-              <p className="text-xs">{item.docData.address.line1}</p>
-              <p className="text-xs">{item.docData.address.line2}</p>
-              <p className="text-xs mt-1">
-                <span className="text-sm text-neutral-700 font-medium">
-                  Date & Time:
-                </span>{" "}
-                {slotDateFormat(item.slotDate)} | {item.slotTime}
-              </p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Appointments</h1>
+          <p className="text-gray-600">Manage and track your upcoming consultations</p>
+        </div>
 
-            <div>
-              {!item.cancelled && item.payment && (
-                <button
-                  onClick={() => navigate(`/consultation/${item.docData._id}`)}
-                  className="text-sm text-white text-center bg-primary sm:min-w-48 py-2 border mt-28 rounded hover:bg-blue-500 transition-all duration-300"
-                >
-                  Go to Consultation
-                </button>
-              )}
+        {/* Appointments List */}
+        <div className="space-y-6">
+          {appointments.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/30">
+                <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No Appointments Found</h3>
+                <p className="text-gray-500">You don't have any appointments scheduled yet.</p>
+              </div>
             </div>
-            <div className="flex flex-col gap-2 justify-end">
-              {!item.cancelled && item.payment && (
-                <button className="sm:min-w-48 py-2 border border-green-500 rounded text-green-500">
-                  Paid
-                </button>
-              )}
+          ) : (
+            appointments.map((item, index) => (
+              <div
+                key={index}
+                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 overflow-hidden hover:shadow-xl transition-all duration-300"
+              >
+                <div className="p-6">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Doctor Image */}
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <img
+                          className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-lg"
+                          src={item.docData.image}
+                          alt={item.docData.name}
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+                      </div>
+                    </div>
 
-              {!item.cancelled && !item.payment && (
-                <button
-                  onClick={() => appointmentRazorpay(item._id!)}
-                  className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounde hover:bg-primary hover:text-white transition-all duration-300"
-                >
-                  Pay Online
-                </button>
-              )}
+                    {/* Doctor Info */}
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h3 className="text-xl font-bold text-gray-800">{item.docData.name}</h3>
+                            {getStatusBadge(item)}
+                          </div>
+                          
+                          <p className="text-primary font-semibold mb-3">{item.docData.speciality}</p>
+                          
+                          <div className="space-y-2 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-gray-500" />
+                              <span>{item.docData.address.line1}</span>
+                            </div>
+                            {item.docData.address.line2 && (
+                              <div className="flex items-center gap-2 ml-6">
+                                <span>{item.docData.address.line2}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-gray-500" />
+                              <span className="font-medium">{slotDateFormat(item.slotDate)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              <span className="font-medium">{item.slotTime}</span>
+                            </div>
+                          </div>
+                        </div>
 
-              {!item.cancelled && (
-                <button
-                  onClick={() => cancelAppointment(item._id!)}
-                  className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounded hover:bg-red-600 hover:text-white transition-all duration-300"
-                >
-                  Cancel appointment
-                </button>
-              )}
+                        {/* Action Buttons */}
+                        <div className="flex flex-col gap-3 sm:items-end">
+                          {!item.cancelled && item.payment && (
+                            <button
+                              onClick={() => navigate(`/consultation/${item.docData._id}`)}
+                              className="flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                            >
+                              <Video className="w-4 h-4" />
+                              Start Consultation
+                            </button>
+                          )}
 
-              {item.cancelled && (
-                <button className="sm:min-w-48 py-2 border border-red-500 rounded text-red-500">
-                  Appointment Cancelled
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+                          {!item.cancelled && !item.payment && (
+                            <button
+                              onClick={() => appointmentRazorpay(item._id!)}
+                              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              Pay Now
+                            </button>
+                          )}
+
+                          {!item.cancelled && (
+                            <button
+                              onClick={() => cancelAppointment(item._id!)}
+                              className="flex items-center gap-2 bg-white border-2 border-red-500 text-red-500 px-6 py-3 rounded-xl font-semibold hover:bg-red-500 hover:text-white transition-all duration-300"
+                            >
+                              <X className="w-4 h-4" />
+                              Cancel Appointment
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

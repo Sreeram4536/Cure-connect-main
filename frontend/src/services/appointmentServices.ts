@@ -40,8 +40,8 @@ export const getAvailableSlotsAPI = async (
   year: number,
   month: number
 ) => {
-  const response = await api.get(APPOINTMENT_API.AVAILABLE_FOR_USER, {
-    params: { doctorId, year, month },
+  const response = await api.get(`/api/user/doctor/${doctorId}/slots`, {
+    params: { year, month },
   });
-  return response.data.data;
+  return response.data.slots;
 };

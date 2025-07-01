@@ -11,6 +11,7 @@ import {
   getAvailableSlotsAPI,
 } from "../../services/appointmentServices";
 import { showErrorToast } from "../../utils/errorHandler";
+import { Star, Clock, MapPin, Users, Calendar, CheckCircle } from "lucide-react";
 
 function parse12HourTime(timeStr: string): { hour: number; minute: number } {
   const [time, modifier] = timeStr.split(" ");
@@ -33,7 +34,7 @@ const Appointment = () => {
   const context = useContext(AppContext);
   if (!context) throw new Error("AppContext missing");
 
-  const { doctors, currencySymbol, token, getDoctorsData } = context;
+  const { doctors, currencySymbol, token, getDoctorsData,authLoading } = context;
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const [docInfo, setDocInfo] = useState<Doctor | undefined | null>(null);
@@ -42,6 +43,7 @@ const Appointment = () => {
   const [slotTime, setSlotTime] = useState<string>("");
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [customDate, setCustomDate] = useState<Date | null>(null);
+  
 
   const fetchDocInfo = () => {
     const doc = doctors.find((doc) => doc._id === docId);
@@ -56,30 +58,34 @@ const Appointment = () => {
     const month = today.getMonth() + 1;
 
     try {
-      const slotArray = await getAvailableSlotsAPI(docId, year, month);
-      const slotMap: Record<string, any[]> = {};
-      slotArray.forEach((item: any) => {
-        if (!item.isCancelled) {
-          slotMap[item.date] = item.slots.filter((slot: any) => !slot.booked);
-        }
-      });
+      const slotsArray = await getAvailableSlotsAPI(docId, year, month);
 
-      const weekSlots: TimeSlot[][] = [];
-      for (let i = 0; i < 7; i++) {
-        let currentDate = new Date(today);
-        currentDate.setDate(today.getDate() + i);
-        const dateKey = currentDate.toISOString().split("T")[0];
-        const slots = slotMap[dateKey] || [];
+    // Group slots by date for the UI
+    const slotMap: Record<string, any[]> = {};
+    slotsArray.forEach((slot: any) => {
+      if (!slot.isCancelled) {
+        if (!slotMap[slot.date]) slotMap[slot.date] = [];
+        slotMap[slot.date].push(slot);
+      }
+    });
 
-        const timeSlots: TimeSlot[] = slots.map((slot) => {
-          const { hour, minute } = parse12HourTime(slot.start);
-          const slotDate = new Date(currentDate);
-          slotDate.setHours(hour);
-          slotDate.setMinutes(minute);
-          return {
-            datetime: slotDate,
-            time: slot.start,
-          };
+    const weekSlots: TimeSlot[][] = [];
+    for (let i = 0; i < 7; i++) {
+      let currentDate = new Date(today);
+      currentDate.setDate(today.getDate() + i);
+      const dateKey = currentDate.toISOString().split("T")[0];
+      const slots = slotMap[dateKey] || [];
+
+      const timeSlots: TimeSlot[] = slots.map((slot) => {
+        // slot.start is already in "HH:mm" format
+        const [hour, minute] = slot.start.split(":").map(Number);
+        const slotDate = new Date(currentDate);
+        slotDate.setHours(hour);
+        slotDate.setMinutes(minute);
+        return {
+          datetime: slotDate,
+          time: slot.start,
+        };
         });
 
         weekSlots.push(timeSlots);
@@ -148,132 +154,195 @@ const Appointment = () => {
   };
 
   useEffect(() => {
+    if(!authLoading){
     getDoctorsData();
+    
+    }
+  }, [authLoading]);
+
+  useEffect(() => {
     fetchDocInfo();
-  }, []);
+  }, [doctors, docId]);
 
   useEffect(() => {
     getAvailableSlots();
   }, [docInfo]);
 
   return (
-    <div>
-      {/* ------------ Doctor Info ------------ */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div>
-          <img
-            className="bg-primary w-full sm:max-w-72 rounded-lg"
-            src={docInfo?.image}
-            alt=""
-          />
-        </div>
-        <div className="flex-1 border border-gray-400 rounded-lg p-8 py-7 bg-white">
-          <p className="flex items-center gap-2 text-2xl font-medium text-gray-900">
-            {docInfo?.name}
-            <img className="w-5" src={assets.verified_icon} alt="" />
-          </p>
-          <div className="flex items-center gap-2 text-sm mt-1 text-gray-600">
-            <p>{docInfo?.degree} - {docInfo?.speciality}</p>
-            <button className="py-0.5 px-2 border text-xs rounded-full">{docInfo?.experience}</button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Doctor Info Section */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 mb-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="lg:w-80">
+            <div className="relative">
+              <img
+                className="w-full h-80 object-cover rounded-xl shadow-lg"
+                src={docInfo?.image}
+                alt={docInfo?.name}
+              />
+              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center shadow-lg">
+                <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
+                <span className="text-sm font-semibold text-gray-800">4.{Math.floor(Math.random() * 3) + 7}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="flex items-center gap-1 text-sm font-medium text-gray-900 mt-3">About</p>
-            <p className="text-sm text-gray-500 mt-1">{docInfo?.about}</p>
+          
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-4">
+              <h1 className="text-3xl font-bold text-gray-900">
+                {docInfo?.name}
+              </h1>
+              <img className="w-6 h-6" src={assets.verified_icon} alt="Verified" />
+            </div>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-lg font-semibold text-primary">
+                {docInfo?.degree} - {docInfo?.speciality}
+              </span>
+              <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                {docInfo?.experience} Experience
+              </span>
+            </div>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-primary" />
+                About Doctor
+              </h3>
+              <p className="text-gray-600 leading-relaxed">{docInfo?.about}</p>
+            </div>
+            
+            <div className="bg-gradient-to-r from-primary/10 to-blue-100 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700 font-semibold">Appointment Fee:</span>
+                <span className="text-2xl font-bold text-primary">
+                  {currencySymbol}{docInfo?.fees}
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-500 font-medium mt-4">
-            Appointment fee: <span className="text-gray-600">{currencySymbol}{docInfo?.fees}</span>
-          </p>
         </div>
       </div>
 
-      {/* ------------ Booking Slots ------------ */}
-      <div className="sm:ml-72 sm:pl-4 mt-6 font-medium text-gray-700">
-        <p>Booking Slots</p>
-
-        <div className="flex gap-3 items-center w-full overflow-x-scroll mt-4">
-          {docSlots.map((item, index) => (
-            <div
-              onClick={() => {
-                setSlotIndex(index);
-                setShowCustomDatePicker(false);
-              }}
-              className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${
-                slotIndex === index && !showCustomDatePicker
-                  ? "bg-primary text-white"
-                  : "border border-gray-200"
-              }`}
-              key={index}
-            >
-              <p>{item[0]?.datetime ? daysOfWeek[item[0].datetime.getDay()] : "--"}</p>
-              <p>{item[0]?.datetime ? item[0].datetime.getDate() : "--"}</p>
-            </div>
-          ))}
-
-          {/* 📅 Calendar Selector */}
-          <div
-  onClick={() => {
-    if (showCustomDatePicker) {
-      // Reset to normal 7-day view
-      getAvailableSlots();
-      setCustomDate(null);
-    } else {
-      setShowCustomDatePicker(true);
-    }
-  }}
-  className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${
-    showCustomDatePicker ? "bg-primary text-white" : "border border-gray-200"
-  }`}
->
-  <p>📅</p>
-  <p className="text-xs">{showCustomDatePicker ? "Back" : "More"}</p>
-</div>
+      {/* Booking Section */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 mb-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
+            <Calendar className="w-6 h-6 mr-2 text-primary" />
+            Book Your Appointment
+          </h2>
+          <p className="text-gray-600">Select your preferred date and time slot</p>
         </div>
 
-        {showCustomDatePicker && (
-          <div className="mt-4">
-            <DatePicker
-              selected={customDate}
-              onChange={(date) => {
-                if (date) {
-                  setCustomDate(date);
-                  fetchSlotsForCustomDate(date);
-                }
-              }}
-              minDate={new Date()}
-              className="border px-4 py-2 rounded"
-              placeholderText="Select a future date"
-            />
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 w-full overflow-x-scroll mt-4">
-          {docSlots[slotIndex]?.length > 0 ? (
-            docSlots[slotIndex].map((item, index) => (
-              <p
-                onClick={() => setSlotTime(item.time)}
-                className={`text-sm font-light flex-shrink-0 px-5 py-2 rounded-full cursor-pointer ${
-                  item.time === slotTime
-                    ? "bg-primary text-white"
-                    : "text-gray-400 border border-gray-300"
+        {/* Date Selection */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Select Date</h3>
+          <div className="flex gap-3 items-center w-full overflow-x-auto pb-2">
+            {docSlots.map((item, index) => (
+              <div
+                onClick={() => {
+                  setSlotIndex(index);
+                  setShowCustomDatePicker(false);
+                }}
+                className={`text-center py-4 px-6 min-w-20 rounded-xl cursor-pointer transition-all duration-300 shadow-sm ${
+                  slotIndex === index && !showCustomDatePicker
+                    ? "bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg transform scale-105"
+                    : "bg-white border-2 border-gray-200 hover:border-primary/50 hover:shadow-md"
                 }`}
                 key={index}
               >
-                {item.time.toLowerCase()}
-              </p>
-            ))
-          ) : (
-            <p className="text-sm text-gray-400">No available slots</p>
+                <p className="text-sm font-medium">{item[0]?.datetime ? daysOfWeek[item[0].datetime.getDay()] : "--"}</p>
+                <p className="text-lg font-bold">{item[0]?.datetime ? item[0].datetime.getDate() : "--"}</p>
+              </div>
+            ))}
+
+            {/* Calendar Selector */}
+            <div
+              onClick={() => {
+                if (showCustomDatePicker) {
+                  getAvailableSlots();
+                  setCustomDate(null);
+                } else {
+                  setShowCustomDatePicker(true);
+                }
+              }}
+              className={`text-center py-4 px-6 min-w-20 rounded-xl cursor-pointer transition-all duration-300 shadow-sm ${
+                showCustomDatePicker 
+                  ? "bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg transform scale-105" 
+                  : "bg-white border-2 border-gray-200 hover:border-primary/50 hover:shadow-md"
+              }`}
+            >
+              <Calendar className="w-6 h-6 mx-auto mb-1" />
+              <p className="text-xs font-medium">{showCustomDatePicker ? "Back" : "More"}</p>
+            </div>
+          </div>
+
+          {showCustomDatePicker && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+              <DatePicker
+                selected={customDate}
+                onChange={(date) => {
+                  if (date) {
+                    setCustomDate(date);
+                    fetchSlotsForCustomDate(date);
+                  }
+                }}
+                minDate={new Date()}
+                className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:border-primary focus:outline-none w-full"
+                placeholderText="Select a future date"
+              />
+            </div>
           )}
         </div>
 
-        <button
-          onClick={bookAppointment}
-          className="bg-primary text-white text-sm font-light px-14 py-3 rounded-full my-6"
-        >
-          Book an appointment
-        </button>
+        {/* Time Slot Selection */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-primary" />
+            Select Time Slot
+          </h3>
+          <div className="flex items-center gap-3 w-full overflow-x-auto pb-2">
+            {docSlots[slotIndex]?.length > 0 ? (
+              docSlots[slotIndex].map((item, index) => (
+                <button
+                  onClick={() => setSlotTime(item.time)}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 flex-shrink-0 shadow-sm ${
+                    item.time === slotTime
+                      ? "bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg transform scale-105"
+                      : "bg-white text-gray-700 border-2 border-gray-200 hover:border-primary/50 hover:shadow-md"
+                  }`}
+                  key={index}
+                >
+                  {item.time.toLowerCase()}
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-8 w-full">
+                <Clock className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No available slots for this date</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Book Appointment Button */}
+        <div className="text-center">
+          <button
+            onClick={bookAppointment}
+            disabled={!slotTime}
+            className={`px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg ${
+              slotTime
+                ? "bg-gradient-to-r from-primary to-blue-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl transform hover:scale-105"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            <CheckCircle className="w-5 h-5 inline mr-2" />
+            Book Appointment
+          </button>
+        </div>
       </div>
 
+      {/* Related Doctors */}
       <RelatedDoctors docId={docId} speciality={docInfo?.speciality} />
     </div>
   );

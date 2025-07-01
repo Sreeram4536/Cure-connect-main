@@ -6,12 +6,14 @@ import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
 import { SlotRepository } from "../repositories/implementation/SlotRepository";
 import { DoctorSlotService } from "../services/implementation/SlotService";
+import { SlotRuleController } from "../controllers/implementation/SlotRuleController";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
 const doctorService = new DoctorService(doctorRepository);
 const slotService = new DoctorSlotService(slotRepository);
 const doctorController = new DoctorController(doctorService, slotService);
+const slotRuleController = new SlotRuleController();
 
 const doctorRouter = express.Router();
 
@@ -87,6 +89,17 @@ doctorRouter.post(
   "/slots",
   authRole(["doctor"]),
   doctorController.updateDaySlot.bind(doctorController)
+);
+
+doctorRouter.get(
+  "/slot-rule",
+  authRole(["doctor"]),
+  slotRuleController.getRule.bind(slotRuleController)
+);
+doctorRouter.post(
+  "/slot-rule",
+  authRole(["doctor"]),
+  slotRuleController.setRule.bind(slotRuleController)
 );
 
 export default doctorRouter;

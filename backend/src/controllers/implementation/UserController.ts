@@ -482,8 +482,8 @@ const newRefreshToken = generateRefreshToken(user._id);
 
   async getAvailableSlotsForDoctor(req: Request, res: Response): Promise<void> {
   try {
-    const { doctorId, year, month } = req.query;
-
+    const {year, month } = req.query;
+    const { doctorId } = req.params;
     if (!doctorId || !year || !month) {
       res.status(HttpStatus.BAD_REQUEST).json({
         success: false,
@@ -498,7 +498,7 @@ const newRefreshToken = generateRefreshToken(user._id);
       Number(month)
     );
 
-    res.status(HttpStatus.OK).json({ success: true, data: slots });
+    res.status(HttpStatus.OK).json({ success: true, slots });
   } catch (error) {
     console.error("getAvailableSlotsForDoctor error:", error);
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

@@ -43,7 +43,7 @@ export const AUTH_API = {
   RESET_PASSWORD: "/api/user/password/reset",
 };
 
-// src/constants/apiRoutes.ts
+
 
 export const DOCTOR_API = {
   BASE: "/api/doctor",
@@ -51,7 +51,7 @@ export const DOCTOR_API = {
   LOGIN: "/api/doctor/login",
   LOGOUT: "/api/doctor/logout",
   REFRESH: "/api/doctor/refresh-token",
-  SLOTS: "/api/doctor/slots",
+  SLOTS: "/api/doctor/slot-rule",
 
   DOCTORS: "/api/doctor",
   DOCTORS_PAGINATED: "/api/doctor/paginated",
@@ -77,3 +77,7 @@ export const USER_PROFILE_API = {
   GET: "/api/user/profile",
   UPDATE: "/api/user/profile",
 };
+
+export const DOCTOR_SLOT_API ={
+
+}

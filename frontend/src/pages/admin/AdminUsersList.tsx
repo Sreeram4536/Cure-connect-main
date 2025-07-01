@@ -51,9 +51,9 @@ const AdminUsersList = () => {
     }
   };
 
-  const handleToggleBlock = async (userId: string) => {
+  const handleToggleBlock = async (userId: string,isBlocked:boolean) => {
     try {
-      await toggleBlockUser(userId);
+      await toggleBlockUser(userId,!isBlocked);
       // Refresh current page after blocking/unblocking
       fetchUsers();
     } catch (error) {
@@ -72,7 +72,7 @@ const AdminUsersList = () => {
   const columns = [
     {
       key: "index",
-      header: "#",
+      header: "SL.NO",
       width: "0.5fr",
       hideOnMobile: true,
       render: (_: any, index: number) => (
@@ -136,7 +136,7 @@ const AdminUsersList = () => {
           onClick={(e) => {
             e.stopPropagation();
             console.log("Blocking user with ID:", item._id); // Add this
-            handleToggleBlock(item._id);
+            handleToggleBlock(item._id,item.isBlocked);
           }}
           className={`px-4 py-1.5 text-sm rounded-lg font-medium text-white shadow-sm transition duration-200 ${
             item.isBlocked

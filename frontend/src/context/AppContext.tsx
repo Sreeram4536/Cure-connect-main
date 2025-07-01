@@ -47,6 +47,7 @@ interface AppContextType {
   loadUserProfileData: () => Promise<void>;
   calculateAge: (dob: string) => number;
   slotDateFormat: (slotDate: string) => string;
+  authLoading:boolean
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -75,6 +76,7 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     gender: "",
     dob: "",
   });
+  const [authLoading, setAuthLoading] = useState(true);
 
   const getDoctorsData = async () => {
     try {
@@ -222,6 +224,8 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
           err.response?.data || err.message
         );
         clearToken();
+      } finally {
+        setAuthLoading(false); 
       }
     };
 
@@ -230,9 +234,11 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     if (!getUserAccessToken()) {
        if (!wasLoggedOut) {
       tryRefresh();
+    }else{
+      setAuthLoading(false);
     }
     } else {
-      loadUserProfileData();
+      loadUserProfileData().finally(() => setAuthLoading(false));
     }
 
   }, []);
@@ -269,6 +275,7 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     loadUserProfileData,
     calculateAge,
     slotDateFormat,
+    authLoading
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
