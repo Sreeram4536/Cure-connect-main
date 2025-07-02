@@ -199,4 +199,8 @@ export class DoctorService implements IDoctorService {
       image: imageUrl,
     });
   }
+
+  async getDoctorsByStatusAndLimit(status: string, limit: number): Promise<Partial<DoctorData>[]> {
+    return this._doctorRepository.getDoctorsByStatusAndLimit(status, limit);
+  }
 }

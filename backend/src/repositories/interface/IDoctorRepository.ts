@@ -32,4 +32,6 @@ export interface IDoctorRepository {
       "name" | "speciality" | "degree" | "experience" | "about" | "fees" | "address" | "image"
     >
   >
-): Promise<void>}
+): Promise<void>;
+  getDoctorsByStatusAndLimit(status: string, limit: number): Promise<Partial<DoctorData>[]>;
+}

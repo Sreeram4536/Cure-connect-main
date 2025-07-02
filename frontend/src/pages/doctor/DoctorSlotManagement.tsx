@@ -14,6 +14,7 @@ const defaultRule = {
   endTime: "17:00",
   slotDuration: 30,
   breaks: [] as { start: string; end: string }[],
+  customDays: [] as any[],
 };
 
 const DoctorSlotManager = () => {
@@ -184,6 +185,116 @@ const DoctorSlotManager = () => {
               ))}
               <button onClick={addBreak} className="text-blue-600 hover:underline mt-2">+ Add Break</button>
             </div>
+
+            {/* Custom Days (Leave/Breaks) Section */}
+            <div className="mb-6">
+              <label className="block font-medium mb-2">Custom Days (Leave/Breaks)</label>
+              {rule.customDays?.map((cd, idx) => (
+                <div key={idx} className="bg-gray-50 rounded p-3 mb-2 flex flex-col gap-2">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="date"
+                      value={cd.date}
+                      onChange={e => {
+                        const customDays = [...rule.customDays];
+                        customDays[idx].date = e.target.value;
+                        setRule(prev => ({ ...prev, customDays }));
+                      }}
+                      className="border px-2 py-1 rounded"
+                    />
+                    <select
+                      value={cd.leaveType}
+                      onChange={e => {
+                        const customDays = [...rule.customDays];
+                        customDays[idx].leaveType = e.target.value;
+                        if (e.target.value === "full") customDays[idx].breaks = [];
+                        setRule(prev => ({ ...prev, customDays }));
+                      }}
+                      className="border px-2 py-1 rounded"
+                    >
+                      <option value="full">Full Day Leave</option>
+                      <option value="break">Partial Leave</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const customDays = [...rule.customDays];
+                        customDays.splice(idx, 1);
+                        setRule(prev => ({ ...prev, customDays }));
+                      }}
+                      className="text-red-500 hover:underline ml-2"
+                    >Remove</button>
+                  </div>
+                  {cd.leaveType === "break" && (
+                    <div className="flex flex-col gap-1 ml-2">
+                      {cd.breaks?.map((br: any, bidx: number) => (
+                        <div key={bidx} className="flex gap-2 items-center">
+                          <input
+                            type="time"
+                            value={br.start}
+                            onChange={e => {
+                              const customDays = [...rule.customDays];
+                              customDays[idx].breaks[bidx].start = e.target.value;
+                              setRule(prev => ({ ...prev, customDays }));
+                            }}
+                            className="border px-2 py-1 rounded"
+                          />
+                          <span>to</span>
+                          <input
+                            type="time"
+                            value={br.end}
+                            onChange={e => {
+                              const customDays = [...rule.customDays];
+                              customDays[idx].breaks[bidx].end = e.target.value;
+                              setRule(prev => ({ ...prev, customDays }));
+                            }}
+                            className="border px-2 py-1 rounded"
+                          />
+                          <button
+                            onClick={() => {
+                              const customDays = [...rule.customDays];
+                              customDays[idx].breaks.splice(bidx, 1);
+                              setRule(prev => ({ ...prev, customDays }));
+                            }}
+                            className="text-red-500 hover:underline"
+                          >Remove</button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const customDays = [...rule.customDays];
+                          customDays[idx].breaks = customDays[idx].breaks || [];
+                          customDays[idx].breaks.push({ start: "12:00", end: "13:00" });
+                          setRule(prev => ({ ...prev, customDays }));
+                        }}
+                        className="text-blue-600 hover:underline mt-1"
+                      >+ Add Break</button>
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    placeholder="Reason (optional)"
+                    value={cd.reason || ""}
+                    onChange={e => {
+                      const customDays = [...rule.customDays];
+                      customDays[idx].reason = e.target.value;
+                      setRule(prev => ({ ...prev, customDays }));
+                    }}
+                    className="border px-2 py-1 rounded mt-1"
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => setRule(prev => ({
+                  ...prev,
+                  customDays: [
+                    ...(prev.customDays || []),
+                    { date: "", leaveType: "full", breaks: [], reason: "" }
+                  ]
+                }))}
+                className="text-blue-600 hover:underline"
+              >+ Add Custom Day</button>
+            </div>
+
             <button
               onClick={saveRule}
               disabled={saving}
@@ -194,7 +305,7 @@ const DoctorSlotManager = () => {
           </div>
 
           {/* Slot Preview */}
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white/60 backdrop-blur-md rounded-xl shadow-lg p-6">
             <div className="flex items-center gap-4 mb-4">
               <h3 className="text-lg font-semibold">Preview Slots</h3>
               <DatePicker
@@ -207,7 +318,7 @@ const DoctorSlotManager = () => {
               <button
                 onClick={fetchPreviewSlots}
                 disabled={previewing}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+                className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded shadow hover:from-indigo-500 hover:to-blue-500 transition"
               >
                 {previewing ? "Loading..." : "Show Slots"}
               </button>
@@ -215,25 +326,48 @@ const DoctorSlotManager = () => {
             {previewSlots.length === 0 ? (
               <div className="text-gray-500">No slots to display. Click "Show Slots" to preview.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-4 py-2 border">Date</th>
-                      <th className="px-4 py-2 border">Start</th>
-                      <th className="px-4 py-2 border">End</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewSlots.map((slot, idx) => (
-                      <tr key={idx}>
-                        <td className="px-4 py-2 border">{slot.date}</td>
-                        <td className="px-4 py-2 border">{slot.start}</td>
-                        <td className="px-4 py-2 border">{slot.end}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto pr-2">
+                {/* Group slots by date */}
+                {Object.entries(
+                  previewSlots.reduce((acc: any, slot: any) => {
+                    if (!acc[slot.date]) acc[slot.date] = [];
+                    acc[slot.date].push(slot);
+                    return acc;
+                  }, {})
+                ).map(([date, slots]) => {
+                  const slotArr = slots as any[];
+                  return (
+                    <div
+                      key={date}
+                      className="rounded-2xl bg-gradient-to-br from-white/80 to-blue-50/60 shadow-lg p-4 border border-blue-100 relative"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-blue-700 text-base drop-shadow">{date}</span>
+                        {/* If any slot has leaveType, show badge */}
+                        {slotArr[0].leaveType === "full" && (
+                          <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-semibold">Full Day Leave</span>
+                        )}
+                        {slotArr[0].leaveType === "break" && (
+                          <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-semibold">Partial Leave</span>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {slotArr.map((slot, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-center justify-between px-3 py-2 rounded-lg ${slot.leaveType ? "bg-gray-100/60 text-gray-400 line-through" : "bg-white/80"} shadow-sm border border-gray-100`}
+                          >
+                            <span className="font-mono text-sm">{slot.start} - {slot.end}</span>
+                            {/* If slot is break/leave, show reason if present */}
+                            {slot.reason && (
+                              <span className="text-xs text-gray-500 ml-2">{slot.reason}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

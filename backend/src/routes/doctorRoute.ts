@@ -102,4 +102,6 @@ doctorRouter.post(
   slotRuleController.setRule.bind(slotRuleController)
 );
 
+doctorRouter.get("/top", doctorController.getTopDoctors.bind(doctorController));
+
 export default doctorRouter;

@@ -356,4 +356,17 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
   }
 }
 
+  // Add this method for top doctors with filtering and limiting
+  async getTopDoctors(req: Request, res: Response): Promise<void> {
+    try {
+      const status = (req.query.status as string) || "approved";
+      const limit = parseInt(req.query.limit as string) || 10;
+      // Assuming doctorService has a method to get filtered/limited doctors
+      const doctors = await this._doctorService.getDoctorsByStatusAndLimit(status, limit);
+      res.status(200).json({ success: true, doctors });
+    } catch (error) {
+      res.status(500).json({ success: false, message: (error as Error).message });
+    }
+  }
+
 }

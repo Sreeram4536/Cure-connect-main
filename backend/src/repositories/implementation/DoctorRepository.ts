@@ -111,4 +111,8 @@ export class DoctorRepository
   ): Promise<void> {
     await this.updateById(id, updateData);
   }
+
+  async getDoctorsByStatusAndLimit(status: string, limit: number): Promise<Partial<DoctorData>[]> {
+    return doctorModel.find({ status }).limit(limit).select("-password -email");
+  }
 }

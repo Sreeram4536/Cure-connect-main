@@ -20,6 +20,10 @@ const AdminUsersList = () => {
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [targetUser, setTargetUser] = useState<any>(null);
+  const [targetAction, setTargetAction] = useState<"block" | "unblock" | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (aToken) {
@@ -51,14 +55,32 @@ const AdminUsersList = () => {
     }
   };
 
-  const handleToggleBlock = async (userId: string,isBlocked:boolean) => {
+  const handleToggleBlock = (userId: string, isBlocked: boolean) => {
+    setTargetUser(users.find((u) => u._id === userId));
+    setTargetAction(isBlocked ? "unblock" : "block");
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!targetUser || !targetAction) return;
+    setActionLoading(true);
     try {
-      await toggleBlockUser(userId,!isBlocked);
-      // Refresh current page after blocking/unblocking
+      await toggleBlockUser(targetUser._id, targetAction === "block");
+      setConfirmOpen(false);
+      setTargetUser(null);
+      setTargetAction(null);
       fetchUsers();
     } catch (error) {
       console.error("Failed to toggle user block:", error);
+    } finally {
+      setActionLoading(false);
     }
+  };
+
+  const handleCancelAction = () => {
+    setConfirmOpen(false);
+    setTargetUser(null);
+    setTargetAction(null);
   };
 
   const filteredUsers = users.filter((user) => {
@@ -135,8 +157,7 @@ const AdminUsersList = () => {
           whileTap={{ scale: 0.95 }}
           onClick={(e) => {
             e.stopPropagation();
-            console.log("Blocking user with ID:", item._id); // Add this
-            handleToggleBlock(item._id,item.isBlocked);
+            handleToggleBlock(item._id, item.isBlocked);
           }}
           className={`px-4 py-1.5 text-sm rounded-lg font-medium text-white shadow-sm transition duration-200 ${
             item.isBlocked
@@ -177,6 +198,48 @@ const AdminUsersList = () => {
           totalPages={totalPages}
           onPageChange={(page) => setCurrentPage(page)}
         />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md animate-fadeIn">
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-red-400 to-pink-400 mb-2">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 text-center">
+                {targetAction === "block" ? "Block" : "Unblock"} User
+              </h2>
+              <p className="text-gray-600 text-center">
+                Are you sure you want to <span className="font-semibold text-red-500">{targetAction}</span> <span className="font-semibold">{targetUser?.name}</span>?
+                <br />This action can be reversed later.
+              </p>
+              <div className="flex gap-4 mt-4 w-full justify-center">
+                <button
+                  onClick={handleCancelAction}
+                  className="px-5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition"
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAction}
+                  className={`px-5 py-2 rounded-lg text-white font-semibold shadow transition ${
+                    targetAction === "block"
+                      ? "bg-red-500 hover:bg-red-600"
+                      : "bg-green-500 hover:bg-green-600"
+                  } ${actionLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? "Processing..." : targetAction === "block" ? "Block" : "Unblock"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

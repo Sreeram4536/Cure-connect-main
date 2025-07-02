@@ -3,7 +3,7 @@ import type { Doctor } from "../assets/user/assets";
 import { assets } from "../assets/user/assets";
 import { toast } from "react-toastify";
 import { getUserProfileAPI } from "../services/userProfileServices";
-import { getDoctorsAPI, getDoctorsPaginatedAPI } from "../services/doctorServices";
+import { getDoctorsAPI, getDoctorsPaginatedAPI, getTopDoctorsAPI } from "../services/doctorServices";
 import { showErrorToast } from "../utils/errorHandler";
 import {
   getUserAccessToken,
@@ -80,7 +80,7 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
 
   const getDoctorsData = async () => {
     try {
-      const { data } = await getDoctorsAPI();
+      const { data } = await getTopDoctorsAPI("approved", 10);
       if (data.success) {
         setDoctors(data.doctors);
       } else {

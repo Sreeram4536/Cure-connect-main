@@ -109,3 +109,8 @@ export const getDoctorPreviewSlotsAPI = (year: number, month: number) => {
   return api.get(`/api/doctor/slots?year=${year}&month=${month}`);
 };
 
+// Get top doctors with filtering and limiting
+export const getTopDoctorsAPI = (status = "approved", limit = 10) => {
+  return api.get(`/api/doctor/top?status=${status}&limit=${limit}`);
+};
+
