@@ -17,6 +17,7 @@ import {
   refreshAdminAccessTokenAPI,
   rejectDoctorAPI,
   toggleUserBlockAPI,
+  toggleDoctorBlockAPI,
 } from "../services/adminServices";
 import { showErrorToast } from "../utils/errorHandler";
 import type { AppointmentTypes } from "../types/appointment";
@@ -43,6 +44,7 @@ interface AdminContextType {
   getAllUsers: () => Promise<void>;
   getUsersPaginated: (page: number, limit: number) => Promise<PaginationData>;
   toggleBlockUser: (userId: string,block: boolean) => Promise<void>;
+  toggleBlockDoctor: (doctorId: string, block: boolean) => Promise<void>;
   appointments: AppointmentTypes[];
   setAppointments: React.Dispatch<React.SetStateAction<AppointmentTypes[]>>;
   getAllAppointments: () => Promise<void>;
@@ -222,6 +224,20 @@ const rejectDoctor = async (doctorId: string) => {
   }
   };
 
+  const toggleBlockDoctor = async (doctorId: string, block: boolean) => {
+    try {
+      const { data } = await toggleDoctorBlockAPI(doctorId, block, aToken);
+      if (data.success) {
+        toast.success(data.message);
+        getAllDoctors();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      showErrorToast(error);
+    }
+  };
+
   const getAllAppointments = async () => {
     try {
       const { data } = await getAllAppointmentsAPI(aToken);
@@ -335,6 +351,7 @@ const rejectDoctor = async (doctorId: string) => {
     getAllUsers,
     getUsersPaginated,
     toggleBlockUser,
+    toggleBlockDoctor,
     appointments,
     setAppointments,
     getAllAppointments,

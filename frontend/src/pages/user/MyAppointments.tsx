@@ -167,7 +167,7 @@ const MyAppointments = () => {
           ) : (
             appointments.map((item, index) => (
               <div
-                key={index}
+            key={index}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 overflow-hidden hover:shadow-xl transition-all duration-300"
               >
                 <div className="p-6">
@@ -175,14 +175,14 @@ const MyAppointments = () => {
                     {/* Doctor Image */}
                     <div className="flex-shrink-0">
                       <div className="relative">
-                        <img
+              <img
                           className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-lg"
-                          src={item.docData.image}
+                src={item.docData.image}
                           alt={item.docData.name}
-                        />
+              />
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
                       </div>
-                    </div>
+            </div>
 
                     {/* Doctor Info */}
                     <div className="flex-1">
@@ -191,8 +191,8 @@ const MyAppointments = () => {
                           <div className="flex items-center gap-3 mb-3">
                             <h3 className="text-xl font-bold text-gray-800">{item.docData.name}</h3>
                             {getStatusBadge(item)}
-                          </div>
-                          
+            </div>
+
                           <p className="text-primary font-semibold mb-3">{item.docData.speciality}</p>
                           
                           <div className="space-y-2 text-sm text-gray-600">
@@ -218,37 +218,37 @@ const MyAppointments = () => {
 
                         {/* Action Buttons */}
                         <div className="flex flex-col gap-3 sm:items-end">
-                          {!item.cancelled && item.payment && (
-                            <button
-                              onClick={() => navigate(`/consultation/${item.docData._id}`)}
+              {!item.cancelled && item.payment && (
+                <button
+                  onClick={() => navigate(`/consultation/${item.docData._id}`)}
                               className="flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
                             >
                               <Video className="w-4 h-4" />
                               Start Consultation
-                            </button>
-                          )}
+                </button>
+              )}
 
-                          {!item.cancelled && !item.payment && (
-                            <button
-                              onClick={() => appointmentRazorpay(item._id!)}
+              {!item.cancelled && !item.payment && (
+                <button
+                  onClick={() => appointmentRazorpay(item._id!)}
                               className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                            >
+                >
                               <CreditCard className="w-4 h-4" />
                               Pay Now
-                            </button>
-                          )}
+                </button>
+              )}
 
-                          {!item.cancelled && (
-                            <button
-                              onClick={() => cancelAppointment(item._id!)}
+              {!item.cancelled && (
+                <button
+                  onClick={() => cancelAppointment(item._id!)}
                               className="flex items-center gap-2 bg-white border-2 border-red-500 text-red-500 px-6 py-3 rounded-xl font-semibold hover:bg-red-500 hover:text-white transition-all duration-300"
-                            >
+                >
                               <X className="w-4 h-4" />
                               Cancel Appointment
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                </button>
+              )}
+            </div>
+          </div>
                     </div>
                   </div>
                 </div>

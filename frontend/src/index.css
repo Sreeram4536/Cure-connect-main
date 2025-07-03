@@ -7,6 +7,9 @@
     font-family: Outfit;
 }
 
+html, body, #root, * {
+  cursor: default !important;
+}
 
 .active hr {
     @apply block
@@ -21,3 +24,4 @@
         @apply text-white bg-primary
     }
 }
+

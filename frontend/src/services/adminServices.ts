@@ -129,3 +129,15 @@ export const adminDashboardAPI = async (token: string) => {
 },
   });
 };
+
+export const toggleDoctorBlockAPI = async (
+  doctorId: string,
+  block: boolean,
+  token: string
+) => {
+  return await api.patch(ADMIN_API.BLOCK_DOCTOR(doctorId), { block }, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};

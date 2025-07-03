@@ -17,6 +17,7 @@ export const ADMIN_API = {
   CANCEL_APPOINTMENT: (appointmentId: string) =>
     `/api/admin/appointments/${appointmentId}/cancel`,
   DASHBOARD: "/api/admin/dashboard",
+  BLOCK_DOCTOR: (doctorId: string) => `/api/admin/doctors/${doctorId}/block`,
 };
 
 // src/constants/apiRoutes.ts

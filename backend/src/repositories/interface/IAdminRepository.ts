@@ -21,6 +21,7 @@ export interface IAdminRepository {
   getAllUsers(): Promise<Omit<userData, "password">[]>;
   getUsersPaginated(page: number, limit: number): Promise<PaginationResult<Omit<userData, "password">>>;
   toggleUserBlock(userId: string,block:boolean): Promise<string>;
+  toggleDoctorBlock(doctorId: string, block: boolean): Promise<string>;
   getAllAppointments():Promise<AppointmentDocument[]>;
   getAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>>;
   cancelAppointment(appointmentId: string): Promise<void>;

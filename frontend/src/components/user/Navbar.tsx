@@ -42,7 +42,7 @@ const logout = async () => {
 };
 
   return (
-    <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-white/30 shadow-lg">
+    <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-white/30 shadow-lg cursor-default">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
@@ -51,6 +51,8 @@ const logout = async () => {
             className="w-44 cursor-pointer hover:opacity-80 transition-opacity duration-300"
             src={assets.logo}
             alt="CureConnect"
+            tabIndex={-1}
+            draggable={false}
           />
 
           {/* Desktop Navigation */}

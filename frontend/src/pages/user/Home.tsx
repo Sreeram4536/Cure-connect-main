@@ -87,23 +87,23 @@ const Home = () => {
       <div className="relative z-10">
         {/* Header Section - Reduced spacing */}
         <div className="mb-8">
-          <Header />
+      <Header />
         </div>
         {/* Speciality Menu Section - Vibrant card */}
         <div className="mb-10">
           <div className="bg-gradient-to-br from-white/80 via-blue-100/60 to-cyan-50/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border-2 border-blue-100/40">
-            <SpecialityMenu />
+      <SpecialityMenu />
           </div>
         </div>
         {/* Top Doctors Section - Vibrant card */}
         <div className="mb-10">
           <div className="bg-gradient-to-br from-white/80 via-pink-100/60 to-purple-50/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border-2 border-pink-100/40">
-            <TopDoctors />
+      <TopDoctors />
           </div>
         </div>
         {/* Banner Section - Reduced spacing */}
         <div className="mb-10">
-          <Banner />
+      <Banner />
         </div>
         {/* Features Section - Pastel gradient card */}
         <div className="mb-10">

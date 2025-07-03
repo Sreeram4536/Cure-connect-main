@@ -86,6 +86,12 @@ adminRouter.patch(
   doctorController.changeAvailability.bind(doctorController)
 );
 
+adminRouter.patch(
+  "/doctors/:doctorId/block",
+  authRole(["admin"]),
+  adminController.toggleDoctorBlock.bind(adminController)
+);
+
 adminRouter.get(
   "/appointments",
   authRole(["admin"]),

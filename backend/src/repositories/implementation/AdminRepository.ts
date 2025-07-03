@@ -84,6 +84,14 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     return user.isBlocked ? "User blocked" : "User unblocked";
   }
 
+  async toggleDoctorBlock(doctorId: string, block: boolean): Promise<string> {
+    const doctor = await doctorModel.findById(doctorId);
+    if (!doctor) throw new Error("Doctor not found");
+    doctor.isBlocked = block;
+    await doctor.save();
+    return doctor.isBlocked ? "Doctor blocked" : "Doctor unblocked";
+  }
+
   async getAllAppointments(): Promise<AppointmentDocument[]> {
     return appointmentModel.find({});
   }

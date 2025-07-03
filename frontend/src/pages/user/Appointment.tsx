@@ -77,7 +77,7 @@ const Appointment = () => {
       const slots = slotMap[dateKey] || [];
 
       const timeSlots: TimeSlot[] = slots.map((slot) => {
-        // slot.start is already in "HH:mm" format
+       
         const [hour, minute] = slot.start.split(":").map(Number);
         const slotDate = new Date(currentDate);
         slotDate.setHours(hour);
@@ -238,23 +238,38 @@ const Appointment = () => {
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Select Date</h3>
           <div className="flex gap-3 items-center w-full overflow-x-auto pb-2">
-            {docSlots.map((item, index) => (
-              <div
-                onClick={() => {
-                  setSlotIndex(index);
-                  setShowCustomDatePicker(false);
-                }}
-                className={`text-center py-4 px-6 min-w-20 rounded-xl cursor-pointer transition-all duration-300 shadow-sm ${
-                  slotIndex === index && !showCustomDatePicker
-                    ? "bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg transform scale-105"
-                    : "bg-white border-2 border-gray-200 hover:border-primary/50 hover:shadow-md"
-                }`}
-                key={index}
-              >
-                <p className="text-sm font-medium">{item[0]?.datetime ? daysOfWeek[item[0].datetime.getDay()] : "--"}</p>
-                <p className="text-lg font-bold">{item[0]?.datetime ? item[0].datetime.getDate() : "--"}</p>
-              </div>
-            ))}
+            {docSlots.map((item, index) => {
+              const isAvailable = item.length > 0;
+              // Calculate the date for this index
+              const today = new Date();
+              const currentDate = new Date(today);
+              currentDate.setDate(today.getDate() + index);
+              const dayLabel = daysOfWeek[currentDate.getDay()];
+              const dateLabel = currentDate.getDate();
+              return (
+                <div
+                  key={index}
+                  onClick={isAvailable ? () => {
+                    setSlotIndex(index);
+                    setShowCustomDatePicker(false);
+                  } : undefined}
+                  className={`text-center py-4 px-6 min-w-20 rounded-xl transition-all duration-300 shadow-sm select-none ${
+                    isAvailable
+                      ? `cursor-pointer ${slotIndex === index && !showCustomDatePicker
+                        ? "bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg transform scale-105"
+                        : "bg-white border-2 border-gray-200 hover:border-primary/50 hover:shadow-md"}`
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-70 border-2 border-gray-200"
+                  }`}
+                  tabIndex={-1}
+                >
+                  <p className="text-sm font-medium">{dayLabel}</p>
+                  <p className="text-lg font-bold">{dateLabel}</p>
+                  {!isAvailable && (
+                    <span className="block text-xs mt-1">Not Available</span>
+                  )}
+                </div>
+              );
+            })}
 
             {/* Calendar Selector */}
             <div
@@ -341,9 +356,6 @@ const Appointment = () => {
           </button>
         </div>
       </div>
-
-      {/* Related Doctors */}
-      <RelatedDoctors docId={docId} speciality={docInfo?.speciality} />
     </div>
   );
 };

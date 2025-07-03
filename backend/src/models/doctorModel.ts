@@ -78,6 +78,11 @@ const doctorSchema: Schema<DoctorDocument> = new mongoose.Schema(
       type: Object,
       default: {},
     },
+
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
   },
   { minimize: false }
 );

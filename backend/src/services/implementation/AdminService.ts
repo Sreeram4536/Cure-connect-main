@@ -157,6 +157,10 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return await this._adminRepository.toggleUserBlock(userId,block);
   }
 
+  async toggleDoctorBlock(doctorId: string, block: boolean): Promise<string> {
+    return await this._adminRepository.toggleDoctorBlock(doctorId, block);
+  }
+
   async listAppointments(): Promise<AppointmentDocument[]> {
     return await this._adminRepository.getAllAppointments();
   }

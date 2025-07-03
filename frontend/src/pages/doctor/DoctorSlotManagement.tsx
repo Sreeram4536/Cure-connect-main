@@ -44,8 +44,9 @@ const DoctorSlotManager = () => {
   const saveRule = async () => {
     setSaving(true);
     try {
-      // await axios.post("/api/doctor/slot-rule", rule);
-      await setDoctorSlotRuleAPI(rule);
+      // Ensure customDays is always present
+      const ruleToSave = { ...rule, customDays: rule.customDays || [] };
+      await setDoctorSlotRuleAPI(ruleToSave);
       toast.success("Slot rule saved!");
       fetchPreviewSlots();
     } catch(error) {
@@ -158,8 +159,8 @@ const DoctorSlotManager = () => {
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
-              </div>
-            </div>
+        </div>
+      </div>
             <div className="mb-4">
               <label className="block font-medium mb-2">Breaks (optional)</label>
               {rule.breaks.map((br, idx) => (
@@ -257,8 +258,8 @@ const DoctorSlotManager = () => {
                             }}
                             className="text-red-500 hover:underline"
                           >Remove</button>
-                        </div>
-                      ))}
+              </div>
+            ))}
                       <button
                         onClick={() => {
                           const customDays = [...rule.customDays];
@@ -268,8 +269,8 @@ const DoctorSlotManager = () => {
                         }}
                         className="text-blue-600 hover:underline mt-1"
                       >+ Add Break</button>
-                    </div>
-                  )}
+          </div>
+        )}
                   <input
                     type="text"
                     placeholder="Reason (optional)"
@@ -315,14 +316,14 @@ const DoctorSlotManager = () => {
                 showMonthYearPicker
                 className="border px-3 py-2 rounded"
               />
-              <button
+          <button
                 onClick={fetchPreviewSlots}
                 disabled={previewing}
                 className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded shadow hover:from-indigo-500 hover:to-blue-500 transition"
-              >
+          >
                 {previewing ? "Loading..." : "Show Slots"}
-              </button>
-            </div>
+          </button>
+        </div>
             {previewSlots.length === 0 ? (
               <div className="text-gray-500">No slots to display. Click "Show Slots" to preview.</div>
             ) : (
@@ -370,7 +371,7 @@ const DoctorSlotManager = () => {
                 })}
               </div>
             )}
-          </div>
+      </div>
         </>
       )}
     </div>

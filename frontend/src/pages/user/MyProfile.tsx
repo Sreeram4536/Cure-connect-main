@@ -120,7 +120,7 @@ const MyProfile = () => {
                 <label htmlFor="image" className="inline-block relative cursor-pointer group">
                   <div className="relative">
                     <img
-                      className="w-40 h-40 rounded-full object-cover border-4 border-gray-200 group-hover:border-primary transition-all duration-300 shadow-lg"
+                      className="w-40 h-40 rounded-full object-cover border-4 border-gray-200 group-hover:border-primary transition-all duration-300 shadow-lg cursor-default select-none"
                       src={image ? URL.createObjectURL(image) : userData.image}
                       alt="Profile"
                     />

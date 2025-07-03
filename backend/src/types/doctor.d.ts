@@ -25,6 +25,7 @@ export interface DoctorData {
   slots_booked?: {
     [date: string]: string[]; 
   };
+  isBlocked?: boolean;
 }
 
 export interface DoctorDTO {
@@ -38,6 +39,7 @@ export interface DoctorDTO {
   fees: number;
   address: Address;
   imagePath?: string;
+  isBlocked?: boolean;
 }
 
 

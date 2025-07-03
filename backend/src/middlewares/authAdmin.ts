@@ -1,38 +1,48 @@
-// import { Request, Response, NextFunction } from "express";
-// import { HttpStatus } from "../constants/status.constants";
-// import { verifyAccessToken } from "../utils/jwt.utils";
+import { Request, Response, NextFunction } from "express";
+import { HttpStatus } from "../constants/status.constants";
+import { verifyAccessToken } from "../utils/jwt.utils";
+import { isTokenBlacklisted } from "../utils/tokenBlacklist.util";
 
-// const authAdmin = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ): Promise<void> => {
-//   try {
-//     const authHeader = req.headers.authorization;
+const authAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
 
-//     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-//       res.status(HttpStatus.UNAUTHORIZED).json({
-//         success: false,
-//         message: "Authentication Failed. Login Again",
-//       });
-//       return;
-//     }
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(HttpStatus.UNAUTHORIZED).json({
+        success: false,
+        message: "Authentication Failed. Login Again",
+      });
+      return;
+    }
 
-//     const token = authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
 
-//     const decoded = verifyAccessToken(token);
+    // Check if token is blacklisted
+    if (await isTokenBlacklisted(token)) {
+      res.status(HttpStatus.UNAUTHORIZED).json({
+        success: false,
+        message: "Token is blacklisted. Please login again.",
+      });
+      return;
+    }
 
-//     // Attach decoded admin ID to the request
-//     (req as any).adminId = decoded.id;
+    const decoded = verifyAccessToken(token);
 
-//     next();
-//   } catch (error: any) {
-//     console.log("Auth Error:", error.message);
-//     res.status(HttpStatus.UNAUTHORIZED).json({
-//       success: false,
-//       message: "Invalid or expired token",
-//     });
-//   }
-// };
+    // Attach decoded admin ID to the request
+    (req as any).adminId = decoded.id;
 
-// export default authAdmin;
+    next();
+  } catch (error: any) {
+    console.log("Auth Error:", error.message);
+    res.status(HttpStatus.UNAUTHORIZED).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
+  }
+};
+
+export default authAdmin;

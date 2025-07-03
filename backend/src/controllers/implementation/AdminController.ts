@@ -6,6 +6,8 @@ import { HttpStatus } from "../../constants/status.constants";
 import { DoctorDTO } from "../../types/doctor";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt.utils";
+import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
+import jwt from "jsonwebtoken";
 
 export class AdminController implements IAdminController {
   constructor(private _adminService: IAdminService) {}
@@ -95,6 +97,21 @@ export class AdminController implements IAdminController {
 
   // Admin Logout
   async logoutAdmin(req: Request, res: Response): Promise<void> {
+    // Blacklist the access token if present
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      try {
+        const decoded: any = jwt.decode(token);
+        // If token has exp, convert to Date
+        if (decoded && decoded.exp) {
+          const expiresAt = new Date(decoded.exp * 1000);
+          await addTokenToBlacklist(token, expiresAt);
+        }
+      } catch (e) {
+        // ignore decode errors
+      }
+    }
     res.clearCookie("refreshToken_admin", {
       httpOnly: true,
       path: "/api/admin/refresh-token",
@@ -315,6 +332,24 @@ export class AdminController implements IAdminController {
       res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: (error as Error).message });
+    }
+  }
+
+  async toggleDoctorBlock(req: Request, res: Response): Promise<void> {
+    try {
+      const { doctorId } = req.params;
+      const { block } = req.body as { block?: boolean };
+      if (typeof block !== "boolean") {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.BLOCK_STATUS_INVALID,
+        });
+        return;
+      }
+      const message = await this._adminService.toggleDoctorBlock(doctorId, block);
+      res.status(HttpStatus.OK).json({ success: true, message });
+    } catch (error) {
+      res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: (error as Error).message });
     }
   }
 }

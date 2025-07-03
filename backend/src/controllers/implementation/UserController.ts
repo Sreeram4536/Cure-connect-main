@@ -19,6 +19,8 @@ import {
 } from "../../utils/jwt.utils";
 import { log } from "console";
 import { use } from "passport";
+import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
+import jwt from "jsonwebtoken";
 
 export class UserController implements IUserController {
   constructor(
@@ -324,15 +326,30 @@ const newRefreshToken = generateRefreshToken(user._id);
   }
 
   async logout(req: Request, res: Response): Promise<void> {
+    // Blacklist the access token if present
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      try {
+        const decoded: any = jwt.decode(token);
+        if (decoded && decoded.exp) {
+          const expiresAt = new Date(decoded.exp * 1000);
+          await addTokenToBlacklist(token, expiresAt);
+        }
+      } catch (e) {
+        // ignore decode errors
+      }
+    }
     res.clearCookie("refreshToken_user", {
       httpOnly: true,
-      secure: true,
       path: "/api/user/refresh-token",
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
-    res
-      .status(HttpStatus.OK)
-      .json({ success: true, message: "Logged out successfully" });
+    res.status(HttpStatus.OK).json({
+      success: true,
+      message: HttpResponse.LOGOUT_SUCCESS,
+    });
   }
 
   async getProfile(req: Request, res: Response): Promise<void> {

@@ -195,7 +195,12 @@ const Login = () => {
               <>
                 Already have an account?{" "}
                 <span
-                  onClick={() => setState("Login")}
+                  onClick={() => {
+                    setState("Login");
+                    setEmail("");
+                    setPassword("");
+                    setName("");
+                  }}
                   className="text-primary underline cursor-pointer"
                 >
                   Login here
@@ -205,7 +210,12 @@ const Login = () => {
               <>
                 Create a new account?{" "}
                 <span
-                  onClick={() => setState("Sign Up")}
+                  onClick={() => {
+                    setState("Sign Up");
+                    setEmail("");
+                    setPassword("");
+                    setName("");
+                  }}
                   className="text-primary underline cursor-pointer"
                 >
                   click here

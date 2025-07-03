@@ -17,6 +17,7 @@ export interface IAdminService {
   getUsers(): Promise<any[]>;
   getUsersPaginated(page: number, limit: number): Promise<PaginationResult<any>>;
   toggleUserBlock(userId: string, block: boolean): Promise<string>;
+  toggleDoctorBlock(doctorId: string, block: boolean): Promise<string>;
   listAppointments(): Promise<AppointmentDocument[]>;
   listAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>>;
   cancelAppointment(appointmentId: string): Promise<void>;

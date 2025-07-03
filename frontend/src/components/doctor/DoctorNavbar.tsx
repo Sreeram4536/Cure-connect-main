@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { logoutDoctorAPI } from "../../services/doctorServices";
 import { clearDoctorAccessToken } from "../../context/tokenManagerDoctor";
 
-
 const DoctorNavbar = () => {
   const context = useContext(DoctorContext);
 
@@ -17,19 +16,20 @@ const DoctorNavbar = () => {
 
   const navigate = useNavigate();
 
-const logout = async () => {
-  try {
-    await logoutDoctorAPI(); // ✅ call API to clear cookie
+  const logout = async () => {
+    try {
+      await logoutDoctorAPI(); // ✅ call API to clear cookie
 
-    setDToken("");
-        localStorage.setItem("isDoctorLoggedOut", "true");
-    clearDoctorAccessToken();
+      setDToken("");
+      localStorage.removeItem("doctorAccessToken");
+      localStorage.setItem("isDoctorLoggedOut", "true");
+      clearDoctorAccessToken();
 
-    navigate("/doctor/login");
-  } catch (error) {
-    console.error("Doctor logout failed:", error);
-  }
-};
+      navigate("/doctor/login");
+    } catch (error) {
+      console.error("Doctor logout failed:", error);
+    }
+  };
 
   return (
     <div className="flex justify-between items-center px-4 sm:px-10 py-3 border-b bg-white">

@@ -13,34 +13,74 @@ export class DoctorSlotService {
     const rule = await this._ruleRepo.getRuleByDoctor(doctorId);
     if (!rule) return [];
 
-    // 2. Generate slots for each day in the month
-    const daysInMonth = moment({ year, month: month - 1 }).daysInMonth();
+    const daysInMonth = require('moment')({ year, month: month - 1 }).daysInMonth();
     const slots = [];
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = moment({ year, month: month - 1, day });
-      if (!rule.daysOfWeek.includes(date.day())) continue;
-
-      let current = moment(date).set({
+      const dateObj = require('moment')({ year, month: month - 1, day });
+      const dateStr = dateObj.format('YYYY-MM-DD');
+      // Check for custom day
+      const customDay = (rule.customDays || []).find((cd: any) => cd.date === dateStr);
+      if (customDay) {
+        if (customDay.leaveType === 'full') continue; // skip full day leave
+        // Partial leave: use custom breaks for this day
+        let current = dateObj.clone().set({
+          hour: parseInt(rule.startTime.split(":")[0]),
+          minute: parseInt(rule.startTime.split(":")[1]),
+          second: 0,
+          millisecond: 0
+        });
+        const end = dateObj.clone().set({
+          hour: parseInt(rule.endTime.split(":")[0]),
+          minute: parseInt(rule.endTime.split(":")[1]),
+          second: 0,
+          millisecond: 0
+        });
+        while (current < end) {
+          const inBreak = (customDay.breaks || []).some((b: any) => {
+            const breakStart = dateObj.clone().set({
+              hour: parseInt(b.start.split(":")[0]),
+              minute: parseInt(b.start.split(":")[1])
+            });
+            const breakEnd = dateObj.clone().set({
+              hour: parseInt(b.end.split(":")[0]),
+              minute: parseInt(b.end.split(":")[1])
+            });
+            return current >= breakStart && current < breakEnd;
+          });
+          if (!inBreak) {
+            slots.push({
+              date: dateStr,
+              start: current.format('HH:mm'),
+              end: current.clone().add(rule.slotDuration, 'minutes').format('HH:mm'),
+              leaveType: 'break',
+              reason: customDay.reason || ''
+            });
+          }
+          current = current.clone().add(rule.slotDuration, 'minutes');
+        }
+        continue;
+      }
+      // Not a custom day: use general rule
+      if (!rule.daysOfWeek.includes(dateObj.day())) continue;
+      let current = dateObj.clone().set({
         hour: parseInt(rule.startTime.split(":")[0]),
         minute: parseInt(rule.startTime.split(":")[1]),
         second: 0,
         millisecond: 0
       });
-      const end = moment(date).set({
+      const end = dateObj.clone().set({
         hour: parseInt(rule.endTime.split(":")[0]),
         minute: parseInt(rule.endTime.split(":")[1]),
         second: 0,
         millisecond: 0
       });
-
       while (current < end) {
-        // Check if in break
         const inBreak = (rule.breaks || []).some((b: any) => {
-          const breakStart = moment(date).set({
+          const breakStart = dateObj.clone().set({
             hour: parseInt(b.start.split(":")[0]),
             minute: parseInt(b.start.split(":")[1])
           });
-          const breakEnd = moment(date).set({
+          const breakEnd = dateObj.clone().set({
             hour: parseInt(b.end.split(":")[0]),
             minute: parseInt(b.end.split(":")[1])
           });
@@ -48,7 +88,7 @@ export class DoctorSlotService {
         });
         if (!inBreak) {
           slots.push({
-            date: date.format('YYYY-MM-DD'),
+            date: dateStr,
             start: current.format('HH:mm'),
             end: current.clone().add(rule.slotDuration, 'minutes').format('HH:mm')
           });
