@@ -23,6 +23,14 @@ function parse12HourTime(timeStr: string): { hour: number; minute: number } {
   return { hour, minute };
 }
 
+// Helper to format date as YYYY-MM-DD in local time
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const Appointment = () => {
   type TimeSlot = {
     datetime: Date;
@@ -73,7 +81,7 @@ const Appointment = () => {
     for (let i = 0; i < 7; i++) {
       let currentDate = new Date(today);
       currentDate.setDate(today.getDate() + i);
-      const dateKey = currentDate.toISOString().split("T")[0];
+      const dateKey = formatLocalDate(currentDate);
       const slots = slotMap[dateKey] || [];
 
       const timeSlots: TimeSlot[] = slots.map((slot) => {
@@ -104,7 +112,7 @@ const Appointment = () => {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
-    const slotDateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const slotDateStr = formatLocalDate(date);
 
     try {
       const slotArray = await getAvailableSlotsAPI(docId, year, month);
@@ -139,7 +147,7 @@ const Appointment = () => {
     }
 
     const date = selectedSlot.datetime;
-    const slotDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const slotDate = formatLocalDate(date);
 
     try {
       const { data } = await appointmentBookingAPI(docId!, slotDate, slotTime, token);
