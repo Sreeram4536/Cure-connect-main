@@ -2,19 +2,17 @@ import { api } from "../axios/axiosInstance";
 import { PAYMENT_API } from "../constants/apiRoutes";
 import type { RazorpayPaymentResponse } from "../types/razorpay";
 
-// Initiate Razorpay payment
+// Initiate Razorpay payment for a slot (before appointment exists)
 export const PaymentRazorpayAPI = async (
-  appointmentId: string,
+  docId: string,
+  slotDate: string,
+  slotTime: string,
   token: string
 ) => {
   return api.post(
-    PAYMENT_API.RAZORPAY_INIT,
-    { appointmentId },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    '/api/user/appointments/initiate',
+    { docId, slotDate, slotTime },
+    { headers: { Authorization: `Bearer ${token}` } }
   );
 };
 

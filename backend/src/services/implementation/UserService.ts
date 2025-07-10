@@ -151,10 +151,6 @@ async finalizeRegister(userData: {
     return doctor;
   }
 
-  async bookAppointment(appointmentData: AppointmentTypes): Promise<void> {
-    await this._userRepository.bookAppointment(appointmentData);
-  }
-
   async listUserAppointments(userId: string): Promise<AppointmentTypes[]> {
     return await this._userRepository.getAppointmentsByUserId(userId);
   }

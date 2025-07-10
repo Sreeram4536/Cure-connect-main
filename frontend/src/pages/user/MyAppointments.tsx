@@ -102,18 +102,6 @@ const MyAppointments = () => {
     rzp.open();
   };
 
-  const appointmentRazorpay = async (appointmentId: string) => {
-    try {
-      const { data } = await PaymentRazorpayAPI(appointmentId, token);
-
-      if (data.success) {
-        initPay(data.order, appointmentId);
-      }
-    } catch (error) {
-      showErrorToast(error);
-    }
-  };
-
   useEffect(() => {
     if (token) {
       getUserAppointments();
@@ -137,12 +125,18 @@ const MyAppointments = () => {
         </div>
       );
     }
-    return (
-      <div className="flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
-        <AlertCircle className="w-4 h-4 mr-1" />
-        Pending Payment
-      </div>
-    );
+    // Remove Pending Payment badge
+    return null;
+  };
+
+  // Helper: Check if current time is within the consultation window (5 min before to end of slot)
+  const isConsultationTime = (appointment: AppointmentTypes) => {
+    const slotDateTime = new Date(`${appointment.slotDate}T${appointment.slotTime}`);
+    const now = new Date();
+    // Show button from 5 minutes before slot time until 30 minutes after (or slot duration if available)
+    const startWindow = new Date(slotDateTime.getTime() - 5 * 60 * 1000); // 5 min before
+    const endWindow = new Date(slotDateTime.getTime() + 30 * 60 * 1000); // 30 min after
+    return now >= startWindow && now <= endWindow;
   };
 
   return (
@@ -177,8 +171,8 @@ const MyAppointments = () => {
                       <div className="relative">
               <img
                           className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-lg"
-                src={item.docData.image}
-                          alt={item.docData.name}
+                src={item.docData?.image || '/default.png'}
+                          alt={item.docData?.name || 'Doctor'}
               />
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
                       </div>
@@ -189,18 +183,18 @@ const MyAppointments = () => {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
-                            <h3 className="text-xl font-bold text-gray-800">{item.docData.name}</h3>
+                            <h3 className="text-xl font-bold text-gray-800">{item.docData?.name || 'Doctor'}</h3>
                             {getStatusBadge(item)}
             </div>
 
-                          <p className="text-primary font-semibold mb-3">{item.docData.speciality}</p>
+                          <p className="text-primary font-semibold mb-3">{item.docData?.speciality || ''}</p>
                           
                           <div className="space-y-2 text-sm text-gray-600">
                             <div className="flex items-center gap-2">
                               <MapPin className="w-4 h-4 text-gray-500" />
-                              <span>{item.docData.address.line1}</span>
+                              <span>{item.docData?.address?.line1 || 'No address'}</span>
                             </div>
-                            {item.docData.address.line2 && (
+                            {item.docData?.address?.line2 && (
                               <div className="flex items-center gap-2 ml-6">
                                 <span>{item.docData.address.line2}</span>
                               </div>
@@ -218,23 +212,13 @@ const MyAppointments = () => {
 
                         {/* Action Buttons */}
                         <div className="flex flex-col gap-3 sm:items-end">
-              {!item.cancelled && item.payment && (
+              {!item.cancelled && item.payment && isConsultationTime(item) && (
                 <button
                   onClick={() => navigate(`/consultation/${item.docData._id}`)}
                               className="flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
                             >
                               <Video className="w-4 h-4" />
                               Start Consultation
-                </button>
-              )}
-
-              {!item.cancelled && !item.payment && (
-                <button
-                  onClick={() => appointmentRazorpay(item._id!)}
-                              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                >
-                              <CreditCard className="w-4 h-4" />
-                              Pay Now
                 </button>
               )}
 

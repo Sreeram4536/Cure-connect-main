@@ -78,12 +78,7 @@ const Header = () => {
               Book Appointment
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </a>
-            <button className="flex items-center text-white hover:text-blue-200 transition-colors">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-3 hover:bg-white/30 transition-colors">
-                <Play className="w-6 h-6" />
-              </div>
-              Watch Demo
-            </button>
+            
           </div>
           
           {/* Stats */}

@@ -1,7 +1,6 @@
 import { IUserRepository } from "../../repositories/interface/IUserRepository";
 import userModel from "../../models/userModel";
 import doctorModel from "../../models/doctorModel";
-// import slotModel from "../../models/slotModel";
 import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
 import appointmentModel from "../../models/appointmentModel";
 import { DoctorData } from "../../types/doctor";
@@ -34,58 +33,9 @@ export class UserRepository
     return !!updatedUser;
   }
 
-  async bookAppointment(appointmentData: AppointmentTypes): Promise<void> {
-    const { userId, docId, slotDate, slotTime } = appointmentData;
-
-    // const existingappointment = await appointmentModel.countDocuments({
-    //   userId,docId
-    // })
-    // if(existingappointment>=2){
-      
-    // }
-
-    // Check doctor availability
-    const doctor = await doctorModel.findById(docId);
-    if (!doctor || !doctor.available) throw new Error("Doctor not available");
-
-   // 1. Get the doctor's slot rule
-const slotRuleModel = require("../../models/slotRuleModel").default; // adjust import if needed
-const rule = await slotRuleModel.findOne({ doctorId: docId });
-if (!rule) throw new Error("No slot rule set for this doctor");
-
-// 2. Generate slots for the requested date using the rule
-const slots = generateSlotsForDate(rule as SlotRuleType, slotDate); // implement this utility
-
-// 3. Check if the requested slotTime is in the generated slots
-const slot = slots.find(s => s.start === slotTime);
-if (!slot) throw new Error("Slot not available");
-
-// 4. Check if the slot is already booked (check appointments for this doctor/date/slotTime)
-const alreadyBooked = await appointmentModel.findOne({ docId, slotDate, slotTime, cancelled: { $ne: true } });
-if (alreadyBooked) throw new Error("Slot already booked");
-
-// 5. Proceed to book the appointment as before
-
-    // Prepare user and doctor data
-    const userData = await userModel.findById(userId).select("-password");
-    const docData = await doctorModel.findById(docId).select("-password");
-
-    const appointment = new appointmentModel({
-      userId,
-      docId,
-      userData,
-      docData,
-      amount: docData!.fees,
-      slotTime,
-      slotDate,
-      date: new Date(),
-    });
-
-    await appointment.save();
-  }
-
   async getAppointmentsByUserId(userId: string): Promise<AppointmentTypes[]> {
-    return appointmentModel.find({ userId }).sort({ date: -1 });
+    // Return only confirmed appointments, both cancelled and not cancelled
+    return appointmentModel.find({ userId, status: 'confirmed' }).sort({ date: -1 });
   }
 
   async findDoctorById(id: string): Promise<DoctorData | null> {
@@ -110,18 +60,7 @@ if (alreadyBooked) throw new Error("Slot already booked");
     appointment.cancelled = true;
     await appointment.save();
 
-    // // Unmark the slot as booked in slotModel
-    // const { docId, slotDate, slotTime } = appointment;
-    // const slotDoc = await slotModel.findOne({ doctorId: docId, date: slotDate });
-    // if (slotDoc) {
-    //   const slotIndex = slotDoc.slots.findIndex(
-    //     (slot) => slot.start === slotTime && slot.booked
-    //   );
-    //   if (slotIndex !== -1) {
-    //     slotDoc.slots[slotIndex].booked = false;
-    //     await slotDoc.save();
-    //   }
-    // }
+   
   }
 
 async findPayableAppointment(
@@ -166,7 +105,7 @@ async findPayableAppointment(
     doctorId,
     date: { $regex: regex },
     isCancelled: false,
-    "slots.booked": false, // Only include if you want at least one unbooked slot
+    "slots.booked": false, 
   }).select("date slots");
 }
 

@@ -39,20 +39,36 @@ userRouter.put(
   userController.updateProfile.bind(userController)
 );
 userRouter.post(
-  "/appointments",
+  "/appointments/initiate",
   authRole(["user"]),
-  userController.bookAppointment.bind(userController)
+  userController.initiatePayment.bind(userController)
+);
+userRouter.post(
+  "/appointments/finalize",
+  authRole(["user"]),
+  userController.finalizeAppointment.bind(userController)
 );
 userRouter.get(
   "/appointments",
   authRole(["user"]),
   userController.listAppointment.bind(userController)
 );
+userRouter.post(
+  "/appointments/lock",
+  authRole(["user"]),
+  userController.lockSlot.bind(userController)
+);
 
 userRouter.patch(
   "/appointments/:appointmentId/cancel",
   authRole(["user"]),
   userController.cancelAppointment.bind(userController)
+);
+
+userRouter.patch(
+  "/appointments/:appointmentId/cancel-lock",
+  authRole(["user"]),
+  userController.cancelLock.bind(userController)
 );
 
 // userRouter.get(

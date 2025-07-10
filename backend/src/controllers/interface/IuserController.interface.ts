@@ -9,7 +9,6 @@ export interface IUserController {
   resendOtp(req: Request, res: Response): Promise<void>;
   forgotPasswordRequest(req: Request, res: Response): Promise<void>;
   resetPassword(req: Request, res: Response): Promise<void>;
-  bookAppointment(req: Request, res: Response): Promise<void>;
   listAppointment(req: Request, res: Response): Promise<void>;
   cancelAppointment(req: Request, res: Response): Promise<void>;
   refreshToken(req: Request, res: Response): Promise<void>;

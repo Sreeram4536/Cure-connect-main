@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -10,8 +10,12 @@ import {
   appointmentBookingAPI,
   getAvailableSlotsAPI,
 } from "../../services/appointmentServices";
+import { PaymentRazorpayAPI, VerifyRazorpayAPI } from "../../services/paymentServices";
+import { finalizeAppointmentAPI } from "../../services/appointmentServices";
 import { showErrorToast } from "../../utils/errorHandler";
 import { Star, Clock, MapPin, Users, Calendar, CheckCircle } from "lucide-react";
+import { lockAppointmentSlotAPI } from "../../services/appointmentServices";
+import { cancelAppointmentLockAPI } from '../../services/appointmentServices';
 
 function parse12HourTime(timeStr: string): { hour: number; minute: number } {
   const [time, modifier] = timeStr.split(" ");
@@ -51,6 +55,13 @@ const Appointment = () => {
   const [slotTime, setSlotTime] = useState<string>("");
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [customDate, setCustomDate] = useState<Date | null>(null);
+  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null);
+  const pendingAppointmentIdRef = useRef<string | null>(null);
+  const setPendingAppointmentIdSafe = (id: string | null) => {
+    setPendingAppointmentId(id);
+    pendingAppointmentIdRef.current = id;
+  };
+  const [paymentWindowOpen, setPaymentWindowOpen] = useState(false);
   
 
   const fetchDocInfo = () => {
@@ -135,6 +146,10 @@ const Appointment = () => {
   };
 
   const bookAppointment = async () => {
+    if (pendingAppointmentId || paymentWindowOpen) {
+      toast.warn("Please complete or cancel the current payment first.");
+      return;
+    }
     if (!token) {
       toast.warn("Login to book appointment");
       return navigate("/login");
@@ -150,12 +165,87 @@ const Appointment = () => {
     const slotDate = formatLocalDate(date);
 
     try {
-      const { data } = await appointmentBookingAPI(docId!, slotDate, slotTime, token);
-      if (data.success) {
-        toast.success(data.message);
-        getDoctorsData();
-        navigate("/my-appointments");
-      } else toast.error(data.message);
+      // 1. Lock the slot before payment
+      const { data: lockData } = await lockAppointmentSlotAPI({
+        docId: docId!,
+        slotDate,
+        slotTime,
+        token
+      });
+      if (!lockData.success) {
+        toast.error(lockData.message || "Failed to lock slot");
+        return;
+      }
+      setPendingAppointmentIdSafe(lockData.appointmentId);
+      setPaymentWindowOpen(true);
+      console.log('Set pendingAppointmentId:', lockData.appointmentId);
+      // 2. Initiate payment (get order from backend)
+      const { data: orderData } = await PaymentRazorpayAPI(docId!, slotDate, slotTime, token);
+      if (!orderData.success) {
+        toast.error(orderData.message || "Failed to initiate payment");
+        return;
+      }
+      const order = orderData.order;
+
+      // 3. Open Razorpay payment window
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Appointment Payment",
+        description: "Appointment Payment",
+        order_id: order.id,
+        handler: async (response: any) => {
+          try {
+            // 4. On payment success, finalize appointment
+            const { data: finalizeData } = await finalizeAppointmentAPI({
+              docId: docId!,
+              slotDate,
+              slotTime,
+              payment: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              },
+              token
+            });
+            setPendingAppointmentIdSafe(null);
+            setPaymentWindowOpen(false);
+            console.log('Cleared pendingAppointmentId and paymentWindowOpen after payment success');
+            if (finalizeData.success) {
+              toast.success(finalizeData.message || "Appointment booked!");
+              getDoctorsData();
+              navigate("/my-appointments");
+            } else {
+              toast.error(finalizeData.message || "Payment verification failed");
+            }
+          } catch (err) {
+            setPaymentWindowOpen(false);
+            showErrorToast(err);
+          }
+        },
+        modal: {
+          ondismiss: async () => {
+            setPaymentWindowOpen(false);
+            console.log('Attempting to cancel lock for appointmentId:', pendingAppointmentIdRef.current);
+            if (pendingAppointmentIdRef.current && token) {
+              try {
+                await cancelAppointmentLockAPI(pendingAppointmentIdRef.current, token);
+                setPendingAppointmentIdSafe(null);
+                console.log('Cleared pendingAppointmentId after cancel');
+              } catch (err) {
+                toast.error('Failed to cancel slot lock');
+                setPendingAppointmentIdSafe(null);
+              }
+            } else {
+              setPendingAppointmentIdSafe(null);
+              console.log('No pendingAppointmentId or token on payment cancel');
+            }
+          }
+        }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err) {
       showErrorToast(err);
     }
@@ -352,9 +442,9 @@ const Appointment = () => {
         <div className="text-center">
           <button
             onClick={bookAppointment}
-            disabled={!slotTime}
+            disabled={!slotTime || paymentWindowOpen}
             className={`px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg ${
-              slotTime
+              slotTime && !paymentWindowOpen
                 ? "bg-gradient-to-r from-primary to-blue-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl transform hover:scale-105"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}

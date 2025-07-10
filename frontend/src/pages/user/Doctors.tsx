@@ -16,7 +16,7 @@ const Doctors = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const itemsPerPage = 6;
+  const itemsPerPage = 2;
   const context = useContext(AppContext);
 
   if (!context) {

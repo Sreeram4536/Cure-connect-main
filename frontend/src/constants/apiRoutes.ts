@@ -27,6 +27,7 @@ export const APPOINTMENT_API = {
   CANCEL: (appointmentId: string) =>
     `/api/user/appointments/${appointmentId}/cancel`,
   AVAILABLE_FOR_USER: "/api/user/available-slots",
+  FINALIZE: "/api/user/appointments/finalize",
 };
 
 // src/constants/apiRoutes.ts

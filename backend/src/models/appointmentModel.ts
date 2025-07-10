@@ -54,6 +54,16 @@ const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
     default: false,
   },
 
+  status: {
+    type: String,
+    enum: ["pending", "confirmed", "cancelled"],
+    default: "pending"
+  },
+  lockExpiresAt: {
+    type: Date,
+    default: null
+  },
+
   isConfirmed: {
     type: Boolean,
     default: false,

@@ -45,3 +45,38 @@ export const getAvailableSlotsAPI = async (
   });
   return response.data.slots;
 };
+
+// Finalize appointment after payment
+export const finalizeAppointmentAPI = async ({ docId, slotDate, slotTime, payment, token }: {
+  docId: string;
+  slotDate: string;
+  slotTime: string;
+  payment: any;
+  token: string;
+}) => {
+  return api.post(
+    APPOINTMENT_API.FINALIZE,
+    { docId, slotDate, slotTime, payment },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+};
+
+// Lock a slot before payment
+export const lockAppointmentSlotAPI = async ({ docId, slotDate, slotTime, token }: {
+  docId: string;
+  slotDate: string;
+  slotTime: string;
+  token: string;
+}) => {
+  return api.post(
+    '/api/user/appointments/lock',
+    { docId, slotDate, slotTime },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+};
+
+export const cancelAppointmentLockAPI = async (appointmentId: string, token: string) => {
+  return api.patch(`/api/user/appointments/${appointmentId}/cancel-lock`, {}, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};

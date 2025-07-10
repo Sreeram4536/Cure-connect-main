@@ -21,6 +21,7 @@ import { log } from "console";
 import { use } from "passport";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
+import appointmentModel from "../../models/appointmentModel";
 
 export class UserController implements IUserController {
   constructor(
@@ -337,7 +338,7 @@ const newRefreshToken = generateRefreshToken(user._id);
           await addTokenToBlacklist(token, expiresAt);
         }
       } catch (e) {
-        // ignore decode errors
+        
       }
     }
     res.clearCookie("refreshToken_user", {
@@ -377,43 +378,6 @@ const newRefreshToken = generateRefreshToken(user._id);
       res
         .status(HttpStatus.OK)
         .json({ success: true, message: HttpResponse.PROFILE_UPDATED });
-    } catch (error) {
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: (error as Error).message });
-    }
-  }
-
-  async bookAppointment(req: Request, res: Response): Promise<void> {
-    try {
-      const { docId, slotDate, slotTime } = req.body;
-      const userId = (req as any).userId;
-
-      const user = await this._userService.getUserById(userId);
-      const doctor = await this._userService.getDoctorById(docId);
-
-      const appointmentData = {
-        userId,
-        docId,
-        slotDate,
-        slotTime,
-        userData: {
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-        },
-        docData: {
-          name: doctor.name,
-          speciality: doctor.speciality,
-        },
-        amount:doctor.fees,
-        date: Date.now(),
-      };
-
-      await this._userService.bookAppointment(appointmentData);
-      res
-        .status(HttpStatus.OK)
-        .json({ success: true, message: HttpResponse.APPOINTMENT_BOOKED });
     } catch (error) {
       res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -496,6 +460,95 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
   }
 
+  async initiatePayment(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { docId, slotDate, slotTime } = req.body;
+      console.log('initiatePayment received:', { userId, docId, slotDate, slotTime });
+      // Get doctor info and fee
+      const doctor = await this._userService.getDoctorById(docId);
+      if (!doctor) {
+        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'Doctor not found' });
+        return;
+      }
+      // Calculate amount (fee)
+      const amount = doctor.fees;
+      // Create payment order (do not create appointment yet)
+      const shortReceipt = `${userId.toString().slice(-6)}-${docId.slice(-6)}-${Date.now()}`;
+      const order = await this._paymentService.createOrder(amount * 100, shortReceipt);
+      res.status(HttpStatus.OK).json({ success: true, order });
+    } catch (error) {
+      console.error('initiatePayment error:', error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+
+  async finalizeAppointment(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { docId, slotDate, slotTime, payment } = req.body;
+      // 1. Robustly verify payment with Razorpay
+      if (!payment || !payment.razorpay_order_id || !payment.razorpay_payment_id || !payment.razorpay_signature) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Missing payment details' });
+        return;
+      }
+      // Fetch order from Razorpay
+      let orderInfo;
+      try {
+        orderInfo = await this._paymentService.fetchOrder(payment.razorpay_order_id);
+      } catch (err) {
+        console.error('Razorpay order fetch failed:', err);
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Invalid Razorpay order ID' });
+        return;
+      }
+      if (!orderInfo || orderInfo.status !== 'paid') {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Payment not completed or invalid order status' });
+        return;
+      }
+      // Optionally: verify receipt format and content
+      if (!orderInfo.receipt || typeof orderInfo.receipt !== 'string' || orderInfo.receipt.length > 40) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Invalid receipt in Razorpay order' });
+        return;
+      }
+      // 2. Create appointment if payment is valid
+      const doctor = await this._userService.getDoctorById(docId);
+      if (!doctor) {
+        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'Doctor not found' });
+        return;
+      }
+      // Optionally: verify slot is still available
+      const user = await this._userService.getUserById(userId);
+      // 3. Confirm the pending appointment and mark as paid
+      const appointment = await appointmentModel.findOneAndUpdate(
+        {
+          userId,
+          docId,
+          slotDate,
+          slotTime,
+          status: 'pending',
+          cancelled: { $ne: true }
+        },
+        {
+          $set: {
+            payment: true,
+            status: 'confirmed',
+            lockExpiresAt: null,
+            razorpayOrderId: payment.razorpay_order_id,
+            date: new Date(),
+          }
+        },
+        { new: true }
+      );
+      if (!appointment) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'No pending appointment found to confirm. It may have expired or been booked by another user.' });
+        return;
+      }
+      res.status(HttpStatus.OK).json({ success: true, message: 'Appointment booked successfully' });
+    } catch (error) {
+      console.error('finalizeAppointment error:', error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
 
   async getAvailableSlotsForDoctor(req: Request, res: Response): Promise<void> {
   try {
@@ -524,5 +577,118 @@ const newRefreshToken = generateRefreshToken(user._id);
     });
   }
 }
+
+  // New: Lock slot when user clicks 'Book Appointment'
+  async lockSlot(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { docId, slotDate, slotTime } = req.body;
+      const now = new Date();
+      // Check if slot is already locked by another user (confirmed or pending and not expired)
+      const blocking = await appointmentModel.findOne({
+        docId,
+        slotDate,
+        slotTime,
+        $or: [
+          { status: 'confirmed' },
+          { status: 'pending', lockExpiresAt: { $gt: now } }
+        ]
+      });
+      if (blocking) {
+        res.status(HttpStatus.CONFLICT).json({ success: false, message: 'Slot already locked or booked by another user' });
+        return;
+      }
+      // Try to find a reusable appointment for this user/slot
+      let appointment = await appointmentModel.findOne({
+        userId,
+        docId,
+        slotDate,
+        slotTime,
+        $or: [
+          { status: 'cancelled' },
+          { status: 'pending', lockExpiresAt: { $lt: now } }
+        ]
+      });
+      const user = await this._userService.getUserById(userId);
+      const doctor = await this._userService.getDoctorById(docId);
+      if (!user || !doctor) {
+        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'User or doctor not found' });
+        return;
+      }
+      if (appointment) {
+        // Reuse: reset status, lockExpiresAt, etc.
+        appointment.status = 'pending';
+        appointment.cancelled = false;
+        appointment.lockExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        appointment.date = new Date();
+        appointment.userData = {
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+        };
+        appointment.docData = {
+          name: doctor.name,
+          speciality: doctor.speciality,
+          image: doctor.image,
+        };
+        appointment.amount = doctor.fees;
+        await appointment.save();
+      } else {
+        // No reusable appointment, create new
+        appointment = new appointmentModel({
+          userId,
+          docId,
+          slotDate,
+          slotTime,
+          status: 'pending',
+          lockExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+          date: new Date(),
+          userData: {
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+          },
+          docData: {
+            name: doctor.name,
+            speciality: doctor.speciality,
+            image: doctor.image,
+          },
+          amount: doctor.fees,
+        });
+        await appointment.save();
+      }
+      res.status(HttpStatus.OK).json({ success: true, message: 'Slot locked for payment', appointmentId: appointment._id });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+
+  // Instantly cancel a pending appointment lock (for payment cancel)
+  async cancelLock(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { appointmentId } = req.params;
+      const appointment = await appointmentModel.findById(appointmentId);
+      if (!appointment) {
+        res.status(404).json({ success: false, message: 'Appointment not found' });
+        return;
+      }
+      if (appointment.userId.toString() !== userId.toString()) {
+        res.status(403).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+      if (appointment.status !== 'pending' || appointment.cancelled) {
+        res.status(400).json({ success: false, message: 'Cannot cancel: appointment is not pending or already cancelled' });
+        return;
+      }
+      // Mark as cancelled so slot is instantly available
+      appointment.cancelled = true;
+      appointment.status = 'cancelled';
+      await appointment.save();
+      res.status(200).json({ success: true, message: 'Appointment lock cancelled' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: (error as Error).message });
+    }
+  }
 
 }

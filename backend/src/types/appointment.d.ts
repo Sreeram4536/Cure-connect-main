@@ -6,12 +6,14 @@ export interface AppointmentTypes {
   userData: Record<string, any>;
   docData: Record<string, any>;
   amount: number;
-  date: number;
+  date: number | Date;
   cancelled?: boolean;
   payment?: boolean;
   isConfirmed?: boolean;
   isCompleted?: boolean;
   razorpayOrderId?: string | null;
+  status?: 'pending' | 'confirmed' | 'cancelled';
+  lockExpiresAt?: Date | null;
 }
 
 
