@@ -49,13 +49,18 @@ export class DoctorRepository
     await appointmentModel.findByIdAndUpdate(id, { cancelled: true });
   }
 
-   async getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<Partial<DoctorData>>> {
+   async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string): Promise<PaginationResult<Partial<DoctorData>>> {
     const skip = (page - 1) * limit;
-    const totalCount = await doctorModel.countDocuments({ status: "approved" });
-    const data = await doctorModel.find({ status: "approved" }).select("-password").skip(skip).limit(limit);
-    
+    const query: any = { status: "approved" };
+    if (speciality) {
+      query.speciality = speciality;
+    }
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+    const totalCount = await doctorModel.countDocuments(query);
+    const data = await doctorModel.find(query).select("-password").sort({ _id: 1 }).skip(skip).limit(limit);
     const totalPages = Math.ceil(totalCount / limit);
-    
     return {
       data,
       totalCount,

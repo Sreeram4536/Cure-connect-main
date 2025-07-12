@@ -87,8 +87,8 @@ export class DoctorService implements IDoctorService {
     return await this._doctorRepository.findAllDoctors();
   }
 
-  async getDoctorsPaginated(page: number, limit: number): Promise<any> {
-    return await this._doctorRepository.getDoctorsPaginated(page, limit);
+  async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string): Promise<any> {
+    return await this._doctorRepository.getDoctorsPaginated(page, limit, speciality, search);
   }
 
   async loginDoctor(

@@ -15,7 +15,7 @@ export interface IDoctorRepository {
   findById(id: string): Promise<DoctorData | null>;
   updateAvailability(id: string, available: boolean): Promise<void>;
   findAllDoctors(): Promise<Partial<DoctorData>[]>;
-  getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<Partial<DoctorData>>>;
+  getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string): Promise<PaginationResult<Partial<DoctorData>>>;
   findByEmail(email: string): Promise<DoctorData | null>;
   save(doctor: DoctorDocument): Promise<void>
   findAppointmentsByDoctorId(docId: string): Promise<AppointmentTypes[]>;

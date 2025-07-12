@@ -8,7 +8,6 @@ import Pagination from "../../components/common/Pagination";
 const Doctors = () => {
   const navigate = useNavigate();
   const { speciality } = useParams();
-  const [filterDoc, setFilterDoc] = useState<Doctor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -16,7 +15,7 @@ const Doctors = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const itemsPerPage = 2;
+  const itemsPerPage = 1;
   const context = useContext(AppContext);
 
   if (!context) {
@@ -25,9 +24,15 @@ const Doctors = () => {
 
   const { getDoctorsPaginated } = context;
 
+  // Reset page to 1 when speciality or searchQuery changes
+  // useEffect(() => {
+  //   setCurrentPage(1);
+  // }, [speciality, searchQuery]);
+
   useEffect(() => {
     fetchDoctors();
-  }, [currentPage, speciality]);
+    // eslint-disable-next-line
+  }, [currentPage, speciality, searchQuery]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -36,7 +41,7 @@ const Doctors = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const result = await getDoctorsPaginated(currentPage, itemsPerPage);
+      const result = await getDoctorsPaginated(currentPage, itemsPerPage, speciality, searchQuery);
       setDoctors(result.data);
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
@@ -46,24 +51,6 @@ const Doctors = () => {
       setLoading(false);
     }
   };
-
-  const applyFilter = () => {
-    let filtered = speciality
-      ? doctors.filter((doc) => doc.speciality === speciality)
-      : doctors;
-
-    if (searchQuery.trim()) {
-      filtered = filtered.filter((doc) =>
-        doc.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilterDoc(filtered);
-  };
-
-  useEffect(() => {
-    applyFilter();
-  }, [doctors, speciality, searchQuery]);
 
   return (
     <div>
@@ -92,11 +79,16 @@ const Doctors = () => {
           ].map((spec) => (
             <p
               key={spec}
-              onClick={() =>
-                speciality === spec
-                  ? navigate("/doctors")
-                  : navigate(`/doctors/${spec}`)
-              }
+              onClick={() => {
+                if (speciality !== spec) {
+                  setCurrentPage(1);
+                  navigate(`/doctors/${spec}`);
+                } else {
+                  // Only reset if not already on this filter
+                  navigate("/doctors");
+                  setCurrentPage(1);
+                }
+              }}
               className={`w-[94vw] sm:w-auto pl-3 py-1.5 pr-16 border border-gray-300 rounded transition-all cursor-pointer ${
                 speciality === spec ? "bg-indigo-100 text-black" : ""
               }`}
@@ -113,7 +105,10 @@ const Doctors = () => {
             <SearchBar
               placeholder="Search by name or email"
               onSearch={(query) => {
-                setSearchQuery(query);
+                if (query !== searchQuery) {
+                  setSearchQuery(query);
+                  setCurrentPage(1);
+                }
               }}
             />
           </div>
@@ -122,13 +117,11 @@ const Doctors = () => {
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
-          ) : filterDoc.filter((doctor) => doctor.status === "approved").length > 0 ? (
+          ) : doctors.length > 0 ? (
             <>
               {/* Doctor cards */}
               <div className="grid grid-cols-auto gap-4 gap-y-6">
-                {filterDoc
-                  .filter((doctor) => doctor.status === "approved")
-                  .map((item: Doctor, index: number) => (
+                {doctors.map((item: Doctor, index: number) => (
                     <div
                       onClick={() => navigate(`/appointment/${item._id}`)}
                       className="border border-blue-200 rounded-xl overflow-hidden cursor-pointer hover:translate-y-[-10px] transition-all duration-500"
@@ -161,7 +154,7 @@ const Doctors = () => {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  onPageChange={(page) => setCurrentPage(page)}
+                  onPageChange={setCurrentPage}
                 />
               )}
             </>

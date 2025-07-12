@@ -7,8 +7,11 @@ export const getDoctorsAPI = () => {
 };
 
 // Get paginated doctors
-export const getDoctorsPaginatedAPI = (page: number, limit: number) => {
-  return api.get(`${DOCTOR_API.DOCTORS_PAGINATED}?page=${page}&limit=${limit}`);
+export const getDoctorsPaginatedAPI = (page: number, limit: number, speciality?: string, search?: string) => {
+  let url = `${DOCTOR_API.DOCTORS_PAGINATED}?page=${page}&limit=${limit}`;
+  if (speciality) url += `&speciality=${encodeURIComponent(speciality)}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  return api.get(url);
 };
 
 // Register doctor
