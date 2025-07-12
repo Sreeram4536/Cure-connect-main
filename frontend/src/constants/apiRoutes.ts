@@ -54,6 +54,8 @@ export const DOCTOR_API = {
   LOGOUT: "/api/doctor/logout",
   REFRESH: "/api/doctor/refresh-token",
   SLOTS: "/api/doctor/slot-rule",
+  UPDATE_CUSTOM_SLOT: "/api/doctor/slot-rule/custom-slot",
+  CANCEL_CUSTOM_SLOT: "/api/doctor/slot-rule/cancel-slot",
 
   DOCTORS: "/api/doctor",
   DOCTORS_PAGINATED: "/api/doctor/paginated",

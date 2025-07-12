@@ -22,6 +22,33 @@ export const getAppointmentsAPI = async (token: string) => {
   });
 };
 
+// Get paginated appointments
+export const getAppointmentsPaginatedAPI = async (
+  token: string,
+  page: number,
+  limit: number,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc',
+  status?: string,
+  dateFrom?: string,
+  dateTo?: string
+) => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  
+  if (sortBy) params.append('sortBy', sortBy);
+  if (sortOrder) params.append('sortOrder', sortOrder);
+  if (status) params.append('status', status);
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+
+  return api.get(`${APPOINTMENT_API.BASE}/paginated?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
 // Cancel an appointment
 export const cancelAppointmentAPI = async (
   appointmentId: string,
@@ -44,6 +71,18 @@ export const getAvailableSlotsAPI = async (
     params: { year, month },
   });
   return response.data.slots;
+};
+
+export const getAvailableSlotsForDateAPI = async (
+  doctorId: string,
+  date: string,
+  token: string
+) => {
+  const response = await api.get(`/api/user/doctor/${doctorId}/slots/date`, {
+    params: { date },
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
 };
 
 // Finalize appointment after payment

@@ -1,4 +1,4 @@
-import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { IUserRepository, PaginationResult } from "../../repositories/interface/IUserRepository";
 import userModel from "../../models/userModel";
 import doctorModel from "../../models/doctorModel";
 import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
@@ -36,6 +36,59 @@ export class UserRepository
   async getAppointmentsByUserId(userId: string): Promise<AppointmentTypes[]> {
     // Return only confirmed appointments, both cancelled and not cancelled
     return appointmentModel.find({ userId, status: 'confirmed' }).sort({ date: -1 });
+  }
+
+  async getAppointmentsByUserIdPaginated(
+    userId: string, 
+    page: number, 
+    limit: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<PaginationResult<AppointmentTypes>> {
+    const skip = (page - 1) * limit;
+    
+    // Build filter query
+    const filterQuery: any = { userId, status: 'confirmed' };
+    
+    if (status && status !== 'all') {
+      if (status === 'cancelled') {
+        filterQuery.cancelled = true;
+      } else if (status === 'active') {
+        filterQuery.cancelled = false;
+      }
+    }
+    
+    if (dateFrom || dateTo) {
+      filterQuery.slotDate = {};
+      if (dateFrom) filterQuery.slotDate.$gte = dateFrom;
+      if (dateTo) filterQuery.slotDate.$lte = dateTo;
+    }
+    
+    // Build sort query
+    let sortQuery: any = { date: -1 }; // default sort
+    if (sortBy) {
+      sortQuery = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+    }
+    
+    const totalCount = await appointmentModel.countDocuments(filterQuery);
+    const data = await appointmentModel.find(filterQuery)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(limit);
+    
+    const totalPages = Math.ceil(totalCount / limit);
+    
+    return {
+      data,
+      totalCount,
+      currentPage: page,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    };
   }
 
   async findDoctorById(id: string): Promise<DoctorData | null> {

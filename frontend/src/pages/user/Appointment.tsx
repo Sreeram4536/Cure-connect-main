@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import {
   appointmentBookingAPI,
   getAvailableSlotsAPI,
+  getAvailableSlotsForDateAPI,
 } from "../../services/appointmentServices";
 import { PaymentRazorpayAPI, VerifyRazorpayAPI } from "../../services/paymentServices";
 import { finalizeAppointmentAPI } from "../../services/appointmentServices";
@@ -39,6 +40,8 @@ const Appointment = () => {
   type TimeSlot = {
     datetime: Date;
     time: string;
+    isBooked?: boolean;
+    isPast?: boolean;
   };
 
   const navigate = useNavigate();
@@ -62,6 +65,7 @@ const Appointment = () => {
     pendingAppointmentIdRef.current = id;
   };
   const [paymentWindowOpen, setPaymentWindowOpen] = useState(false);
+  const [isRefreshingSlots, setIsRefreshingSlots] = useState(false);
   
 
   const fetchDocInfo = () => {
@@ -71,6 +75,7 @@ const Appointment = () => {
 
   const getAvailableSlots = async () => {
     setDocSlots([]);
+    setIsRefreshingSlots(true);
     if (!docId) return;
     const today = new Date();
     const year = today.getFullYear();
@@ -78,33 +83,34 @@ const Appointment = () => {
 
     try {
       const slotsArray = await getAvailableSlotsAPI(docId, year, month);
+      console.log('[Appointment] Received slots from backend:', slotsArray);
 
-    // Group slots by date for the UI
-    const slotMap: Record<string, any[]> = {};
-    slotsArray.forEach((slot: any) => {
-      if (!slot.isCancelled) {
+      // Group slots by date for the UI - no filtering, backend handles all validation
+      const slotMap: Record<string, any[]> = {};
+      slotsArray.forEach((slot: any) => {
         if (!slotMap[slot.date]) slotMap[slot.date] = [];
         slotMap[slot.date].push(slot);
-      }
-    });
+      });
 
-    const weekSlots: TimeSlot[][] = [];
-    for (let i = 0; i < 7; i++) {
-      let currentDate = new Date(today);
-      currentDate.setDate(today.getDate() + i);
-      const dateKey = formatLocalDate(currentDate);
-      const slots = slotMap[dateKey] || [];
+      const weekSlots: TimeSlot[][] = [];
+      for (let i = 0; i < 7; i++) {
+        let currentDate = new Date(today);
+        currentDate.setDate(today.getDate() + i);
+        const dateKey = formatLocalDate(currentDate);
+        const slots = slotMap[dateKey] || [];
 
-      const timeSlots: TimeSlot[] = slots.map((slot) => {
-       
-        const [hour, minute] = slot.start.split(":").map(Number);
-        const slotDate = new Date(currentDate);
-        slotDate.setHours(hour);
-        slotDate.setMinutes(minute);
-        return {
-          datetime: slotDate,
-          time: slot.start,
-        };
+        // Create time slots without any frontend filtering - backend already filtered past times
+        const timeSlots: TimeSlot[] = slots.map((slot) => {
+          const [hour, minute] = slot.start.split(":").map(Number);
+          const slotDate = new Date(currentDate);
+          slotDate.setHours(hour);
+          slotDate.setMinutes(minute);
+          return {
+            datetime: slotDate,
+            time: slot.start,
+            isBooked: slot.isBooked || false,
+            isPast: slot.isPast || false,
+          };
         });
 
         weekSlots.push(timeSlots);
@@ -115,32 +121,41 @@ const Appointment = () => {
       setShowCustomDatePicker(false);
     } catch (err: any) {
       toast.error("Failed to load available slots");
+    } finally {
+      setIsRefreshingSlots(false);
     }
   };
 
   const fetchSlotsForCustomDate = async (date: Date) => {
-    if (!docId) return;
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const slotDateStr = formatLocalDate(date);
-
+    if (!docId || !token) return;
+    
+    const dateStr = formatLocalDate(date);
+    
     try {
-      const slotArray = await getAvailableSlotsAPI(docId, year, month);
-      const matched = slotArray.find((item: any) => item.date === slotDateStr);
-      const timeSlots = matched?.slots
-        ?.filter((slot: any) => !slot.booked)
-        .map((slot: any) => {
-          const { hour, minute } = parse12HourTime(slot.start);
-          const dt = new Date(date);
-          dt.setHours(hour);
-          dt.setMinutes(minute);
-          return { datetime: dt, time: slot.start };
-        }) || [];
+      const { data } = await getAvailableSlotsForDateAPI(docId, dateStr, token);
+      console.log('[Appointment] Received custom date slots from backend:', data);
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch slots');
+      }
+
+      // Create time slots without any frontend filtering - backend already filtered past times
+      const timeSlots: TimeSlot[] = data.slots.map((slot: any) => {
+        const { hour, minute } = parse12HourTime(slot.start);
+        const dt = new Date(date);
+        dt.setHours(hour);
+        dt.setMinutes(minute);
+        return { 
+          datetime: dt, 
+          time: slot.start,
+          isBooked: slot.isBooked || false,
+          isPast: slot.isPast || false,
+        };
+      });
 
       setDocSlots([timeSlots]);
       setSlotIndex(0);
-    } catch {
+    } catch (error) {
       toast.error("Failed to fetch custom date slots");
     }
   };
@@ -158,6 +173,16 @@ const Appointment = () => {
     const selectedSlot = docSlots[slotIndex]?.find(s => s.time === slotTime);
     if (!selectedSlot) {
       toast.error("No slot selected");
+      return;
+    }
+    
+    if (selectedSlot.isBooked) {
+      toast.error("This slot is already booked");
+      return;
+    }
+    
+    if (selectedSlot.isPast) {
+      toast.error("Cannot book past time slots");
       return;
     }
 
@@ -266,6 +291,17 @@ const Appointment = () => {
     getAvailableSlots();
   }, [docInfo]);
 
+  // Refresh slots every 5 minutes to ensure real-time validation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (docInfo) {
+        getAvailableSlots();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [docInfo]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Doctor Info Section */}
@@ -334,7 +370,15 @@ const Appointment = () => {
 
         {/* Date Selection */}
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Select Date</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Select Date</h3>
+            {isRefreshingSlots && (
+              <div className="flex items-center text-sm text-primary">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Refreshing slots...
+              </div>
+            )}
+          </div>
           <div className="flex gap-3 items-center w-full overflow-x-auto pb-2">
             {docSlots.map((item, index) => {
               const isAvailable = item.length > 0;
@@ -344,6 +388,7 @@ const Appointment = () => {
               currentDate.setDate(today.getDate() + index);
               const dayLabel = daysOfWeek[currentDate.getDay()];
               const dateLabel = currentDate.getDate();
+              
               return (
                 <div
                   key={index}
@@ -401,8 +446,15 @@ const Appointment = () => {
                   }
                 }}
                 minDate={new Date()}
+                maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // Max 1 year from now
+                filterDate={(date) => {
+                  // Disable weekends if needed (optional)
+                  const day = date.getDay();
+                  return day !== 0 && day !== 6; // Disable Sunday (0) and Saturday (6)
+                }}
                 className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:border-primary focus:outline-none w-full"
                 placeholderText="Select a future date"
+                dateFormat="MMMM d, yyyy"
               />
             </div>
           )}
@@ -414,19 +466,37 @@ const Appointment = () => {
             <Clock className="w-5 h-5 mr-2 text-primary" />
             Select Time Slot
           </h3>
+          
+          {/* Slot Legend */}
+          <div className="flex gap-4 mb-4 text-sm">
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 rounded bg-white border-2 border-gray-200 inline-block"></span>
+              Available
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 rounded bg-gray-100 border-2 border-red-400 inline-block"></span>
+              Booked
+            </span>
+          </div>
           <div className="flex items-center gap-3 w-full overflow-x-auto pb-2">
             {docSlots[slotIndex]?.length > 0 ? (
               docSlots[slotIndex].map((item, index) => (
                 <button
-                  onClick={() => setSlotTime(item.time)}
+                  onClick={() => !item.isBooked && !item.isPast && setSlotTime(item.time)}
+                  disabled={item.isBooked || item.isPast}
                   className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 flex-shrink-0 shadow-sm ${
-                    item.time === slotTime
+                    item.isBooked
+                      ? "bg-gray-100 text-gray-400 border-2 border-red-400 cursor-not-allowed opacity-70"
+                      : item.isPast
+                      ? "bg-gray-100 text-gray-400 border-2 border-gray-300 cursor-not-allowed opacity-50"
+                      : item.time === slotTime
                       ? "bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg transform scale-105"
                       : "bg-white text-gray-700 border-2 border-gray-200 hover:border-primary/50 hover:shadow-md"
                   }`}
                   key={index}
                 >
                   {item.time.toLowerCase()}
+                  {item.isBooked && <span className="block text-xs text-red-500 mt-1">Booked</span>}
                 </button>
               ))
             ) : (

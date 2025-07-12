@@ -3,7 +3,7 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
-import { getDoctorSlotRuleAPI,setDoctorSlotRuleAPI,getDoctorPreviewSlotsAPI } from "../../services/doctorServices";
+import { getDoctorSlotRuleAPI,setDoctorSlotRuleAPI,getDoctorPreviewSlotsAPI, getDoctorSlotsForDateAPI, updateDoctorCustomSlotAPI, cancelDoctorCustomSlotAPI } from "../../services/doctorServices";
 
 const daysOfWeekLabels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const slotDurations = [15, 20, 30, 45, 60];
@@ -25,6 +25,17 @@ function formatLocalDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+// Clean customDays before saving - remove filtering, let backend handle validation
+function cleanCustomDays(customDays: any[]) {
+  return (customDays || []).map(cd => ({
+    date: cd.date,
+    leaveType: cd.leaveType,
+    breaks: Array.isArray(cd.breaks) ? cd.breaks : [],
+    reason: cd.reason || "",
+    slots: Array.isArray(cd.slots) ? cd.slots : []
+  })).filter(cd => cd.date && cd.leaveType);
+}
+
 const DoctorSlotManager = () => {
   const [rule, setRule] = useState({ ...defaultRule });
   const [loading, setLoading] = useState(true);
@@ -32,6 +43,10 @@ const DoctorSlotManager = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [editSlot, setEditSlot] = useState<any | null>(null);
+  const [editTime, setEditTime] = useState("");
+  const [editDuration, setEditDuration] = useState<number>(30);
 
   // Fetch existing rule on mount
   useEffect(() => {
@@ -52,8 +67,8 @@ const DoctorSlotManager = () => {
   const saveRule = async () => {
     setSaving(true);
     try {
-      // Ensure customDays is always present
-      const ruleToSave = { ...rule, customDays: rule.customDays || [] };
+      // Ensure customDays is always present and valid
+      const ruleToSave = { ...rule, customDays: cleanCustomDays(rule.customDays) };
       await setDoctorSlotRuleAPI(ruleToSave);
       toast.success("Slot rule saved!");
       fetchPreviewSlots();
@@ -77,6 +92,24 @@ const DoctorSlotManager = () => {
       setPreviewSlots(Array.isArray(data.slots) ? data.slots : []);
     } catch {
       toast.error("Failed to fetch preview slots");
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  // Fetch slots for a specific date
+  const fetchSlotsForDate = async (date: string) => {
+    setPreviewing(true);
+    try {
+      const { data } = await getDoctorSlotsForDateAPI(date);
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch slots');
+      }
+
+      setPreviewSlots(data.slots || []);
+    } catch (error) {
+      toast.error("Failed to fetch slots for date");
     } finally {
       setPreviewing(false);
     }
@@ -316,7 +349,7 @@ const DoctorSlotManager = () => {
           {/* Slot Preview */}
           <div className="bg-white/60 backdrop-blur-md rounded-xl shadow-lg p-6">
             <div className="flex items-center gap-4 mb-4">
-              <h3 className="text-lg font-semibold">Preview Slots</h3>
+              <h3 className="text-lg font-semibold">Slot Calendar</h3>
               <DatePicker
                 selected={selectedMonth}
                 onChange={(date) => date && setSelectedMonth(date)}
@@ -324,63 +357,143 @@ const DoctorSlotManager = () => {
                 showMonthYearPicker
                 className="border px-3 py-2 rounded"
               />
-          <button
+              <button
                 onClick={fetchPreviewSlots}
                 disabled={previewing}
                 className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded shadow hover:from-indigo-500 hover:to-blue-500 transition"
-          >
+              >
                 {previewing ? "Loading..." : "Show Slots"}
-          </button>
-        </div>
-            {previewSlots.length === 0 ? (
-              <div className="text-gray-500">No slots to display. Click "Show Slots" to preview.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto pr-2">
-                {/* Group slots by date */}
-                {Object.entries(
-                  previewSlots.reduce((acc: any, slot: any) => {
-                    if (!acc[slot.date]) acc[slot.date] = [];
-                    acc[slot.date].push(slot);
-                    return acc;
-                  }, {})
-                ).map(([date, slots]) => {
-                  const slotArr = slots as any[];
-                  return (
+              </button>
+            </div>
+            {/* Legend */}
+            <div className="flex gap-4 mb-4">
+              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-green-400 inline-block"></span>Available</span>
+              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-red-400 inline-block"></span>Booked</span>
+              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-gray-400 inline-block"></span>Leave</span>
+              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-blue-400 inline-block"></span>Custom Duration</span>
+            </div>
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-2 border rounded-xl overflow-hidden bg-white">
+              {/* Render day headers */}
+              {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
+                <div key={day} className="bg-blue-50 text-blue-700 font-semibold text-center py-2 border-b">{day}</div>
+              ))}
+              {/* Render days in month */}
+              {(() => {
+                const year = selectedMonth.getFullYear();
+                const month = selectedMonth.getMonth();
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startDay = firstDay.getDay();
+                const cells = [];
+                // Fill empty cells before first day
+                for (let i = 0; i < startDay; i++) cells.push(<div key={"empty-"+i}></div>);
+                // Group slots by date
+                const slotMap = previewSlots.reduce((acc: any, slot: any) => {
+                  if (!acc[slot.date]) acc[slot.date] = [];
+                  acc[slot.date].push(slot);
+                  return acc;
+                }, {});
+                for (let d = 1; d <= daysInMonth; d++) {
+                  const dateStr = formatLocalDate(new Date(year, month, d));
+                  const slots = slotMap[dateStr] || [];
+                  cells.push(
                     <div
-                      key={date}
-                      className="rounded-2xl bg-gradient-to-br from-white/80 to-blue-50/60 shadow-lg p-4 border border-blue-100 relative"
+                      key={dateStr}
+                      className={`min-h-[80px] border-r border-b p-1 flex flex-col gap-1 cursor-pointer hover:bg-blue-50 transition`}
+                      onClick={() => {
+                        setSelectedDay(dateStr);
+                        fetchSlotsForDate(dateStr);
+                      }}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-blue-700 text-base drop-shadow">{date}</span>
-                        {/* If any slot has leaveType, show badge */}
-                        {slotArr[0].leaveType === "full" && (
-                          <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-semibold">Full Day Leave</span>
-                        )}
-                        {slotArr[0].leaveType === "break" && (
-                          <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-semibold">Partial Leave</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        {slotArr.map((slot, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex items-center justify-between px-3 py-2 rounded-lg ${slot.leaveType ? "bg-gray-100/60 text-gray-400 line-through" : "bg-white/80"} shadow-sm border border-gray-100`}
-                          >
-                            <span className="font-mono text-sm">{slot.start} - {slot.end}</span>
-                            {/* If slot is break/leave, show reason if present */}
-                            {slot.reason && (
-                              <span className="text-xs text-gray-500 ml-2">{slot.reason}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <div className="font-bold text-xs text-gray-700 mb-1">{d}</div>
+                      {slots.length === 0 ? (
+                        <span className="text-xs text-gray-300">No slots</span>
+                      ) : (
+                        <span className="text-xs text-blue-500">{slots.length} slots</span>
+                      )}
                     </div>
                   );
-                })}
-              </div>
-            )}
-      </div>
+                }
+                return cells;
+              })()}
+            </div>
+          </div>
         </>
+      )}
+      {/* Slot List Modal/Panel */}
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md relative">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700" onClick={() => setSelectedDay(null)}>&times;</button>
+            <h3 className="text-lg font-semibold mb-4">Slots for {selectedDay}</h3>
+            <div className="flex flex-col gap-3 max-h-80 overflow-y-auto">
+              {previewSlots.length === 0 ? (
+                <span className="text-gray-400">No slots for this day.</span>
+              ) : (
+                previewSlots.map((slot: any, idx: number) => (
+                  <div key={idx} className="flex items-center gap-3 bg-blue-50 rounded p-2">
+                    <span className="font-mono text-sm flex-1">{slot.start} {slot.end ? `- ${slot.end}` : ""} {slot.customDuration && <span className="ml-2 text-blue-600">({slot.customDuration}m)</span>}</span>
+                    <button className="text-blue-600 hover:underline text-xs" onClick={() => { setEditSlot(slot); setEditTime(slot.start); setEditDuration(slot.customDuration || 30); }}>Edit</button>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Add Slot Button */}
+            <button
+              className="mt-4 bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-700 transition w-full"
+              onClick={() => { setEditSlot({ date: selectedDay, start: '', customDuration: 30 }); setEditTime(''); setEditDuration(30); }}
+            >+ Add Slot</button>
+          </div>
+        </div>
+      )}
+      {/* Edit/Add Slot Modal */}
+      {editSlot && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm relative">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700" onClick={() => setEditSlot(null)}>&times;</button>
+            <h3 className="text-lg font-semibold mb-4">{editSlot.start ? 'Edit Slot' : 'Add Slot'}</h3>
+            <div className="mb-4">
+              <label className="block font-medium mb-2">Start Time</label>
+              <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} className="border px-3 py-2 rounded w-full" />
+            </div>
+            <div className="mb-4">
+              <label className="block font-medium mb-2">Duration (minutes)</label>
+              <input type="number" value={editDuration} min={5} max={180} onChange={e => setEditDuration(Number(e.target.value))} className="border px-3 py-2 rounded w-full" />
+            </div>
+            <button
+              className="bg-blue-600 text-white px-6 py-2 rounded font-semibold hover:bg-blue-700 transition w-full mb-2"
+              onClick={async () => {
+                try {
+                  await updateDoctorCustomSlotAPI(editSlot.date, editTime, editDuration);
+                  toast.success(editSlot.start ? 'Slot updated!' : 'Slot added!');
+                  setEditSlot(null);
+                  setSelectedDay(null);
+                  fetchPreviewSlots();
+                } catch (err: any) {
+                  toast.error(err?.response?.data?.message || (editSlot.start ? 'Failed to update slot' : 'Failed to add slot'));
+                }
+              }}
+            >{editSlot.start ? 'Save Changes' : 'Add Slot'}</button>
+            {editSlot.start && (
+              <button
+                className="bg-red-500 text-white px-6 py-2 rounded font-semibold hover:bg-red-600 transition w-full"
+                onClick={async () => {
+                  try {
+                    await cancelDoctorCustomSlotAPI(editSlot.date, editTime);
+                    toast.success('Slot cancelled!');
+                    setEditSlot(null);
+                    setSelectedDay(null);
+                    fetchPreviewSlots();
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || 'Failed to cancel slot');
+                  }
+                }}
+              >Cancel Slot</button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

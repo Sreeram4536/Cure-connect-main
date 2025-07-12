@@ -360,6 +360,30 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
   }
 }
 
+async getSlotsForDate(req: Request, res: Response): Promise<void> {
+  try {
+    const doctorId = (req as any).docId;
+    const { date } = req.query;
+    
+    if (!date) {
+      res.status(400).json({ success: false, message: "Date parameter is required" });
+      return;
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(String(date))) {
+      res.status(400).json({ success: false, message: "Invalid date format. Use YYYY-MM-DD" });
+      return;
+    }
+
+    const data = await this._slotService.getSlotsForDate(doctorId, String(date));
+    res.json({ success: true, slots: data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: (error as Error).message });
+  }
+}
+
 async updateDaySlot(req: Request, res: Response): Promise<void> {
   try {
     const doctorId = (req as any).docId;

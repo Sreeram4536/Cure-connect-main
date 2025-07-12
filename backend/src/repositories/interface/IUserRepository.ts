@@ -6,6 +6,15 @@ export interface UserDocument extends userData {
   _id: string;
 }
 
+export interface PaginationResult<T> {
+  data: T[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export interface IUserRepository {
   create(user: Partial<userData>): Promise<UserDocument>;
   findByEmail(email: string): Promise<UserDocument | null>;
@@ -17,6 +26,16 @@ export interface IUserRepository {
   ): Promise<boolean>;
   findDoctorById(id: string): Promise<DoctorData | null>;
   getAppointmentsByUserId(userId: string): Promise<AppointmentTypes[]>;
+  getAppointmentsByUserIdPaginated(
+    userId: string, 
+    page: number, 
+    limit: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<PaginationResult<AppointmentTypes>>;
   cancelAppointment(userId: string, appointmentId: string): Promise<void>;
   findPayableAppointment(userId: string,appointmentId: string): Promise<AppointmentDocument>;
   saveRazorpayOrderId(appointmentId: string, orderId: string): Promise<void>;

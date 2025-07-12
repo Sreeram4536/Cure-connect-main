@@ -109,8 +109,20 @@ export const getDoctorPreviewSlotsAPI = (year: number, month: number) => {
   return api.get(`/api/doctor/slots?year=${year}&month=${month}`);
 };
 
+export const getDoctorSlotsForDateAPI = (date: string) => {
+  return api.get(`/api/doctor/slots/date?date=${date}`);
+};
+
 // Get top doctors with filtering and limiting
 export const getTopDoctorsAPI = (status = "approved", limit = 10) => {
   return api.get(`/api/doctor/top?status=${status}&limit=${limit}`);
+};
+
+export const updateDoctorCustomSlotAPI = (date: string, start: string, duration: number) => {
+  return api.post('/api/doctor/slots/custom', { date, start, duration });
+};
+
+export const cancelDoctorCustomSlotAPI = (date: string, start: string) => {
+  return api.post('/api/doctor/slots/cancel', { date, start });
 };
 

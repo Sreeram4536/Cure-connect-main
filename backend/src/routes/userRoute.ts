@@ -71,11 +71,11 @@ userRouter.patch(
   userController.cancelLock.bind(userController)
 );
 
-// userRouter.get(
-//   "/appointments/paginated",
-//   authRole(["user"]),
-//   userController.appointmentsUserPaginated.bind(userController)
-// );
+userRouter.get(
+  "/appointments/paginated",
+  authRole(["user"]),
+  userController.listAppointmentPaginated.bind(userController)
+);
 
 userRouter.post(
   "/payments/razorpay",
@@ -98,6 +98,12 @@ userRouter.get(
   "/doctor/:doctorId/slots",
   authRole(["user"]),
   userController.getAvailableSlotsForDoctor.bind(userController)
+);
+
+userRouter.get(
+  "/doctor/:doctorId/slots/date",
+  authRole(["user"]),
+  userController.getAvailableSlotsForDate.bind(userController)
 );
 
 export default userRouter;

@@ -1,5 +1,5 @@
 import { IUserService } from "../interface/IUserService";
-import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { IUserRepository, PaginationResult } from "../../repositories/interface/IUserRepository";
 import { userData } from "../../types/user";
 import bcrypt from "bcrypt";
 import validator from "validator";
@@ -155,6 +155,28 @@ async finalizeRegister(userData: {
     return await this._userRepository.getAppointmentsByUserId(userId);
   }
 
+  async listUserAppointmentsPaginated(
+    userId: string,
+    page: number,
+    limit: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<PaginationResult<AppointmentTypes>> {
+    return await this._userRepository.getAppointmentsByUserIdPaginated(
+      userId,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      status,
+      dateFrom,
+      dateTo
+    );
+  }
+
   async cancelAppointment(
     userId: string,
     appointmentId: string
@@ -208,6 +230,12 @@ console.log("hii");
     const slotRepository = new SlotRepository();
     const slotService = new DoctorSlotService(slotRepository);
     return slotService.getMonthlySlots(doctorId, year, month);
+  }
+
+  async getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<any[]> {
+    const slotRepository = new SlotRepository();
+    const slotService = new DoctorSlotService(slotRepository);
+    return slotService.getSlotsForDate(doctorId, dateStr);
   }
 
 }

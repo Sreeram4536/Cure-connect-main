@@ -12,9 +12,16 @@ const SlotRuleSchema = new Schema({
   customDays: [
     {
       date: { type: String, required: true }, // "YYYY-MM-DD"
-      leaveType: { type: String, enum: ["full", "break"], required: true }, // "full" = full day leave, "break" = partial
-      breaks: [{ start: String, end: String }], // for "break" type
-      reason: { type: String }
+      leaveType: { type: String, enum: ["full", "break", "custom"], required: true }, // add 'custom'
+      breaks: [{ start: String, end: String }],
+      reason: { type: String },
+      slots: [
+        {
+          start: { type: String, required: true },
+          duration: { type: Number, required: true },
+          cancelled: { type: Boolean, default: false },
+        }
+      ]
     }
   ]
 });

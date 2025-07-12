@@ -17,6 +17,12 @@ const slotRuleController = new SlotRuleController();
 
 const doctorRouter = express.Router();
 
+function asyncHandler(fn: any) {
+  return function(req: any, res: any, next: any) {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
 doctorRouter.get("/", doctorController.doctorList.bind(doctorController));
 doctorRouter.get("/paginated", doctorController.getDoctorsPaginated.bind(doctorController));
 doctorRouter.post(
@@ -85,6 +91,12 @@ doctorRouter.get(
   doctorController.getMonthlySlots.bind(doctorController)
 );
 
+doctorRouter.get(
+  "/slots/date",
+  authRole(["doctor"]),
+  doctorController.getSlotsForDate.bind(doctorController)
+);
+
 doctorRouter.post(
   "/slots",
   authRole(["doctor"]),
@@ -100,6 +112,16 @@ doctorRouter.post(
   "/slot-rule",
   authRole(["doctor"]),
   slotRuleController.setRule.bind(slotRuleController)
+);
+doctorRouter.patch(
+  "/slot-rule/custom-slot",
+  authRole(["doctor"]),
+  asyncHandler(slotRuleController.updateCustomSlot.bind(slotRuleController))
+);
+doctorRouter.patch(
+  "/slot-rule/cancel-slot",
+  authRole(["doctor"]),
+  asyncHandler(slotRuleController.cancelCustomSlot.bind(slotRuleController))
 );
 
 doctorRouter.get("/top", doctorController.getTopDoctors.bind(doctorController));

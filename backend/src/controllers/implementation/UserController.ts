@@ -397,6 +397,36 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
   }
 
+  async listAppointmentPaginated(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 6;
+      const sortBy = req.query.sortBy as string;
+      const sortOrder = req.query.sortOrder as 'asc' | 'desc';
+      const status = req.query.status as string;
+      const dateFrom = req.query.dateFrom as string;
+      const dateTo = req.query.dateTo as string;
+
+      const result = await this._userService.listUserAppointmentsPaginated(
+        userId,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        status,
+        dateFrom,
+        dateTo
+      );
+      
+      res.status(HttpStatus.OK).json({ success: true, ...result });
+    } catch (error) {
+      res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: (error as Error).message });
+    }
+  }
+
   async cancelAppointment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
@@ -577,6 +607,44 @@ const newRefreshToken = generateRefreshToken(user._id);
     });
   }
 }
+
+  async getAvailableSlotsForDate(req: Request, res: Response): Promise<void> {
+    try {
+      const { date } = req.query;
+      const { doctorId } = req.params;
+      
+      if (!doctorId || !date) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
+        return;
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(String(date))) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid date format. Use YYYY-MM-DD",
+        });
+        return;
+      }
+
+      const slots = await this._userService.getAvailableSlotsForDate(
+        String(doctorId),
+        String(date)
+      );
+
+      res.status(HttpStatus.OK).json({ success: true, slots });
+    } catch (error) {
+      console.error("getAvailableSlotsForDate error:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to fetch available slots for date",
+      });
+    }
+  }
 
   // New: Lock slot when user clicks 'Book Appointment'
   async lockSlot(req: Request, res: Response): Promise<void> {
