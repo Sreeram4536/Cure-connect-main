@@ -238,4 +238,24 @@ console.log("hii");
     return slotService.getSlotsForDate(doctorId, dateStr);
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+    // Find user by ID
+    const user = await this._userRepository.findById(userId);
+    if (!user) {
+      return { success: false, message: 'User not found.' };
+    }
+    // Check current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return { success: false, message: 'Current password is incorrect.' };
+    }
+    // Validate new password (already done in controller, but double check if needed)
+    if (currentPassword === newPassword) {
+      return { success: false, message: 'New password must be different from current password.' };
+    }
+    // Hash new password
+    const hashed = await this.hashPassword(newPassword);
+    await this._userRepository.updateById(userId, { password: hashed });
+    return { success: true };
+  }
 }

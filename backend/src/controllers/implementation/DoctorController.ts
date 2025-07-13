@@ -104,7 +104,9 @@ export class DoctorController implements IDoctorController {
       const limit = parseInt(req.query.limit as string) || 6;
       const speciality = req.query.speciality as string | undefined;
       const search = req.query.search as string | undefined;
-      const result = await this._doctorService.getDoctorsPaginated(page, limit, speciality, search);
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder as 'asc' | 'desc' | undefined;
+      const result = await this._doctorService.getDoctorsPaginated(page, limit, speciality, search, sortBy, sortOrder);
       res.status(HttpStatus.OK).json({ success: true, ...result });
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

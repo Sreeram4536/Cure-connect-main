@@ -49,7 +49,7 @@ export class DoctorRepository
     await appointmentModel.findByIdAndUpdate(id, { cancelled: true });
   }
 
-   async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string): Promise<PaginationResult<Partial<DoctorData>>> {
+   async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<Partial<DoctorData>>> {
     const skip = (page - 1) * limit;
     const query: any = { status: "approved" };
     if (speciality) {
@@ -58,8 +58,14 @@ export class DoctorRepository
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
+    let sort: any = { _id: 1 };
+    if (sortBy === 'experience') {
+      sort = { experience: sortOrder === 'desc' ? -1 : 1, _id: 1 };
+    } else if (sortBy === 'fees') {
+      sort = { fees: sortOrder === 'desc' ? -1 : 1, _id: 1 };
+    }
     const totalCount = await doctorModel.countDocuments(query);
-    const data = await doctorModel.find(query).select("-password").sort({ _id: 1 }).skip(skip).limit(limit);
+    const data = await doctorModel.find(query).select("-password").sort(sort).skip(skip).limit(limit);
     const totalPages = Math.ceil(totalCount / limit);
     return {
       data,

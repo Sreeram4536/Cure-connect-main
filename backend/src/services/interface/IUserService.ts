@@ -53,5 +53,5 @@ export interface IUserService {
   ): Promise<void>;
   getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]>;
   getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<any[]>;
-  
+  changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }>;
 }

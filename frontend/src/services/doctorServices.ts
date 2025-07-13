@@ -7,10 +7,12 @@ export const getDoctorsAPI = () => {
 };
 
 // Get paginated doctors
-export const getDoctorsPaginatedAPI = (page: number, limit: number, speciality?: string, search?: string) => {
+export const getDoctorsPaginatedAPI = (page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
   let url = `${DOCTOR_API.DOCTORS_PAGINATED}?page=${page}&limit=${limit}`;
   if (speciality) url += `&speciality=${encodeURIComponent(speciality)}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
+  if (sortOrder) url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
   return api.get(url);
 };
 

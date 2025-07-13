@@ -385,6 +385,30 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
   }
 
+  // Change password for logged-in user
+  async changePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Current and new password are required.' });
+        return;
+      }
+      if (!isValidPassword(newPassword)) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: HttpResponse.INVALID_PASSWORD });
+        return;
+      }
+      const result = await this._userService.changePassword(userId, currentPassword, newPassword);
+      if (result.success) {
+        res.status(HttpStatus.OK).json({ success: true, message: 'Password updated successfully.' });
+      } else {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: result.message });
+      }
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+
   async listAppointment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;

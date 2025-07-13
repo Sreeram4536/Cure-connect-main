@@ -38,6 +38,12 @@ userRouter.put(
   authRole(["user"]),
   userController.updateProfile.bind(userController)
 );
+
+userRouter.put(
+  "/password/change",
+  authRole(["user"]),
+  userController.changePassword.bind(userController)
+);
 userRouter.post(
   "/appointments/initiate",
   authRole(["user"]),

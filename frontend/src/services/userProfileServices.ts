@@ -37,3 +37,16 @@ export const updateUserProfileAPI = async (
     showErrorToast(error);
   }
 };
+
+// Change user password
+export const changeUserPasswordAPI = async (token: string, currentPassword: string, newPassword: string) => {
+  try {
+    const res = await api.put('/api/user/password/change', { currentPassword, newPassword }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  } catch (error) {
+    showErrorToast(error);
+    throw error;
+  }
+};

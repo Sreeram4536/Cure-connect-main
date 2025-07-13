@@ -367,15 +367,13 @@ const DoctorSlotManager = () => {
             </div>
             {/* Legend */}
             <div className="flex gap-4 mb-4">
-              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-green-400 inline-block"></span>Available</span>
-              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-red-400 inline-block"></span>Booked</span>
-              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-gray-400 inline-block"></span>Leave</span>
-              <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-blue-400 inline-block"></span>Custom Duration</span>
+               <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-red-400 inline-block"></span>Leave Day</span>
+               <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-yellow-300 inline-block"></span>Partial Leave Day</span>
             </div>
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-2 border rounded-xl overflow-hidden bg-white">
               {/* Render day headers */}
-              {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
+              {"Sun,Mon,Tue,Wed,Thu,Fri,Sat".split(",").map(day => (
                 <div key={day} className="bg-blue-50 text-blue-700 font-semibold text-center py-2 border-b">{day}</div>
               ))}
               {/* Render days in month */}
@@ -395,13 +393,28 @@ const DoctorSlotManager = () => {
                   acc[slot.date].push(slot);
                   return acc;
                 }, {});
+               // Map customDays for quick lookup
+               const customDayMap = (rule.customDays || []).reduce((acc: any, cd: any) => {
+                 acc[cd.date] = cd;
+                 return acc;
+               }, {});
                 for (let d = 1; d <= daysInMonth; d++) {
                   const dateStr = formatLocalDate(new Date(year, month, d));
                   const slots = slotMap[dateStr] || [];
+                 // Determine if this day is a leave or partial leave
+                 const customDay = customDayMap[dateStr];
+                 let dayBg = "";
+                 if (customDay) {
+                   if (customDay.leaveType === "full") {
+                     dayBg = "bg-red-300";
+                   } else if (customDay.leaveType === "break") {
+                     dayBg = "bg-yellow-200";
+                   }
+                 }
                   cells.push(
                     <div
                       key={dateStr}
-                      className={`min-h-[80px] border-r border-b p-1 flex flex-col gap-1 cursor-pointer hover:bg-blue-50 transition`}
+                      className={`min-h-[80px] border-r border-b p-1 flex flex-col gap-1 cursor-pointer hover:bg-blue-50 transition ${dayBg}`}
                       onClick={() => {
                         setSelectedDay(dateStr);
                         fetchSlotsForDate(dateStr);

@@ -37,7 +37,7 @@ interface PaginationData {
 interface AppContextType {
   doctors: Doctor[];
   getDoctorsData: () => Promise<void>;
-  getDoctorsPaginated: (page: number, limit: number, speciality?: string, searchQuery?: string) => Promise<PaginationData>;
+  getDoctorsPaginated: (page: number, limit: number, speciality?: string, searchQuery?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => Promise<PaginationData>;
   currencySymbol: string;
   backendUrl: string;
   token: string | null;
@@ -91,9 +91,9 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     }
   };
 
-  const getDoctorsPaginated = async (page: number, limit: number, speciality?: string, searchQuery?: string): Promise<PaginationData> => {
+  const getDoctorsPaginated = async (page: number, limit: number, speciality?: string, searchQuery?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationData> => {
     try {
-      const { data } = await getDoctorsPaginatedAPI(page, limit, speciality, searchQuery);
+      const { data } = await getDoctorsPaginatedAPI(page, limit, speciality, searchQuery, sortBy, sortOrder);
       if (data.success) {
         return {
           data: data.data,

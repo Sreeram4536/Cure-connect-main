@@ -3,6 +3,7 @@ import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/user/assets";
 import { toast } from "react-toastify";
 import { updateUserProfileAPI } from "../../services/userProfileServices";
+import { changeUserPasswordAPI } from "../../services/userProfileServices";
 import { useNavigate } from "react-router-dom";
 import { isValidDateOfBirth, isValidName, isValidPhone } from "../../utils/validator";
 import { showErrorToast } from "../../utils/errorHandler";
@@ -25,6 +26,11 @@ const MyProfile = () => {
     phone?: string;
     dob?: string;
   }>({});
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   if (!userData) return null;
 
@@ -94,6 +100,38 @@ const MyProfile = () => {
       setErrors({});
     } catch (error) {
       showErrorToast(error);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordError("All fields are required.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+    try {
+      if (!token) {
+        toast.error("Please login to continue...");
+        return;
+      }
+      const res = await changeUserPasswordAPI(token, currentPassword, newPassword);
+      if (res.success) {
+        toast.success("Password updated successfully.");
+        setShowChangePassword(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setPasswordError(null);
+      } else {
+        setPasswordError(res.message || "Failed to update password.");
+      }
+    } catch (error: any) {
+      setPasswordError(error?.response?.data?.message || error?.message || "Failed to update password.");
     }
   };
 
@@ -371,15 +409,69 @@ const MyProfile = () => {
                   </button>
                 </div>
               ) : (
-                <button
-                  className="bg-gradient-to-r from-primary to-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center mx-auto"
-                  onClick={() => setIsEdit(true)}
-                >
-                  <Edit3 className="w-5 h-5 mr-2" />
-                  Edit Profile
-                </button>
+                <>
+                  <button
+                    className="bg-gradient-to-r from-primary to-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center mx-auto"
+                    onClick={() => setIsEdit(true)}
+                  >
+                    <Edit3 className="w-5 h-5 mr-2" />
+                    Edit Profile
+                  </button>
+                  <button
+                    className="ml-4 mt-4 bg-white border border-primary text-primary px-8 py-3 rounded-xl font-semibold hover:bg-primary hover:text-white transition-all duration-300 flex items-center mx-auto"
+                    onClick={() => setShowChangePassword(true)}
+                  >
+                    Change Password
+                  </button>
+                </>
               )}
             </div>
+          {/* Change Password Modal */}
+          {showChangePassword && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <form onSubmit={handleChangePassword} className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md relative">
+                <button type="button" className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowChangePassword(false)}>&times;</button>
+                <h2 className="text-2xl font-bold mb-4 text-center">Change Password</h2>
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    className="border border-gray-300 rounded w-full p-2"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">New Password</label>
+                  <input
+                    type="password"
+                    className="border border-gray-300 rounded w-full p-2"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">Confirm New Password</label>
+                  <input
+                    type="password"
+                    className="border border-gray-300 rounded w-full p-2"
+                    value={confirmNewPassword}
+                    onChange={e => setConfirmNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                {passwordError && <div className="text-red-500 mb-2 text-center">{passwordError}</div>}
+                <button
+                  type="submit"
+                  className="bg-primary text-white w-full py-2 rounded-md text-base font-semibold mt-2"
+                >
+                  Save Password
+                </button>
+              </form>
+            </div>
+          )}
           </div>
         </div>
       </div>

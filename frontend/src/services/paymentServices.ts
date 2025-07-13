@@ -2,7 +2,7 @@ import { api } from "../axios/axiosInstance";
 import { PAYMENT_API } from "../constants/apiRoutes";
 import type { RazorpayPaymentResponse } from "../types/razorpay";
 
-// Initiate Razorpay payment for a slot (before appointment exists)
+
 export const PaymentRazorpayAPI = async (
   docId: string,
   slotDate: string,
