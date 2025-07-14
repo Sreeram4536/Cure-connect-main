@@ -23,8 +23,7 @@ function asyncHandler(fn: any) {
   };
 }
 
-doctorRouter.get("/", doctorController.doctorList.bind(doctorController));
-doctorRouter.get("/paginated", doctorController.getDoctorsPaginated.bind(doctorController));
+doctorRouter.get("/", doctorController.getDoctorsPaginated.bind(doctorController));
 doctorRouter.post(
   "/register",
   upload.single("image"),
@@ -52,11 +51,6 @@ doctorRouter.post(
 
 doctorRouter.get(
   "/appointments",
-  authRole(["doctor"]),
-  doctorController.appointmentsDoctor.bind(doctorController)
-);
-doctorRouter.get(
-  "/appointments/paginated",
   authRole(["doctor"]),
   doctorController.appointmentsDoctorPaginated.bind(doctorController)
 );

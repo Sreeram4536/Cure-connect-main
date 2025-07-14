@@ -57,7 +57,7 @@ userRouter.post(
 userRouter.get(
   "/appointments",
   authRole(["user"]),
-  userController.listAppointment.bind(userController)
+  userController.listAppointmentPaginated.bind(userController)
 );
 userRouter.post(
   "/appointments/lock",
@@ -77,12 +77,6 @@ userRouter.patch(
   userController.cancelLock.bind(userController)
 );
 
-userRouter.get(
-  "/appointments/paginated",
-  authRole(["user"]),
-  userController.listAppointmentPaginated.bind(userController)
-);
-
 userRouter.post(
   "/payments/razorpay",
   authRole(["user"]),
@@ -94,11 +88,6 @@ userRouter.post(
   userController.verifyRazorpay.bind(userController)
 );
 
-// userRouter.get(
-//   "/available-slots",
-//   authRole(["user"]),
-//   userController.getAvailableSlotsForDoctor.bind(userController)
-// );
 
 userRouter.get(
   "/doctor/:doctorId/slots",

@@ -409,41 +409,36 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
   }
 
-  async listAppointment(req: Request, res: Response): Promise<void> {
-    try {
-      const userId = (req as any).userId;
-      const appointments = await this._userService.listUserAppointments(userId);
-      res.status(HttpStatus.OK).json({ success: true, appointments });
-    } catch (error) {
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: (error as Error).message });
-    }
-  }
-
+  // Update listAppointmentPaginated to handle both paginated and non-paginated requests
   async listAppointmentPaginated(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 6;
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const sortBy = req.query.sortBy as string;
       const sortOrder = req.query.sortOrder as 'asc' | 'desc';
       const status = req.query.status as string;
       const dateFrom = req.query.dateFrom as string;
       const dateTo = req.query.dateTo as string;
 
-      const result = await this._userService.listUserAppointmentsPaginated(
-        userId,
-        page,
-        limit,
-        sortBy,
-        sortOrder,
-        status,
-        dateFrom,
-        dateTo
-      );
-      
-      res.status(HttpStatus.OK).json({ success: true, ...result });
+      if (page && limit) {
+        // Paginated response
+        const result = await this._userService.listUserAppointmentsPaginated(
+          userId,
+          page,
+          limit,
+          sortBy,
+          sortOrder,
+          status,
+          dateFrom,
+          dateTo
+        );
+        res.status(HttpStatus.OK).json({ success: true, ...result });
+      } else {
+        // Non-paginated response (all appointments)
+        const appointments = await this._userService.listUserAppointments(userId);
+        res.status(HttpStatus.OK).json({ success: true, data: appointments });
+      }
     } catch (error) {
       res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)

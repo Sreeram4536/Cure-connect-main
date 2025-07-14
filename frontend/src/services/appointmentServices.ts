@@ -15,13 +15,6 @@ export const appointmentBookingAPI = async (
   );
 };
 
-// Get all appointments
-export const getAppointmentsAPI = async (token: string) => {
-  return api.get(APPOINTMENT_API.BASE, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
 // Get paginated appointments
 export const getAppointmentsPaginatedAPI = async (
   token: string,
@@ -44,7 +37,7 @@ export const getAppointmentsPaginatedAPI = async (
   if (dateFrom) params.append('dateFrom', dateFrom);
   if (dateTo) params.append('dateTo', dateTo);
 
-  return api.get(`${APPOINTMENT_API.BASE}/paginated?${params.toString()}`, {
+  return api.get(`${APPOINTMENT_API.BASE}?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 };

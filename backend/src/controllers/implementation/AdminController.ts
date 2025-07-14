@@ -180,15 +180,17 @@ export class AdminController implements IAdminController {
   // To get paginated doctors
   async getDoctorsPaginated(req: Request, res: Response): Promise<void> {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 8;
-      
-      const result = await this._adminService.getDoctorsPaginated(page, limit);
-      res.status(HttpStatus.OK).json({ success: true, ...result });
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      if (page && limit) {
+        const result = await this._adminService.getDoctorsPaginated(page, limit);
+        res.status(HttpStatus.OK).json({ success: true, ...result });
+      } else {
+        const doctors = await this._adminService.getDoctors();
+        res.status(HttpStatus.OK).json({ success: true, data: doctors });
+      }
     } catch (error) {
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: (error as Error).message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
     }
   }
 
@@ -207,15 +209,17 @@ export class AdminController implements IAdminController {
   // To get paginated users
   async getUsersPaginated(req: Request, res: Response): Promise<void> {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 8;
-      
-      const result = await this._adminService.getUsersPaginated(page, limit);
-      res.status(HttpStatus.OK).json({ success: true, ...result });
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      if (page && limit) {
+        const result = await this._adminService.getUsersPaginated(page, limit);
+        res.status(HttpStatus.OK).json({ success: true, ...result });
+      } else {
+        const users = await this._adminService.getUsers();
+        res.status(HttpStatus.OK).json({ success: true, data: users });
+      }
     } catch (error) {
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: (error as Error).message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
     }
   }
 
@@ -285,15 +289,17 @@ export class AdminController implements IAdminController {
   // For getting paginated appointments
   async appointmentsListPaginated(req: Request, res: Response): Promise<void> {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 8;
-      
-      const result = await this._adminService.listAppointmentsPaginated(page, limit);
-      res.status(HttpStatus.OK).json({ success: true, ...result });
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      if (page && limit) {
+        const result = await this._adminService.listAppointmentsPaginated(page, limit);
+        res.status(HttpStatus.OK).json({ success: true, ...result });
+      } else {
+        const appointments = await this._adminService.listAppointments();
+        res.status(HttpStatus.OK).json({ success: true, data: appointments });
+      }
     } catch (error) {
-      res
-        .status(HttpStatus.BAD_REQUEST)
-        .json({ success: false, message: (error as Error).message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
     }
   }
 

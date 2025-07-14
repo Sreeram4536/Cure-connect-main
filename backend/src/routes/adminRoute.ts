@@ -40,11 +40,6 @@ adminRouter.post(
 adminRouter.get(
   "/users",
   authRole(["admin"]),
-  adminController.getAllUsers.bind(adminController)
-);
-adminRouter.get(
-  "/users/paginated",
-  authRole(["admin"]),
   adminController.getUsersPaginated.bind(adminController)
 );
 adminRouter.patch(
@@ -60,11 +55,6 @@ adminRouter.post(
 );
 adminRouter.get(
   "/doctors",
-  authRole(["admin"]),
-  adminController.getDoctors.bind(adminController)
-);
-adminRouter.get(
-  "/doctors/paginated",
   authRole(["admin"]),
   adminController.getDoctorsPaginated.bind(adminController)
 );
@@ -94,11 +84,6 @@ adminRouter.patch(
 
 adminRouter.get(
   "/appointments",
-  authRole(["admin"]),
-  adminController.appointmentsList.bind(adminController)
-);
-adminRouter.get(
-  "/appointments/paginated",
   authRole(["admin"]),
   adminController.appointmentsListPaginated.bind(adminController)
 );

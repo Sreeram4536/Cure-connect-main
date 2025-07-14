@@ -48,10 +48,10 @@ export const getAllDoctorsAPI = async (token: string) => {
 };
 
 export const getDoctorsPaginatedAPI = async (page: number, limit: number, token: string) => {
-  return await api.get(`${ADMIN_API.DOCTORS_PAGINATED}?page=${page}&limit=${limit}`, {
+  return await api.get(`${ADMIN_API.DOCTORS}?page=${page}&limit=${limit}`, {
     headers: {
-  Authorization: `Bearer ${token}`,
-},
+      Authorization: `Bearer ${token}`,
+    },
   });
 };
 
@@ -76,10 +76,10 @@ export const getAllUsersAPI = async (token: string) => {
 };
 
 export const getUsersPaginatedAPI = async (page: number, limit: number, token: string) => {
-  return await api.get(`${ADMIN_API.USERS_PAGINATED}?page=${page}&limit=${limit}`, {
+  return await api.get(`${ADMIN_API.USERS}?page=${page}&limit=${limit}`, {
     headers: {
-  Authorization: `Bearer ${token}`,
-},
+      Authorization: `Bearer ${token}`,
+    },
   });
 };
 
@@ -104,10 +104,10 @@ export const getAllAppointmentsAPI = async (token: string) => {
 };
 
 export const getAppointmentsPaginatedAPI = async (page: number, limit: number, token: string) => {
-  return await api.get(`${ADMIN_API.APPOINTMENTS_PAGINATED}?page=${page}&limit=${limit}`, {
+  return await api.get(`${ADMIN_API.APPOINTMENTS}?page=${page}&limit=${limit}`, {
     headers: {
-  Authorization: `Bearer ${token}`,
-},
+      Authorization: `Bearer ${token}`,
+    },
   });
 };
 

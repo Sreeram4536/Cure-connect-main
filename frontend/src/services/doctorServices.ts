@@ -8,7 +8,7 @@ export const getDoctorsAPI = () => {
 
 // Get paginated doctors
 export const getDoctorsPaginatedAPI = (page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
-  let url = `${DOCTOR_API.DOCTORS_PAGINATED}?page=${page}&limit=${limit}`;
+  let url = `${DOCTOR_API.DOCTORS}?page=${page}&limit=${limit}`;
   if (speciality) url += `&speciality=${encodeURIComponent(speciality)}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
   if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
@@ -43,7 +43,7 @@ export const getDoctorAppointmentsAPI = () => {
 
 // Get paginated appointments for doctor
 export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number) => {
-  return api.get(`${DOCTOR_API.APPOINTMENTS_PAGINATED}?page=${page}&limit=${limit}`);
+  return api.get(`${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}`);
 };
 
 // Confirm appointment
