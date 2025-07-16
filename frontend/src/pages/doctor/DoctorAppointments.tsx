@@ -60,7 +60,7 @@ const DoctorAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, 'slotDate', sortOrder);
+      const result = await getAppointmentsPaginated(currentPage, itemsPerPage);
       setAppointments(result.data);
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
@@ -74,7 +74,7 @@ const DoctorAppointments = () => {
   const handleConfirmAppointment = async (appointmentId: string) => {
     try {
       await confirmAppointment(appointmentId);
-      // Refresh current page after confirmation
+      
       fetchAppointments();
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
@@ -84,7 +84,7 @@ const DoctorAppointments = () => {
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
       await cancelAppointment(appointmentId);
-      // Refresh current page after cancellation
+      
       fetchAppointments();
     } catch (error) {
       console.error("Failed to cancel appointment:", error);
@@ -98,7 +98,7 @@ const DoctorAppointments = () => {
   const columns = [
     {
       key: "index",
-      header: "#",
+      header: "SL.NO",
       width: "0.5fr",
       hideOnMobile: true,
       render: (_: any, index: number) => <p>{index + 1}</p>,

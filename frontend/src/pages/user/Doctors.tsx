@@ -21,7 +21,7 @@ const Doctors = () => {
   const [sortBy, setSortBy] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>();
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-  const itemsPerPage = 1;
+  const itemsPerPage = 2;
   const context = useContext(AppContext);
 
   if (!context) {

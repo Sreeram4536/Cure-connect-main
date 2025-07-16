@@ -150,14 +150,14 @@ const AdminDoctorList = () => {
                       {item.isBlocked ? "Blocked" : "Active"}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-1 text-sm">
+                  {/* <div className="mt-2 flex items-center gap-1 text-sm">
                     <input
                       onChange={() => handleChangeAvailability(item._id)}
                       type="checkbox"
                       checked={item.available}
                     />
                     <p>Available</p>
-                  </div>
+                  </div> */}
                   <div className="mt-2 flex items-center gap-2">
                     <button
                       onClick={(e) => {
