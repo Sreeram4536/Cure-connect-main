@@ -100,14 +100,40 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     const skip = (page - 1) * limit;
     const totalCount = await appointmentModel.countDocuments({});
     const data = await appointmentModel.find({})
-      .populate('userId', 'name email image dob')
-      .populate('docId', 'name image speciality')
+      .populate({ path: 'userId', select: 'name email image dob', model: 'user' })
+      .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
     
+    data.forEach((appt: any) => {
+      if (appt.userId) {
+        if (!appt.userData) {
+          appt.userData = {
+            name: appt.userId.name,
+            email: appt.userId.email,
+            image: appt.userId.image,
+            dob: appt.userId.dob,
+          };
+        } else {
+          if (!appt.userData.image) appt.userData.image = appt.userId.image;
+          if (!appt.userData.dob) appt.userData.dob = appt.userId.dob;
+        }
+      }
+      if (appt.docId) {
+        if (!appt.docData) {
+          appt.docData = {
+            name: appt.docId.name,
+            image: appt.docId.image,
+            speciality: appt.docId.speciality,
+          };
+        } else {
+          if (!appt.docData.image) appt.docData.image = appt.docId.image;
+          if (!appt.docData.speciality) appt.docData.speciality = appt.docId.speciality;
+        }
+      }
+    });
     const totalPages = Math.ceil(totalCount / limit);
-    
     return {
       data,
       totalCount,

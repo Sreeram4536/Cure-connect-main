@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import { getDoctorSlotRuleAPI,setDoctorSlotRuleAPI,getDoctorPreviewSlotsAPI, getDoctorSlotsForDateAPI, updateDoctorCustomSlotAPI, cancelDoctorCustomSlotAPI } from "../../services/doctorServices";
+import { DoctorContext } from "../../context/DoctorContext";
 
 const daysOfWeekLabels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const slotDurations = [15, 20, 30, 45, 60];
@@ -37,6 +38,7 @@ function cleanCustomDays(customDays: any[]) {
 }
 
 const DoctorSlotManager = () => {
+  const { loading: contextLoading } = useContext(DoctorContext);
   const [rule, setRule] = useState({ ...defaultRule });
   const [loading, setLoading] = useState(true);
   const [previewSlots, setPreviewSlots] = useState<any[]>([]);
@@ -144,6 +146,10 @@ const DoctorSlotManager = () => {
       return { ...prev, breaks };
     });
   };
+
+  if (contextLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-6">

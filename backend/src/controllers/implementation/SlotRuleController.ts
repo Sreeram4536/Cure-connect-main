@@ -13,7 +13,7 @@ export class SlotRuleController {
   async setRule(req: Request, res: Response) {
     const doctorId = (req as any).docId;
     let rule = req.body;
-    // Backend-side validation for customDays and slots
+   
     if (Array.isArray(rule.customDays)) {
       rule.customDays = rule.customDays.map((cd: any) => ({
         date: cd.date,
@@ -41,7 +41,7 @@ export class SlotRuleController {
   async updateCustomSlot(req: Request, res: Response) {
     const doctorId = (req as any).docId;
     const { date, start, duration } = req.body;
-    // Validate date/time is not in the past
+    
     const now = new Date();
     const slotDateTime = new Date(`${date}T${start}`);
     if (slotDateTime < now) {
@@ -54,7 +54,7 @@ export class SlotRuleController {
   async cancelCustomSlot(req: Request, res: Response) {
     const doctorId = (req as any).docId;
     const { date, start } = req.body;
-    // Validate date/time is not in the past
+    
     const now = new Date();
     const slotDateTime = new Date(`${date}T${start}`);
     if (slotDateTime < now) {

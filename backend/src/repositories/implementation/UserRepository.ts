@@ -34,7 +34,7 @@ export class UserRepository
   }
 
   async getAppointmentsByUserId(userId: string): Promise<AppointmentTypes[]> {
-    // Return only confirmed appointments, both cancelled and not cancelled
+    
     return appointmentModel.find({ userId, status: 'confirmed' }).sort({ date: -1 });
   }
 
@@ -50,7 +50,7 @@ export class UserRepository
   ): Promise<PaginationResult<AppointmentTypes>> {
     const skip = (page - 1) * limit;
     
-    // Build filter query
+    
     const filterQuery: any = { userId, status: 'confirmed' };
     
     if (status && status !== 'all') {
@@ -67,7 +67,7 @@ export class UserRepository
       if (dateTo) filterQuery.slotDate.$lte = dateTo;
     }
     
-    // Build sort query
+    
     let sortQuery: any = { date: -1 }; // default sort
     if (sortBy) {
       sortQuery = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };

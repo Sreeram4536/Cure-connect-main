@@ -124,10 +124,10 @@ export const getTopDoctorsAPI = (status = "approved", limit = 10) => {
 };
 
 export const updateDoctorCustomSlotAPI = (date: string, start: string, duration: number) => {
-  return api.post('/api/doctor/slots/custom', { date, start, duration });
+  return api.patch(DOCTOR_API.UPDATE_CUSTOM_SLOT, { date, start, duration });
 };
 
 export const cancelDoctorCustomSlotAPI = (date: string, start: string) => {
-  return api.post('/api/doctor/slots/cancel', { date, start });
+  return api.patch(DOCTOR_API.CANCEL_CUSTOM_SLOT, { date, start });
 };
 

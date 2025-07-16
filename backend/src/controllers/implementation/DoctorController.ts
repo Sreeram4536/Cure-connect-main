@@ -123,7 +123,8 @@ export class DoctorController implements IDoctorController {
 
       res.status(HttpStatus.OK).json({
         success: true,
-        token: accessToken,
+        accessToken,
+        refreshToken,
         message: HttpResponse.LOGIN_SUCCESS,
       });
     } catch (error) {
@@ -169,7 +170,8 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
 
       res.status(HttpStatus.OK).json({
         success: true,
-        token: newAccessToken,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
       });
     } catch (error) {
       res.status(HttpStatus.UNAUTHORIZED).json({
@@ -191,7 +193,7 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
           await addTokenToBlacklist(token, expiresAt);
         }
       } catch (e) {
-        // ignore decode errors
+        
       }
     }
     res.clearCookie("refreshToken_doctor", {
@@ -206,7 +208,7 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
     });
   }
 
-  // Update appointmentsDoctorPaginated to handle both paginated and non-paginated requests
+  
   async appointmentsDoctorPaginated(req: Request, res: Response): Promise<void> {
     try {
       const docId = (req as any).docId;
@@ -224,7 +226,7 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
     }
   }
 
-  // For appointment confirmation
+  
   async appointmentConfirm(req: Request, res: Response): Promise<void> {
     try {
       const docId = (req as any).docId;
@@ -242,7 +244,7 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
     }
   }
 
-  // For appointment cancellation
+  
   async appointmentCancel(req: Request, res: Response): Promise<void> {
     try {
       const docId = (req as any).docId;
@@ -368,12 +370,12 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
   }
 }
 
-  // Add this method for top doctors with filtering and limiting
+  
   async getTopDoctors(req: Request, res: Response): Promise<void> {
     try {
       const status = (req.query.status as string) || "approved";
       const limit = parseInt(req.query.limit as string) || 10;
-      // Assuming doctorService has a method to get filtered/limited doctors
+      
       const doctors = await this._doctorService.getDoctorsByStatusAndLimit(status, limit);
       res.status(200).json({ success: true, doctors });
     } catch (error) {

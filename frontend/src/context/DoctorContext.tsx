@@ -152,7 +152,7 @@ const [dToken, setDToken] = useState(getDoctorAccessToken() ?? "");
     const tryRefresh = async () => {
       try {
         const res = await refreshDoctorAccessTokenAPI();
-        const newToken = res.data?.token;
+        const newToken = res.data?.accessToken;
         if (newToken) {
           setToken(newToken);
           await getProfileData();

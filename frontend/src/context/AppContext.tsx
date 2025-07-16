@@ -82,7 +82,7 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     try {
       const { data } = await getDoctorsAPI();
       if (data.success) {
-        setDoctors(data.doctors);
+        setDoctors(data.data || data.doctors || []);
       } else {
         toast.error(data.message);
       }

@@ -3,10 +3,10 @@ import mongoose, { Schema } from "mongoose";
 const SlotRuleSchema = new Schema({
   doctorId: { type: Schema.Types.ObjectId, ref: "doctor", required: true, unique: true },
   daysOfWeek: [{ type: Number, required: true }], // 0=Sun, 1=Mon, ...
-  startTime: { type: String, required: true },    // "09:00"
-  endTime: { type: String, required: true },      // "17:00"
+  startTime: { type: String, required: true },    
+  endTime: { type: String, required: true },      
   slotDuration: { type: Number, required: true }, // in minutes
-  breaks: [{ start: String, end: String }],       // optional, for all days
+  breaks: [{ start: String, end: String }],       
   effectiveFrom: { type: Date },
   effectiveTo: { type: Date },
   customDays: [

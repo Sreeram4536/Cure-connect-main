@@ -82,14 +82,29 @@ export class DoctorRepository
     const skip = (page - 1) * limit;
     const totalCount = await appointmentModel.countDocuments({ docId });
     const data = await appointmentModel.find({ docId })
-      .populate('userId', 'name email image dob')
-      .populate('docId', 'name image speciality')
+      .populate({ path: 'userId', select: 'name email image dob', model: 'user' })
+      .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
     
+    data.forEach((appt: any) => {
+      if (appt.userId) {
+        
+        if (!appt.userData) {
+          appt.userData = {
+            name: appt.userId.name,
+            email: appt.userId.email,
+            image: appt.userId.image,
+            dob: appt.userId.dob,
+          };
+        } else {
+          if (!appt.userData.image) appt.userData.image = appt.userId.image;
+          if (!appt.userData.dob) appt.userData.dob = appt.userId.dob;
+        }
+      }
+    });
     const totalPages = Math.ceil(totalCount / limit);
-    
     return {
       data,
       totalCount,

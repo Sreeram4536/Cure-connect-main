@@ -111,10 +111,11 @@ const DoctorAppointments = () => {
         <div className="flex items-center gap-2">
           <img
             className="w-12 h-12 rounded-full object-cover"
-            src={item.userData.image}
+            src={item.userData?.image ? item.userData.image : "/default-avatar.png"}
             alt="user"
+            onError={e => { (e.target as HTMLImageElement).src = "/default-avatar.png"; }}
           />
-          <p>{item.userData.name}</p>
+          <p>{item.userData?.name || '-'}</p>
         </div>
       ),
     },
@@ -135,7 +136,9 @@ const DoctorAppointments = () => {
       header: "Age",
       width: "1fr",
       hideOnMobile: true,
-      render: (item: any) => <p>{calculateAge(item.userData.dob)}</p>,
+      render: (item: any) => (
+        <p>{item.userData?.dob ? calculateAge(item.userData.dob) : '-'}</p>
+      ),
     },
     {
       key: "datetime",

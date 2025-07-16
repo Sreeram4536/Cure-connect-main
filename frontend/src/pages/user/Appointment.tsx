@@ -69,6 +69,10 @@ const Appointment = () => {
   
 
   const fetchDocInfo = () => {
+    if (!doctors || !Array.isArray(doctors)) {
+      setDocInfo(null);
+      return;
+    }
     const doc = doctors.find((doc) => doc._id === docId);
     setDocInfo(doc);
   };
@@ -128,20 +132,19 @@ const Appointment = () => {
 
   const fetchSlotsForCustomDate = async (date: Date) => {
     if (!docId || !token) return;
-    
+
     const dateStr = formatLocalDate(date);
-    
+
     try {
-      const { data } = await getAvailableSlotsForDateAPI(docId, dateStr, token);
+      const data = await getAvailableSlotsForDateAPI(docId, dateStr, token);
       console.log('[Appointment] Received custom date slots from backend:', data);
-      
+
       if (!data.success) {
         throw new Error(data.message || 'Failed to fetch slots');
       }
 
-      // Create time slots without any frontend filtering - backend already filtered past times
-      const timeSlots: TimeSlot[] = data.slots.map((slot: any) => {
-        const { hour, minute } = parse12HourTime(slot.start);
+      const timeSlots: TimeSlot[] = (data.slots || []).map((slot: any) => {
+        const [hour, minute] = slot.start.split(":").map(Number);
         const dt = new Date(date);
         dt.setHours(hour);
         dt.setMinutes(minute);
@@ -157,6 +160,7 @@ const Appointment = () => {
       setSlotIndex(0);
     } catch (error) {
       toast.error("Failed to fetch custom date slots");
+      console.error("Custom date slot fetch error:", error);
     }
   };
 
@@ -284,7 +288,9 @@ const Appointment = () => {
   }, [authLoading]);
 
   useEffect(() => {
-    fetchDocInfo();
+    if (doctors && Array.isArray(doctors)) {
+      fetchDocInfo();
+    }
   }, [doctors, docId]);
 
   useEffect(() => {
