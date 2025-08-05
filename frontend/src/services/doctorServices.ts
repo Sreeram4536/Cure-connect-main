@@ -48,12 +48,16 @@ export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number) =
 
 // Confirm appointment
 export const AppointmentConfirmAPI = (appointmentId: string) => {
-  return api.patch(DOCTOR_API.APPOINTMENT_CONFIRM(appointmentId));
+  return api.patch(`/api/doctor/appointment/confirm/${appointmentId}`);
 };
 
 // Cancel appointment
 export const AppointmentCancelAPI = (appointmentId: string) => {
-  return api.patch(DOCTOR_API.APPOINTMENT_CANCEL(appointmentId));
+  return api.patch(`/api/doctor/appointment/cancel/${appointmentId}`);
+};
+
+export const ReleaseSlotLockAPI = (appointmentId: string) => {
+  return api.patch(`/api/doctor/slot/release/${appointmentId}`);
 };
 
 // Get doctor profile

@@ -8,6 +8,7 @@ import SearchBar from "../../components/common/SearchBar";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
 import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck } from 'react-icons/fa';
+import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
 
 const DoctorAppointments = () => {
   const context = useContext(DoctorContext);
@@ -73,8 +74,7 @@ const DoctorAppointments = () => {
 
   const handleConfirmAppointment = async (appointmentId: string) => {
     try {
-      await confirmAppointment(appointmentId);
-      
+      await AppointmentConfirmAPI(appointmentId);
       fetchAppointments();
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
@@ -83,8 +83,7 @@ const DoctorAppointments = () => {
 
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
-      await cancelAppointment(appointmentId);
-      
+      await AppointmentCancelAPI(appointmentId);
       fetchAppointments();
     } catch (error) {
       console.error("Failed to cancel appointment:", error);

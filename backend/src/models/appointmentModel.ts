@@ -1,7 +1,9 @@
-import mongoose, { Schema, Model, Document } from "mongoose";
+import mongoose, { Schema, Model, Document, Types } from "mongoose";
 import { AppointmentTypes } from "../types/appointment";
 
-interface AppointmentDocument extends AppointmentTypes, Document {}
+export interface AppointmentDocument extends AppointmentTypes, Document {
+  _id: Types.ObjectId;
+}
 
 const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
   userId: {

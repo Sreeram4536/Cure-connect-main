@@ -1,5 +1,7 @@
 import { SlotRuleType } from "../types/slotRule";
 import moment from "moment";
+import { DoctorData } from "../types/doctor";
+import { DoctorDocument } from "../types/doctor";
 
 export function generateSlotsForDate(rule: SlotRuleType, slotDate: string) {
   const date = moment(slotDate, "YYYY-MM-DD");
@@ -80,4 +82,24 @@ export function generateSlotsForDate(rule: SlotRuleType, slotDate: string) {
     current = current.clone().add(rule.slotDuration, "minutes");
   }
   return slots;
+}
+
+export async function releaseSlotLock(
+  doctor: DoctorDocument,
+  slotDate: string,
+  slotTime: string
+): Promise<boolean> {
+  if (doctor.slots_booked && typeof doctor.slots_booked === 'object') {
+    const slots = doctor.slots_booked as { [date: string]: string[] };
+    if (Array.isArray(slots[slotDate])) {
+      const originalLength = slots[slotDate].length;
+      slots[slotDate] = slots[slotDate].filter((t: string) => t !== slotTime);
+      if (!slots[slotDate].length) delete slots[slotDate];
+      doctor.slots_booked = slots;
+      doctor.markModified("slots_booked");
+      await doctor.save();
+      return slots[slotDate]?.length !== originalLength;
+    }
+  }
+  return false;
 }

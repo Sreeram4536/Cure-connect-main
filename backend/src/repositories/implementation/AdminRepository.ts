@@ -10,6 +10,7 @@ import { DoctorData } from "../../types/doctor";
 import { userData } from "../../types/user";
 import { AdminDocument } from "../../types/admin";
 import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
+import { releaseSlotLock } from "../../utils/slot.util";
 
 export class AdminRepository extends BaseRepository<AdminDocument> {
   constructor() {
@@ -155,17 +156,11 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     appointment.cancelled = true;
     await appointment.save();
 
+    // Release the lock from doctor's slots_booked using utility
     const { docId, slotDate, slotTime } = appointment;
     const doctor = await doctorModel.findById(docId);
     if (doctor) {
-      const slots = doctor.slots_booked || {};
-      if (Array.isArray(slots[slotDate])) {
-        slots[slotDate] = slots[slotDate].filter((t: string) => t !== slotTime);
-        if (!slots[slotDate].length) delete slots[slotDate];
-        doctor.slots_booked = slots;
-        doctor.markModified("slots_booked");
-        await doctor.save();
-      }
+      await releaseSlotLock(doctor, slotDate, slotTime);
     }
   }
 }

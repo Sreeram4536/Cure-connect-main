@@ -4,6 +4,7 @@ import doctorModel from "../../models/doctorModel";
 import { AppointmentTypes } from "../../types/appointment";
 import { DoctorData, DoctorDocument } from "../../types/doctor";
 import { IDoctorRepository, PaginationResult } from "../interface/IDoctorRepository";
+import { releaseSlotLock } from "../../utils/slot.util";
 
 export class DoctorRepository
   extends BaseRepository<DoctorDocument>
@@ -46,7 +47,16 @@ export class DoctorRepository
   }
 
   async cancelAppointment(id: string): Promise<void> {
-    await appointmentModel.findByIdAndUpdate(id, { cancelled: true });
+    const appointment = await appointmentModel.findById(id);
+    if (!appointment) throw new Error("Appointment not found");
+    appointment.cancelled = true;
+    await appointment.save();
+    // Release the lock from doctor's slots_booked using utility
+    const { docId, slotDate, slotTime } = appointment;
+    const doctor = await doctorModel.findById(docId);
+    if (doctor) {
+      await releaseSlotLock(doctor, slotDate, slotTime);
+    }
   }
 
    async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<Partial<DoctorData>>> {
@@ -140,5 +150,9 @@ export class DoctorRepository
 
   async getDoctorsByStatusAndLimit(status: string, limit: number): Promise<Partial<DoctorData>[]> {
     return doctorModel.find({ status }).limit(limit).select("-password -email");
+  }
+
+  async updateById(id: string, updateData: Partial<DoctorData>): Promise<void> {
+    await doctorModel.findByIdAndUpdate(id, updateData);
   }
 }

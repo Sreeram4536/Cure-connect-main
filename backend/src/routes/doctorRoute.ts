@@ -7,13 +7,21 @@ import authRole from "../middlewares/authRole";
 import { SlotRepository } from "../repositories/implementation/SlotRepository";
 import { DoctorSlotService } from "../services/implementation/SlotService";
 import { SlotRuleController } from "../controllers/implementation/SlotRuleController";
+import SlotLockController from "../controllers/implementation/SlotLockController";
+import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
+import { UserRepository } from "../repositories/implementation/UserRepository";
+import { SlotLockService } from "../services/implementation/SlotLockService";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
+const appointmentRepository = new AppointmentRepository();
+const userRepository = new UserRepository();
+const slotLockService = new SlotLockService(appointmentRepository, userRepository, doctorRepository);
 const doctorService = new DoctorService(doctorRepository);
 const slotService = new DoctorSlotService(slotRepository);
 const doctorController = new DoctorController(doctorService, slotService);
 const slotRuleController = new SlotRuleController();
+const slotLockController = new SlotLockController(slotLockService);
 
 const doctorRouter = express.Router();
 
@@ -116,6 +124,30 @@ doctorRouter.patch(
   "/slot-rule/cancel-slot",
   authRole(["doctor"]),
   asyncHandler(slotRuleController.cancelCustomSlot.bind(slotRuleController))
+);
+
+doctorRouter.post(
+  "/slot/lock",
+  authRole(["doctor", "user"]),
+  slotLockController.lockSlot.bind(slotLockController)
+);
+
+doctorRouter.patch(
+  "/slot/release/:appointmentId",
+  authRole(["doctor", "user"]),
+  slotLockController.releaseSlot.bind(slotLockController)
+);
+
+doctorRouter.patch(
+  "/appointment/confirm/:appointmentId",
+  authRole(["doctor"]),
+  slotLockController.confirmAppointment.bind(slotLockController)
+);
+
+doctorRouter.patch(
+  "/appointment/cancel/:appointmentId",
+  authRole(["doctor", "user"]),
+  slotLockController.cancelAppointment.bind(slotLockController)
 );
 
 doctorRouter.get("/top", doctorController.getTopDoctors.bind(doctorController));

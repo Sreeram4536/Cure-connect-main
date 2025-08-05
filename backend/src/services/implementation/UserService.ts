@@ -15,6 +15,7 @@ import {
 } from "../../utils/jwt.utils";
 import { DoctorSlotService } from "./SlotService";
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
+import { ISlotLockService } from "../interface/ISlotLockService";
 
 export interface UserDocument extends userData {
   _id: string;
@@ -23,7 +24,8 @@ export interface UserDocument extends userData {
 export class UserService implements IUserService {
   constructor(
     private _userRepository: IUserRepository,
-    private _paymentService = new PaymentService()
+    private _paymentService = new PaymentService(),
+    private _slotLockService: ISlotLockService
   ) {}
 
   async register(
@@ -181,7 +183,8 @@ async finalizeRegister(userData: {
     userId: string,
     appointmentId: string
   ): Promise<void> {
-    await this._userRepository.cancelAppointment(userId, appointmentId);
+    // Optionally, check user owns the appointment here if needed
+    await this._slotLockService.cancelAppointment({ appointmentId });
   }
 
   async startPayment(

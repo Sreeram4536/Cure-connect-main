@@ -49,6 +49,12 @@ export const HttpResponse = {
   APPOINTMENT_BOOKED: "Appointment Booked",
   APPOINTMENT_CANCELLED: "Appointment Cancelled",
   APPOINTMENT_CONFIRMED: "Appointment Confirmed",
+  APPOINTMENT_NOT_FOUND: "Appointment not found",
+
+  // Slot/Lock
+  SLOT_ALREADY_BOOKED: "Slot already booked",
+  SLOT_RELEASED: "Slot released successfully",
+  USER_OR_DOCTOR_NOT_FOUND: "User or doctor not found",
 
   // Payment
   PAYMENT_SUCCESS: "Payment successful",

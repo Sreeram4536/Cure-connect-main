@@ -5,11 +5,19 @@ import { UserRepository } from "../repositories/implementation/UserRepository";
 import upload from "../middlewares/multer";
 import { PaymentService } from "../services/implementation/PaymentService";
 import authRole from "../middlewares/authRole";
+import SlotLockController from "../controllers/implementation/SlotLockController";
+import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
+import { SlotLockService } from "../services/implementation/SlotLockService";
+import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
 
 const userRepository = new UserRepository();
 const paymentService = new PaymentService();
-const userService = new UserService(userRepository, paymentService);
+const appointmentRepo = new AppointmentRepository();
+const doctorRepo = new DoctorRepository();
+const slotLockService = new SlotLockService(appointmentRepo, userRepository, doctorRepo);
+const userService = new UserService(userRepository, paymentService, slotLockService);
 const userController = new UserController(userService, paymentService);
+const slotLockController = new SlotLockController(slotLockService);
 
 const userRouter = express.Router();
 
@@ -62,7 +70,7 @@ userRouter.get(
 userRouter.post(
   "/appointments/lock",
   authRole(["user"]),
-  userController.lockSlot.bind(userController)
+  slotLockController.lockSlot.bind(slotLockController)
 );
 
 userRouter.patch(
@@ -74,7 +82,7 @@ userRouter.patch(
 userRouter.patch(
   "/appointments/:appointmentId/cancel-lock",
   authRole(["user"]),
-  userController.cancelLock.bind(userController)
+  slotLockController.cancelAppointment.bind(slotLockController)
 );
 
 userRouter.post(

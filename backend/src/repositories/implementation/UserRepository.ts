@@ -9,6 +9,7 @@ import { UserDocument } from "../../types/user";
 import { generateSlotsForDate } from "../../utils/slot.util";
 import { SlotRuleType } from "../../types/slotRule";
 import slotRuleModel from "../../models/slotRuleModel";
+import { releaseSlotLock } from "../../utils/slot.util";
 
 export class UserRepository
   extends BaseRepository<UserDocument>
@@ -113,7 +114,12 @@ export class UserRepository
     appointment.cancelled = true;
     await appointment.save();
 
-   
+    // Release the lock from doctor's slots_booked using utility
+    const { docId, slotDate, slotTime } = appointment;
+    const doctor = await doctorModel.findById(docId);
+    if (doctor) {
+      await releaseSlotLock(doctor, slotDate, slotTime);
+    }
   }
 
 async findPayableAppointment(
