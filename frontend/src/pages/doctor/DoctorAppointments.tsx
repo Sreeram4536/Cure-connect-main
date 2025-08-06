@@ -74,7 +74,7 @@ const DoctorAppointments = () => {
 
   const handleConfirmAppointment = async (appointmentId: string) => {
     try {
-      await AppointmentConfirmAPI(appointmentId);
+      await confirmAppointment(appointmentId); // Use context method
       fetchAppointments();
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
@@ -83,8 +83,18 @@ const DoctorAppointments = () => {
 
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
-      await AppointmentCancelAPI(appointmentId);
-      fetchAppointments();
+      const data = await cancelAppointment(appointmentId, currentPage, itemsPerPage);
+      if (data && data.data) {
+        setAppointments(data.data);
+        setTotalPages(data.totalPages || 1);
+        setTotalCount(data.totalCount || 0);
+      } else if (data && data.appointments) {
+        setAppointments(data.appointments);
+        setTotalPages(1);
+        setTotalCount(data.appointments.length);
+      } else {
+        fetchAppointments(); // fallback
+      }
     } catch (error) {
       console.error("Failed to cancel appointment:", error);
     }

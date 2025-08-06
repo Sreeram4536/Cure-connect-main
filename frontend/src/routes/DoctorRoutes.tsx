@@ -12,6 +12,7 @@ import DoctorConsultation from "../pages/doctor/DoctorConsultation";
 import DocChatPage from "../pages/doctor/DocChatPage";
 import DoctorRegister from "../pages/doctor/DoctorRegister";
 import DoctorSlotManager from "../pages/doctor/DoctorSlotManagement";
+import DoctorInbox from "../pages/doctor/DoctorInbox";
 
 const DoctorRoutes = () => {
   return (
@@ -58,7 +59,22 @@ const DoctorRoutes = () => {
           </DoctorLayout>
         }
       />
-      <Route path="/doctor/chats" element={<DocChatPage />} />
+      <Route
+        path="/doctor/inbox"
+        element={
+          <DoctorLayout>
+            <DoctorInbox />
+          </DoctorLayout>
+        }
+      />
+      <Route
+        path="/doctor/chat/:conversationId"
+        element={
+          <DoctorLayout>
+            <DocChatPage />
+          </DoctorLayout>
+        }
+      />
     </>
   );
 };

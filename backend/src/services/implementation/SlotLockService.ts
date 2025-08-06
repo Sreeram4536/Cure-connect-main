@@ -48,7 +48,7 @@ export class SlotLockService implements ISlotLockService {
     const docData = {
       name: doctor.name,
       speciality: doctor.speciality,
-      image: doctor.image,
+      image: doctor.image || '',
     };
     const amount = doctor.fees;
     if (

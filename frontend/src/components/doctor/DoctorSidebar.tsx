@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
-const AdminSidebar = () => {
+const DoctorSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const assets = {
@@ -10,6 +10,7 @@ const AdminSidebar = () => {
     appointment_icon: "📅",
     add_icon: "➕",
     slot_icon: "⏰",
+    inbox_icon: "📬",
   };
 
   const menuItems = [
@@ -35,6 +36,12 @@ const AdminSidebar = () => {
       to: "/doctor/slot-management",
       icon: assets.slot_icon,
       label: "Slot management",
+      gradient: "from-blue-500 to-primary"
+    },
+    {
+      to: "/doctor/inbox",
+      icon: assets.inbox_icon,
+      label: "Messages",
       gradient: "from-blue-500 to-primary"
     },
   ];
@@ -161,4 +168,4 @@ const AdminSidebar = () => {
   );
 };
 
-export default AdminSidebar;
+export default DoctorSidebar;

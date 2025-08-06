@@ -3,6 +3,7 @@ import DoctorSidebar from "../components/doctor/DoctorSidebar";
 import DoctorNavbar from "../components/doctor/DoctorNavbar";
 
 const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
+  console.log("DoctorLayout: Rendering layout");
   return (
     <div className="mx-4 sm:mx=[10%]">
       <DoctorNavbar />

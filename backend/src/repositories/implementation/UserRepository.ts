@@ -10,6 +10,7 @@ import { generateSlotsForDate } from "../../utils/slot.util";
 import { SlotRuleType } from "../../types/slotRule";
 import slotRuleModel from "../../models/slotRuleModel";
 import { releaseSlotLock } from "../../utils/slot.util";
+import mongoose from "mongoose";
 
 export class UserRepository
   extends BaseRepository<UserDocument>
@@ -35,8 +36,10 @@ export class UserRepository
   }
 
   async getAppointmentsByUserId(userId: string): Promise<AppointmentTypes[]> {
-    
-    return appointmentModel.find({ userId, status: 'confirmed' }).sort({ date: -1 });
+    console.log(`Getting all appointments for user: ${userId}`);
+    const appointments = await appointmentModel.find({ userId }).sort({ date: -1 });
+    console.log(`Found ${appointments.length} appointments for user ${userId}`);
+    return appointments;
   }
 
   async getAppointmentsByUserIdPaginated(
@@ -49,25 +52,42 @@ export class UserRepository
     dateFrom?: string,
     dateTo?: string
   ): Promise<PaginationResult<AppointmentTypes>> {
+    console.log(`Getting paginated appointments for user: ${userId}`, {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      status,
+      dateFrom,
+      dateTo
+    });
+    
     const skip = (page - 1) * limit;
     
+    // Base filter - show all appointments for the user
+    const filterQuery: any = { userId };
     
-    const filterQuery: any = { userId, status: 'confirmed' };
-    
+    // Apply status filter if specified
     if (status && status !== 'all') {
       if (status === 'cancelled') {
         filterQuery.cancelled = true;
       } else if (status === 'active') {
         filterQuery.cancelled = false;
+      } else if (status === 'confirmed') {
+        filterQuery.status = 'confirmed';
+      } else if (status === 'pending') {
+        filterQuery.status = 'pending';
       }
     }
     
+    // Apply date filters if specified
     if (dateFrom || dateTo) {
       filterQuery.slotDate = {};
       if (dateFrom) filterQuery.slotDate.$gte = dateFrom;
       if (dateTo) filterQuery.slotDate.$lte = dateTo;
     }
     
+    console.log(`Filter query:`, filterQuery);
     
     let sortQuery: any = { date: -1 }; // default sort
     if (sortBy) {
@@ -79,6 +99,8 @@ export class UserRepository
       .sort(sortQuery)
       .skip(skip)
       .limit(limit);
+    
+    console.log(`Found ${totalCount} total appointments, returning ${data.length} for page ${page}`);
     
     const totalPages = Math.ceil(totalCount / limit);
     
@@ -126,16 +148,45 @@ async findPayableAppointment(
   userId: string,
   appointmentId: string
 ): Promise<AppointmentDocument> {
-  const appointment = await appointmentModel.findById<AppointmentDocument>(appointmentId);
-  if (!appointment) throw new Error("Appointment not found");
+  try {
+    console.log(`Finding payable appointment: ${appointmentId} for user: ${userId}`);
+    
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+      console.log(`Invalid ObjectId: ${appointmentId}`);
+      throw new Error("Invalid appointment ID");
+    }
+    
+    const appointment = await appointmentModel.findById<AppointmentDocument>(appointmentId);
+    if (!appointment) {
+      console.log(`Appointment not found: ${appointmentId}`);
+      throw new Error("Appointment not found");
+    }
 
-  if (appointment.userId.toString() !== userId.toString()) {
-    throw new Error("Unauthorized");
+    console.log(`Found appointment:`, {
+      appointmentId: appointment._id,
+      userId: appointment.userId,
+      requestedUserId: userId,
+      cancelled: appointment.cancelled,
+      payment: appointment.payment,
+      amount: appointment.amount
+    });
+
+    if (appointment.userId.toString() !== userId.toString()) {
+      console.log(`Unauthorized access attempt`);
+      throw new Error("Unauthorized");
+    }
+
+    if (appointment.cancelled) {
+      console.log(`Appointment already cancelled`);
+      throw new Error("Appointment cancelled");
+    }
+
+    return appointment;
+  } catch (error) {
+    console.error(`Error in findPayableAppointment:`, error);
+    throw error;
   }
-
-  if (appointment.cancelled) throw new Error("Appointment cancelled");
-
-  return appointment;
 }
 
 

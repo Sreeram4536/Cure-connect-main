@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { AppContext } from "../../context/AppContext";
 import { clearUserAccessToken } from "../../context/tokenManagerUser";
 import { logoutUserAPI } from "../../services/authServices";
-import { Home, Users, Info, Phone, User, LogOut, Menu, X } from "lucide-react";
+import { Home, Users, Info, Phone, User, LogOut, Menu, X, Wallet } from "lucide-react";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -115,6 +115,14 @@ const logout = async () => {
                     >
                       <Home className="w-4 h-4" />
                       <span>My Appointments</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => navigate("/my-wallet")}
+                      className="flex items-center gap-3 w-full text-left px-3 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-300"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      <span>My Wallet</span>
                     </button>
                     
                     <div className="border-t border-gray-200 pt-3">

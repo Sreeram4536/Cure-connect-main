@@ -59,6 +59,17 @@ export const HttpResponse = {
   // Payment
   PAYMENT_SUCCESS: "Payment successful",
   PAYMENT_FAILED: "Payment transaction failed",
+  
+  // Wallet
+  WALLET_INSUFFICIENT_BALANCE: "Insufficient wallet balance",
+  WALLET_PAYMENT_SUCCESS: "Payment successful using wallet",
+  WALLET_PAYMENT_FAILED: "Wallet payment failed",
+  WALLET_NOT_FOUND: "Wallet not found",
+  WALLET_CREATED: "Wallet created successfully",
+  WALLET_BALANCE_UPDATED: "Wallet balance updated successfully",
+  WALLET_TRANSACTION_ADDED: "Transaction added to wallet",
+  WALLET_REFUND_SUCCESS: "Refund processed successfully to wallet",
+  WALLET_DEDUCTION_SUCCESS: "Amount deducted from wallet successfully",
 };
 
 

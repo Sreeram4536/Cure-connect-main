@@ -42,7 +42,7 @@ const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
   },
 
   date: {
-    type: Number,
+    type: Date,
     required: true,
   },
 

@@ -29,7 +29,9 @@ const authUser = async (
     }
 
     const decoded = verifyAccessToken(token);
+    console.log("JWT decoded:", decoded);
     (req as any).userId = decoded.id;
+    console.log("Set userId in request:", (req as any).userId);
     next();
   } catch (error: any) {
     console.log("Auth Error:", error.message);

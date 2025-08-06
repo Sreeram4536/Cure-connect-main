@@ -9,13 +9,27 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "../../utils/jwt.utils";
+import { WalletService } from "./WalletService";
+import { UserRepository } from "../../repositories/implementation/UserRepository";
+import { SlotLockService } from "./SlotLockService";
+import { AppointmentRepository } from "../../repositories/implementation/AppointmentRepository";
+import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
 
 export interface DoctorDocument extends DoctorData {
   _id: string;
 }
 
 export class DoctorService implements IDoctorService {
-  constructor(private _doctorRepository: IDoctorRepository) {}
+  constructor(
+    private _doctorRepository: IDoctorRepository,
+    private readonly _walletService = new WalletService(),
+    private readonly _userRepository = new UserRepository(),
+    private readonly _slotLockService = new SlotLockService(
+      new AppointmentRepository(),
+      new UserRepository(),
+      new DoctorRepository()
+    )
+  ) {}
 
   async registerDoctor(data: DoctorDTO): Promise<void> {
     const {
@@ -102,7 +116,7 @@ export class DoctorService implements IDoctorService {
     if (!match) throw new Error("Incorrect password");
 
     const token = generateAccessToken(doctor._id!, doctor.email, "doctor");
-    const refreshToken = generateRefreshToken(doctor._id!);
+    const refreshToken = generateRefreshToken(doctor._id!, "doctor");
 
     return { token, refreshToken };
   }
@@ -141,13 +155,47 @@ export class DoctorService implements IDoctorService {
   }
 
   async cancelAppointment(docId: string, appointmentId: string): Promise<void> {
-    const appointment = await this._doctorRepository.findAppointmentById(
-      appointmentId
-    );
-    if (!appointment || appointment.docId.toString() !== docId.toString()) {
-      throw new Error("Cancellation Failed");
+    try {
+      console.log(`Doctor cancelling appointment: ${appointmentId} by doctor: ${docId}`);
+      const appointment = await this._doctorRepository.findPayableAppointment(
+        docId,
+        appointmentId
+      );
+      console.log(`Found appointment for doctor cancellation:`, {
+        appointmentId: (appointment as any)._id,
+        userId: appointment.userId,
+        docId: appointment.docId,
+        payment: appointment.payment,
+        amount: appointment.amount,
+        status: appointment.status
+      });
+      
+      // Process refund BEFORE cancelling the appointment
+      if (appointment.payment && appointment.amount > 0) {
+        console.log(`Processing refund to wallet for doctor cancellation: ${appointment.amount}`);
+        // Ensure wallet exists before refunding
+        await this._walletService.ensureWalletExists(appointment.userId);
+        await this._walletService.processAppointmentCancellation(
+          appointment.userId,
+          appointmentId,
+          appointment.amount,
+          'doctor'
+        );
+        console.log(`Refund processed successfully for doctor cancellation`);
+      } else {
+        console.log(`No refund needed for doctor cancellation - payment: ${appointment.payment}, amount: ${appointment.amount}`);
+      }
+      
+      // Use SlotLockService to properly cancel appointment and release slot AFTER refund
+      const result = await this._slotLockService.cancelAppointment({ appointmentId });
+      console.log(`Slot lock service result:`, result);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to cancel appointment");
+      }
+    } catch (error) {
+      console.error(`Error in doctor cancelAppointment:`, error);
+      throw error;
     }
-    await this._doctorRepository.cancelAppointment(appointmentId);
   }
 
   async getDoctorProfile(docId: string): Promise<DoctorData | null> {
@@ -202,5 +250,47 @@ export class DoctorService implements IDoctorService {
 
   async getDoctorsByStatusAndLimit(status: string, limit: number): Promise<Partial<DoctorData>[]> {
     return this._doctorRepository.getDoctorsByStatusAndLimit(status, limit);
+  }
+
+  async getDoctorDashboard(docId: string): Promise<any> {
+    try {
+      console.log(`Getting dashboard data for doctor: ${docId}`);
+      
+      // Get doctor's appointments
+      const appointments = await this._doctorRepository.findAppointmentsByDoctorId(docId);
+      console.log(`Found ${appointments.length} appointments for doctor ${docId}`);
+      
+      // Calculate dashboard metrics
+      const totalAppointments = appointments.length;
+      const confirmedAppointments = appointments.filter(apt => apt.isConfirmed && !apt.cancelled).length;
+      const pendingAppointments = appointments.filter(apt => !apt.isConfirmed && !apt.cancelled).length;
+      const cancelledAppointments = appointments.filter(apt => apt.cancelled).length;
+      
+      // Calculate total earnings (only from confirmed appointments)
+      const totalEarnings = appointments
+        .filter(apt => apt.isConfirmed && !apt.cancelled && apt.payment)
+        .reduce((sum, apt) => sum + (apt.amount || 0), 0);
+      
+      // Get latest appointments (last 5)
+      const latestAppointments = appointments
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
+      
+      const dashboardData = {
+        totalAppointments,
+        confirmedAppointments,
+        pendingAppointments,
+        cancelledAppointments,
+        totalEarnings,
+        latestAppointments,
+        upcomingAppointments: confirmedAppointments // For now, use confirmed as upcoming
+      };
+      
+      console.log(`Dashboard data calculated:`, dashboardData);
+      return dashboardData;
+    } catch (error) {
+      console.error(`Error in getDoctorDashboard:`, error);
+      throw error;
+    }
   }
 }

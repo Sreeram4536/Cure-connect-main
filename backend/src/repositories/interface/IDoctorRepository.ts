@@ -21,6 +21,7 @@ export interface IDoctorRepository {
   findAppointmentsByDoctorId(docId: string): Promise<AppointmentTypes[]>;
   getAppointmentsPaginated(docId: string, page: number, limit: number): Promise<PaginationResult<AppointmentTypes>>;
   findAppointmentById(id: string): Promise<AppointmentTypes | null>;
+  findPayableAppointment(docId: string, appointmentId: string): Promise<AppointmentTypes>;
   markAppointmentAsConfirmed(id: string): Promise<void>;
   cancelAppointment(id: string): Promise<void>;
   getDoctorProfileById(id: string): Promise<DoctorData | null>;

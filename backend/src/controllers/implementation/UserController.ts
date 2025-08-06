@@ -110,9 +110,9 @@ export class UserController implements IUserController {
 
   res.cookie("refreshToken_user", refreshToken, {
     httpOnly: true,
-    path: "/api/user/refresh-token",
+    path: "/",
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -265,9 +265,9 @@ export class UserController implements IUserController {
 
       res.cookie("refreshToken_user", refreshToken, {
         httpOnly: true,
-        path: "/api/user/refresh-token",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -308,13 +308,13 @@ export class UserController implements IUserController {
 
 const user = await this._userService.getUserById(decoded.id);
 const newAccessToken = generateAccessToken(user._id, user.email, "user");
-const newRefreshToken = generateRefreshToken(user._id);
+const newRefreshToken = generateRefreshToken(user._id, "user");
 
       res.cookie("refreshToken_user", newRefreshToken, {
         httpOnly: true,
-        path: "/api/user/refresh-token",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -343,9 +343,9 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
     res.clearCookie("refreshToken_user", {
       httpOnly: true,
-      path: "/api/user/refresh-token",
+      path: "/",
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     });
     res.status(HttpStatus.OK).json({
       success: true,
@@ -421,8 +421,19 @@ const newRefreshToken = generateRefreshToken(user._id);
       const dateFrom = req.query.dateFrom as string;
       const dateTo = req.query.dateTo as string;
 
+      console.log(`ListAppointmentPaginated called with:`, {
+        userId,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        status,
+        dateFrom,
+        dateTo
+      });
+
       if (page && limit) {
-       
+        console.log(`Calling paginated appointments`);
         const result = await this._userService.listUserAppointmentsPaginated(
           userId,
           page,
@@ -433,13 +444,23 @@ const newRefreshToken = generateRefreshToken(user._id);
           dateFrom,
           dateTo
         );
+        console.log(`Paginated result:`, { 
+          totalCount: result.totalCount, 
+          dataLength: result.data.length,
+          currentPage: result.currentPage,
+          totalPages: result.totalPages
+        });
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
-        
+        console.log(`Calling non-paginated appointments`);
         const appointments = await this._userService.listUserAppointments(userId);
+        console.log(`Non-paginated result:`, { 
+          appointmentsLength: appointments.length 
+        });
         res.status(HttpStatus.OK).json({ success: true, data: appointments });
       }
     } catch (error) {
+      console.error(`Error in listAppointmentPaginated:`, error);
       res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: (error as Error).message });
@@ -665,4 +686,177 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
   }
 
+  async getWalletBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
+        return;
+      }
+
+      const balance = await this._userService.getWalletBalance(userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: { balance },
+        message: "Wallet balance retrieved successfully"
+      });
+    } catch (error) {
+      console.error("Error getting wallet balance:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to get wallet balance"
+      });
+    }
+  }
+
+  async getWalletTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
+        return;
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const sortBy = req.query.sortBy as string || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+
+      const transactions = await this._userService.getWalletTransactions(
+        userId,
+        page,
+        limit,
+        sortBy,
+        sortOrder
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: transactions,
+        message: "Wallet transactions retrieved successfully"
+      });
+    } catch (error) {
+      console.error("Error getting wallet transactions:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to get wallet transactions"
+      });
+    }
+  }
+
+  async getWalletDetails(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const walletDetails = await this._userService.getWalletDetails(userId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: walletDetails,
+      });
+    } catch (error) {
+      console.error("Error getting wallet details:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
+    }
+  }
+
+  async processWalletPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { docId, slotDate, slotTime, amount, appointmentId } = req.body;
+
+      if (!docId || !slotDate || !slotTime || !amount || !appointmentId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
+        return;
+      }
+
+      const paymentData = {
+        userId,
+        docId,
+        slotDate,
+        slotTime,
+        amount,
+        appointmentId,
+      };
+
+      const result = await this._userService.processWalletPayment(paymentData);
+      
+      if (result.success) {
+        res.status(HttpStatus.OK).json(result);
+      } else {
+        res.status(HttpStatus.BAD_REQUEST).json(result);
+      }
+    } catch (error) {
+      console.error("Error processing wallet payment:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
+    }
+  }
+
+  async finalizeWalletPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { appointmentId, amount } = req.body;
+
+      if (!appointmentId || !amount) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
+        return;
+      }
+
+      const result = await this._userService.finalizeWalletPayment(appointmentId, userId, amount);
+      
+      if (result.success) {
+        res.status(HttpStatus.OK).json(result);
+      } else {
+        res.status(HttpStatus.BAD_REQUEST).json(result);
+      }
+    } catch (error) {
+      console.error("Error finalizing wallet payment:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
+    }
+  }
+
+  async validateWalletBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { amount } = req.body;
+
+      if (!amount) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
+        return;
+      }
+
+      const hasSufficientBalance = await this._userService.validateWalletBalance(userId, amount);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        hasSufficientBalance,
+        message: hasSufficientBalance 
+          ? "Sufficient balance available" 
+          : HttpResponse.WALLET_INSUFFICIENT_BALANCE,
+      });
+    } catch (error) {
+      console.error("Error validating wallet balance:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
+    }
+  }
 }

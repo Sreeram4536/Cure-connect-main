@@ -21,7 +21,15 @@ doctorApi.interceptors.request.use(
 );
 
 doctorApi.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Check for new access token in response header
+    const newToken = res.headers['new-access-token'];
+    if (newToken) {
+      console.log('New access token received from server');
+      updateDoctorAccessToken(newToken);
+    }
+    return res;
+  },
   async (err) => {
     const originalRequest = err.config;
 

@@ -5,6 +5,7 @@ import { AppointmentTypes } from "../../types/appointment";
 import { DoctorData, DoctorDocument } from "../../types/doctor";
 import { IDoctorRepository, PaginationResult } from "../interface/IDoctorRepository";
 import { releaseSlotLock } from "../../utils/slot.util";
+import mongoose from "mongoose";
 
 export class DoctorRepository
   extends BaseRepository<DoctorDocument>
@@ -40,6 +41,45 @@ export class DoctorRepository
 
   async findAppointmentById(id: string): Promise<AppointmentTypes | null> {
     return appointmentModel.findById(id);
+  }
+
+  async findPayableAppointment(
+    docId: string,
+    appointmentId: string
+  ): Promise<AppointmentTypes> {
+    try {
+      console.log(`Finding payable appointment: ${appointmentId} for doctor: ${docId}`);
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+        console.log(`Invalid ObjectId: ${appointmentId}`);
+        throw new Error("Invalid appointment ID");
+      }
+      const appointment = await appointmentModel.findById<AppointmentTypes>(appointmentId);
+      if (!appointment) {
+        console.log(`Appointment not found: ${appointmentId}`);
+        throw new Error("Appointment not found");
+      }
+      console.log(`Found appointment:`, {
+        appointmentId: (appointment as any)._id,
+        docId: appointment.docId,
+        requestedDocId: docId,
+        cancelled: appointment.cancelled,
+        payment: appointment.payment,
+        amount: appointment.amount
+      });
+      if (appointment.docId.toString() !== docId.toString()) {
+        console.log(`Unauthorized access attempt`);
+        throw new Error("Unauthorized");
+      }
+      if (appointment.cancelled) {
+        console.log(`Appointment already cancelled`);
+        throw new Error("Appointment cancelled");
+      }
+      return appointment;
+    } catch (error) {
+      console.error(`Error in findPayableAppointment:`, error);
+      throw error;
+    }
   }
 
   async markAppointmentAsConfirmed(id: string): Promise<void> {

@@ -21,7 +21,15 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Check for new access token in response header
+    const newToken = res.headers['new-access-token'];
+    if (newToken) {
+      console.log('New access token received from server');
+      updateUserAccessToken(newToken);
+    }
+    return res;
+  },
   async (err) => {
     const originalRequest = err.config;
 

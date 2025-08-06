@@ -3,17 +3,43 @@ export interface AppointmentTypes {
   docId: string;
   slotDate: string;
   slotTime: string;
-  userData: Record<string, any>;
-  docData: Record<string, any>;
+  userData: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  docData: {
+    name: string;
+    speciality: string;
+    image: string;
+  };
   amount: number;
-  date: number | Date;
-  cancelled?: boolean;
-  payment?: boolean;
-  isConfirmed?: boolean;
-  isCompleted?: boolean;
-  razorpayOrderId?: string | null;
-  status?: 'pending' | 'confirmed' | 'cancelled';
-  lockExpiresAt?: Date | null;
+  date: Date;
+  cancelled: boolean;
+  payment: boolean;
+  status: "pending" | "confirmed" | "cancelled";
+  lockExpiresAt?: Date;
+  isConfirmed: boolean;
+  isCompleted: boolean;
+  razorpayOrderId?: string;
+  paymentMethod?: 'razorpay' | 'wallet';
+  walletTransactionId?: string;
+}
+
+export interface WalletPaymentData {
+  userId: string;
+  docId: string;
+  slotDate: string;
+  slotTime: string;
+  amount: number;
+  appointmentId: string;
+}
+
+export interface WalletPaymentResponse {
+  success: boolean;
+  message: string;
+  appointmentId?: string;
+  transactionId?: string;
 }
 
 

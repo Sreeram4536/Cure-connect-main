@@ -11,12 +11,24 @@ import { IDoctorRepository } from "../../repositories/interface/IDoctorRepositor
 import { adminData, AdminDocument } from "../../types/admin";
 import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.utils";
 import { PaginationResult } from "../../repositories/interface/IAdminRepository";
+import { WalletService } from "./WalletService";
+import { UserRepository } from "../../repositories/implementation/UserRepository";
+import { SlotLockService } from "./SlotLockService";
+import { AppointmentRepository } from "../../repositories/implementation/AppointmentRepository";
+import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
 dotenv.config();
 
 export class AdminService implements IAdminService {
   constructor(
     private readonly _adminRepository: IAdminRepository,
-    private readonly _doctorRepository: IDoctorRepository
+    private readonly _doctorRepository: IDoctorRepository,
+    private readonly _walletService = new WalletService(),
+    private readonly _userRepository = new UserRepository(),
+    private readonly _slotLockService = new SlotLockService(
+      new AppointmentRepository(),
+      new UserRepository(),
+      new DoctorRepository()
+    )
   ) {}
 
 async login(email: string, password: string): Promise<{ admin: AdminDocument, accessToken: string, refreshToken: string }> {
@@ -27,7 +39,7 @@ async login(email: string, password: string): Promise<{ admin: AdminDocument, ac
   if (!isMatch) throw new Error("Invalid credentials");
 
   const accessToken = generateAccessToken(admin._id.toString(), admin.email, "admin");
-  const refreshToken = generateRefreshToken(admin._id.toString());
+  const refreshToken = generateRefreshToken(admin._id.toString(), "admin");
 
   return { admin, accessToken, refreshToken };
 }
@@ -170,6 +182,44 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
   }
 
   async cancelAppointment(appointmentId: string): Promise<void> {
-    await this._adminRepository.cancelAppointment(appointmentId);
+    try {
+      console.log(`Admin cancelling appointment: ${appointmentId}`);
+      
+      // Get appointment details to check if payment was made
+      const appointment = await this._adminRepository.findPayableAppointment(appointmentId);
+      
+      console.log(`Found appointment for admin cancellation:`, {
+        appointmentId: appointment._id,
+        userId: appointment.userId,
+        payment: appointment.payment,
+        amount: appointment.amount,
+        status: appointment.status
+      });
+      
+      // Process refund BEFORE cancelling the appointment
+      if (appointment.payment && appointment.amount > 0) {
+        console.log(`Processing refund to wallet for admin cancellation: ${appointment.amount}`);
+        await this._walletService.processAppointmentCancellation(
+          appointment.userId,
+          appointmentId,
+          appointment.amount,
+          'admin'
+        );
+        console.log(`Refund processed successfully for admin cancellation`);
+      } else {
+        console.log(`No refund needed for admin cancellation - payment: ${appointment.payment}, amount: ${appointment.amount}`);
+      }
+      
+      // Use SlotLockService to properly cancel appointment and release slot AFTER refund
+      const result = await this._slotLockService.cancelAppointment({ appointmentId });
+      console.log(`Slot lock service result:`, result);
+      
+      if (!result.success) {
+        throw new Error(result.message || "Failed to cancel appointment");
+      }
+    } catch (error) {
+      console.error(`Error in admin cancelAppointment:`, error);
+      throw error;
+    }
   }
 }

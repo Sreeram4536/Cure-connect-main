@@ -115,9 +115,9 @@ export class DoctorController implements IDoctorController {
 
       res.cookie("refreshToken_doctor", refreshToken, {
         httpOnly: true,
-        path: "/api/doctor/refresh-token",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -158,20 +158,19 @@ if (!doctor) {
   return
 }
 const newAccessToken = generateAccessToken(doctor._id!, doctor.email, "doctor");
-const newRefreshToken = generateRefreshToken(doctor._id!);
+const newRefreshToken = generateRefreshToken(doctor._id!, "doctor");
 
       res.cookie("refreshToken_doctor", newRefreshToken, {
         httpOnly: true,
-        path: "/api/doctor/refresh-token",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
       res.status(HttpStatus.OK).json({
         success: true,
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
       });
     } catch (error) {
       res.status(HttpStatus.UNAUTHORIZED).json({
@@ -198,9 +197,9 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
     }
     res.clearCookie("refreshToken_doctor", {
       httpOnly: true,
-      path: "/api/doctor/refresh-token",
+      path: "/",
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     });
     res.status(HttpStatus.OK).json({
       success: true,
@@ -252,13 +251,18 @@ const newRefreshToken = generateRefreshToken(doctor._id!);
 
       await this._doctorService.cancelAppointment(docId, appointmentId);
 
-      res
-        .status(HttpStatus.OK)
-        .json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED });
+      // After cancellation, return updated appointments (paginated if page/limit provided)
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      if (page && limit) {
+        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit);
+        res.status(200).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, ...result });
+      } else {
+        const appointments = await this._doctorService.getDoctorAppointments(docId);
+        res.status(200).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, appointments });
+      }
     } catch (error) {
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: (error as Error).message });
+      res.status(500).json({ success: false, message: (error as Error).message });
     }
   }
 
@@ -380,6 +384,25 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
       res.status(200).json({ success: true, doctors });
     } catch (error) {
       res.status(500).json({ success: false, message: (error as Error).message });
+    }
+  }
+
+  async doctorDashboard(req: Request, res: Response): Promise<void> {
+    try {
+      const docId = (req as any).docId;
+      console.log(`Getting dashboard data for doctor: ${docId}`);
+      console.log(`Request headers:`, req.headers);
+      console.log(`Request cookies:`, req.cookies);
+      
+      const dashboardData = await this._doctorService.getDoctorDashboard(docId);
+      console.log(`Dashboard data retrieved:`, dashboardData);
+      res.status(HttpStatus.OK).json({ success: true, dashData: dashboardData });
+    } catch (error) {
+      console.error(`Error in doctorDashboard:`, error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ 
+        success: false, 
+        message: (error as Error).message 
+      });
     }
   }
 

@@ -11,6 +11,7 @@ import About from "../pages/user/About";
 import Login from "../pages/user/Login";
 import MyProfile from "../pages/user/MyProfile";
 import MyAppointments from "../pages/user/MyAppointments";
+import MyWallet from "../pages/user/MyWallet";
 import Appointment from "../pages/user/Appointment";
 import EmailVerificationPage from "../pages/user/EmailVerify";
 import OtpVerificationPage from "../pages/user/OTPVerification";
@@ -87,6 +88,14 @@ const UserRoutes = () => {
         element={
           <UserLayout>
             <MyAppointments />
+          </UserLayout>
+        }
+      />
+      <Route
+        path="/my-wallet"
+        element={
+          <UserLayout>
+            <MyWallet />
           </UserLayout>
         }
       />

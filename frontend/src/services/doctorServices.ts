@@ -52,8 +52,12 @@ export const AppointmentConfirmAPI = (appointmentId: string) => {
 };
 
 // Cancel appointment
-export const AppointmentCancelAPI = (appointmentId: string) => {
-  return api.patch(`/api/doctor/appointment/cancel/${appointmentId}`);
+export const AppointmentCancelAPI = (appointmentId: string, page?: number, limit?: number) => {
+  let url = `/api/doctor/appointments/${appointmentId}/cancel`;
+  if (page && limit) {
+    url += `?page=${page}&limit=${limit}`;
+  }
+  return api.patch(url);
 };
 
 export const ReleaseSlotLockAPI = (appointmentId: string) => {
@@ -63,6 +67,11 @@ export const ReleaseSlotLockAPI = (appointmentId: string) => {
 // Get doctor profile
 export const getDoctorProfileAPI = () => {
   return api.get(DOCTOR_API.PROFILE);
+};
+
+// Get doctor dashboard data
+export const doctorDashboardAPI = () => {
+  return api.get("/api/doctor/dashboard");
 };
 
 // Update doctor profile

@@ -32,7 +32,7 @@ authRouter.get(
       httpOnly: true,
       path: "/api/user/refresh-token",
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -40,5 +40,7 @@ authRouter.get(
     res.redirect(`${process.env.GOOGLE_REDIRECT_URL}?token=${accessToken}`);
   }
 );
+
+
 
 export default authRouter;

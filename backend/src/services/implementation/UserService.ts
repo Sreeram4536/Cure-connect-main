@@ -4,7 +4,7 @@ import { userData } from "../../types/user";
 import bcrypt from "bcrypt";
 import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
-import { AppointmentTypes } from "../../types/appointment";
+import { AppointmentTypes, WalletPaymentData, WalletPaymentResponse } from "../../types/appointment";
 import { isValidDateOfBirth, isValidPhone } from "../../utils/validator";
 import { DoctorData } from "../../types/doctor";
 import { PaymentService } from "./PaymentService";
@@ -16,17 +16,26 @@ import {
 import { DoctorSlotService } from "./SlotService";
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 import { ISlotLockService } from "../interface/ISlotLockService";
+import { WalletService } from "./WalletService";
+import { WalletTransaction } from "../../types/wallet";
+import { WalletPaymentService } from "./WalletPaymentService";
+import { HttpResponse } from "../../constants/responseMessage.constants";
 
 export interface UserDocument extends userData {
   _id: string;
 }
 
 export class UserService implements IUserService {
+  private _walletPaymentService: WalletPaymentService;
+
   constructor(
     private _userRepository: IUserRepository,
     private _paymentService = new PaymentService(),
-    private _slotLockService: ISlotLockService
-  ) {}
+    private _slotLockService: ISlotLockService,
+    private _walletService = new WalletService()
+  ) {
+    this._walletPaymentService = new WalletPaymentService();
+  }
 
   async register(
     name: string,
@@ -44,8 +53,11 @@ export class UserService implements IUserService {
       password: hashedPassword,
     })) as UserDocument;
 
+    // Create wallet for new user
+    await this._walletService.createWallet(user._id);
+
     const token = generateAccessToken(user._id, user.email, "user");
-    const refreshToken = generateRefreshToken(user._id);
+    const refreshToken = generateRefreshToken(user._id, "user");
 
     return { token, refreshToken };
   }
@@ -61,8 +73,11 @@ export class UserService implements IUserService {
     if (user.isBlocked)
       throw new Error("Your account has been blocked by admin");
 
+    // Ensure wallet exists for user
+    await this._walletService.createWallet(user._id);
+
     const token = generateAccessToken(user._id, user.email, "user");
-    const refreshToken = generateRefreshToken(user._id);
+    const refreshToken = generateRefreshToken(user._id, "user");
 
     return { user, token, refreshToken };
   }
@@ -112,22 +127,19 @@ export class UserService implements IUserService {
   async hashPassword(password: string) {
     return await bcrypt.hash(password, 10);
   }
-async finalizeRegister(userData: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<UserDocument> {
-  const existing = await this._userRepository.findByEmail(userData.email);
-  if (existing) throw new Error("User already exists");
 
-  const newUser = (await this._userRepository.create({
-    name: userData.name,
-    email: userData.email,
-    password: userData.password, // already hashed!
-  })) as UserDocument;
-
-  return newUser;
-}
+  async finalizeRegister(userData: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<UserDocument> {
+    const user = (await this._userRepository.create(userData)) as UserDocument;
+    
+    // Create wallet for new user
+    await this._walletService.createWallet(user._id);
+    
+    return user;
+  }
 
   async resetPassword(
     email: string,
@@ -142,13 +154,11 @@ async finalizeRegister(userData: {
   async getUserById(id: string): Promise<UserDocument> {
     const user = await this._userRepository.findById(id);
     if (!user) throw new Error("User not found");
-    return user;
+    return user as UserDocument;
   }
 
   async getDoctorById(id: string): Promise<DoctorData> {
-    const doctor = (await this._userRepository.findDoctorById(
-      id
-    )) as DoctorData | null;
+    const doctor = await this._userRepository.findDoctorById(id);
     if (!doctor) throw new Error("Doctor not found");
     return doctor;
   }
@@ -183,8 +193,43 @@ async finalizeRegister(userData: {
     userId: string,
     appointmentId: string
   ): Promise<void> {
-    // Optionally, check user owns the appointment here if needed
-    await this._slotLockService.cancelAppointment({ appointmentId });
+    try {
+      console.log(`Attempting to cancel appointment: ${appointmentId} for user: ${userId}`);
+      
+      // Get appointment details to check if payment was made
+      const appointment = await this._userRepository.findPayableAppointment(userId, appointmentId);
+      console.log(`Found appointment:`, { 
+        appointmentId: appointment._id, 
+        payment: appointment.payment, 
+        amount: appointment.amount,
+        status: appointment.status 
+      });
+      
+      // Process refund BEFORE cancelling the appointment
+      if (appointment.payment && appointment.amount > 0) {
+        console.log(`Processing refund to wallet: ${appointment.amount}`);
+        await this._walletService.processAppointmentCancellation(
+          userId,
+          appointmentId,
+          appointment.amount,
+          'user'
+        );
+        console.log(`Refund processed successfully`);
+      } else {
+        console.log(`No refund needed - payment: ${appointment.payment}, amount: ${appointment.amount}`);
+      }
+      
+      // Use the existing slot lock service to cancel the appointment and release the slot AFTER refund
+      const result = await this._slotLockService.cancelAppointment({ appointmentId });
+      console.log(`Slot lock service result:`, result);
+      
+      if (!result.success) {
+        throw new Error(result.message || "Failed to cancel appointment");
+      }
+    } catch (error) {
+      console.error(`Error in cancelAppointment:`, error);
+      throw error;
+    }
   }
 
   async startPayment(
@@ -196,11 +241,9 @@ async finalizeRegister(userData: {
       appointmentId
     );
 
-
     console.log("Appointment:", appointment);
-console.log("Amount:", appointment.amount);
-console.log("hii");
-
+    console.log("Amount:", appointment.amount);
+    console.log("hii");
 
     const order = await this._paymentService.createOrder(
       appointment.amount * 100,
@@ -229,6 +272,7 @@ console.log("hii");
 
     await this._userRepository.markAppointmentPaid(appointmentId);
   }
+
   async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]> {
     const slotRepository = new SlotRepository();
     const slotService = new DoctorSlotService(slotRepository);
@@ -260,5 +304,35 @@ console.log("hii");
     const hashed = await this.hashPassword(newPassword);
     await this._userRepository.updateById(userId, { password: hashed });
     return { success: true };
+  }
+
+  async getWalletBalance(userId: string): Promise<number> {
+    return await this._walletService.getWalletBalance(userId);
+  }
+
+  async getWalletTransactions(
+    userId: string,
+    page: number,
+    limit: number,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginationResult<WalletTransaction>> {
+    return await this._walletService.getWalletTransactions(userId, page, limit, sortBy, sortOrder);
+  }
+
+  async getWalletDetails(userId: string): Promise<{ balance: number; totalTransactions: number }> {
+    return await this._walletService.getWalletDetails(userId);
+  }
+
+  async processWalletPayment(paymentData: WalletPaymentData): Promise<WalletPaymentResponse> {
+    return await this._walletPaymentService.processWalletPayment(paymentData);
+  }
+
+  async finalizeWalletPayment(appointmentId: string, userId: string, amount: number): Promise<WalletPaymentResponse> {
+    return await this._walletPaymentService.finalizeWalletPayment(appointmentId, userId, amount);
+  }
+
+  async validateWalletBalance(userId: string, amount: number): Promise<boolean> {
+    return await this._walletPaymentService.validateWalletBalance(userId, amount);
   }
 }

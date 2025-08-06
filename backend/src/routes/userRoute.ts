@@ -9,13 +9,15 @@ import SlotLockController from "../controllers/implementation/SlotLockController
 import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
 import { SlotLockService } from "../services/implementation/SlotLockService";
 import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
+import { WalletService } from "../services/implementation/WalletService";
 
 const userRepository = new UserRepository();
 const paymentService = new PaymentService();
 const appointmentRepo = new AppointmentRepository();
 const doctorRepo = new DoctorRepository();
 const slotLockService = new SlotLockService(appointmentRepo, userRepository, doctorRepo);
-const userService = new UserService(userRepository, paymentService, slotLockService);
+const walletService = new WalletService();
+const userService = new UserService(userRepository, paymentService, slotLockService, walletService);
 const userController = new UserController(userService, paymentService);
 const slotLockController = new SlotLockController(slotLockService);
 
@@ -107,6 +109,44 @@ userRouter.get(
   "/doctor/:doctorId/slots/date",
   authRole(["user"]),
   userController.getAvailableSlotsForDate.bind(userController)
+);
+
+// Wallet routes
+userRouter.get(
+  "/wallet/balance",
+  authRole(["user"]),
+  userController.getWalletBalance.bind(userController)
+);
+
+userRouter.get(
+  "/wallet/transactions",
+  authRole(["user"]),
+  userController.getWalletTransactions.bind(userController)
+);
+
+userRouter.get(
+  "/wallet/details",
+  authRole(["user"]),
+  userController.getWalletDetails.bind(userController)
+);
+
+// Wallet payment routes
+userRouter.post(
+  "/appointments/wallet/payment",
+  authRole(["user"]),
+  userController.processWalletPayment.bind(userController)
+);
+
+userRouter.post(
+  "/appointments/wallet/finalize",
+  authRole(["user"]),
+  userController.finalizeWalletPayment.bind(userController)
+);
+
+userRouter.post(
+  "/wallet/validate-balance",
+  authRole(["user"]),
+  userController.validateWalletBalance.bind(userController)
 );
 
 export default userRouter;

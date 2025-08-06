@@ -1,15 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import {
+  getConversationAPI,
+  getMessagesAPI,
+  sendMessageAPI,
+  markConversationAsReadAPI,
+  createConversationAPI,
+} from "../../services/chatServices";
+import { useSocket } from "../../context/SocketContext";
+import type { ChatMessage, Conversation } from "../../types/chat";
+import SocketStatus from "../../components/common/SocketStatus";
 
-interface Message {
-  id: number;
-  text: string;
-  sender: "user" | "other";
-  timestamp: Date;
-  avatar?: string;
-}
-
-interface User {
-  id: number;
+interface Doctor {
+  id: string;
   name: string;
   avatar: string;
   isOnline: boolean;
@@ -18,58 +22,18 @@ interface User {
 }
 
 const ChatPage: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "message",
-      sender: "other",
-      timestamp: new Date(Date.now() - 300000),
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face",
-    },
-    {
-      id: 2,
-      text: "message",
-      sender: "user",
-      timestamp: new Date(Date.now() - 240000),
-    },
-    {
-      id: 3,
-      text: "message",
-      sender: "other",
-      timestamp: new Date(Date.now() - 180000),
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face",
-    },
-    {
-      id: 4,
-      text: "message",
-      sender: "user",
-      timestamp: new Date(Date.now() - 120000),
-    },
-  ]);
-
+  const { doctorId } = useParams<{ doctorId: string }>();
+  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [newMessage, setNewMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [tempMessage, setTempMessage] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const User: User = {
-    id: 1,
-    name: "You",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
-    isOnline: true,
-  };
-
-  const Doctor: User = {
-    id: 2,
-    name: "Dr. Sarah Johnson",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=100&h=100&fit=crop&crop=face",
-    isOnline: true,
-    lastSeen: "2 min ago",
-    specialization: "Cardiologist",
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,66 +43,292 @@ const ChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent | React.MouseEvent) => {
-    e.preventDefault();
-    if (newMessage.trim() === "") return;
+  // Socket.IO event listeners
+  useEffect(() => {
+    if (!socket) return;
 
-    const message: Message = {
-      id: messages.length + 1,
-      text: newMessage,
-      sender: "user",
-      timestamp: new Date(),
+    // Listen for new messages
+    socket.on('new_message', (data: { message: ChatMessage; conversationId: string }) => {
+      console.log('User received new message:', data);
+      console.log('Current conversation ID:', conversation?.id);
+      console.log('Message conversation ID:', data.conversationId);
+      console.log('Messages match:', conversation && data.conversationId === conversation.id);
+      
+      if (conversation && data.conversationId === conversation.id) {
+        console.log('Adding new message to user chat');
+        setMessages(prev => {
+          // Remove any temporary messages and add the real message
+          const filteredMessages = prev.filter(msg => !msg.id.startsWith('temp-'));
+          const newMessages = [...filteredMessages, data.message];
+          console.log('Updated messages count:', newMessages.length);
+          return newMessages;
+        });
+        // Auto-scroll to bottom when new message arrives
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      } else {
+        console.log('Message not for current conversation or no conversation loaded');
+      }
+    });
+
+    // Listen for typing indicators
+    socket.on('typing_start', (data: { userId: string; userType: string }) => {
+      if (data.userType === 'doctor') {
+        setIsTyping(true);
+      }
+    });
+
+    socket.on('typing_stopped', (data: { userId: string; userType: string }) => {
+      if (data.userType === 'doctor') {
+        setIsTyping(false);
+      }
+    });
+
+    // Listen for message read status
+    socket.on('messages_read', (data: { messageIds: string[]; conversationId: string }) => {
+      if (conversation && data.conversationId === conversation.id) {
+        setMessages(prev => 
+          prev.map(msg => 
+            data.messageIds.includes(msg.id) ? { ...msg, isRead: true } : msg
+          )
+        );
+      }
+    });
+
+    return () => {
+      socket.off('new_message');
+      socket.off('typing_start');
+      socket.off('typing_stopped');
+      socket.off('messages_read');
     };
+  }, [socket, conversation]);
 
-    setMessages([...messages, message]);
-    setNewMessage("");
+  useEffect(() => {
+    console.log("ChatPage received doctorId:", doctorId);
+    if (doctorId) {
+      loadConversation();
+    }
+  }, [doctorId]);
 
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      const responses = [
-        "That's interesting!",
-        "Tell me more about that.",
-        "I see what you mean.",
-        "That's a great point!",
-        "Thanks for sharing that.",
-      ];
-      const randomResponse =
-        responses[Math.floor(Math.random() * responses.length)];
+  // Auto-join conversation when socket connects
+  useEffect(() => {
+    if (isConnected && conversation) {
+      console.log("Socket connected, joining conversation:", conversation.id);
+      joinConversation(conversation.id);
+    }
+  }, [isConnected, conversation]);
 
-      const responseMessage: Message = {
-        id: messages.length + 2,
-        text: randomResponse,
-        sender: "other",
-        timestamp: new Date(),
-        avatar: Doctor.avatar,
-      };
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+    };
+  }, [typingTimeout]);
 
-      setMessages((prev) => [...prev, responseMessage]);
-    }, 2000);
+  const loadConversation = async () => {
+    if (!doctorId) return;
+
+    try {
+      setIsLoading(true);
+      console.log("Loading conversation for doctorId:", doctorId);
+      const response = await getConversationAPI(doctorId);
+      console.log("Conversation response:", response.data);
+      if (response.data.success) {
+        setConversation(response.data.conversation);
+        setDoctor(response.data.doctor);
+        
+        // If conversation exists, load messages and join socket room
+        if (response.data.conversation) {
+          console.log("Loading messages for conversation:", response.data.conversation.id);
+          await loadMessages(response.data.conversation.id);
+          
+          // Join socket conversation room
+          if (isConnected) {
+            joinConversation(response.data.conversation.id);
+          } else {
+            console.log("Socket not connected, will join when connected");
+            // Retry joining when socket connects
+            const checkConnection = setInterval(() => {
+              if (isConnected) {
+                joinConversation(response.data.conversation.id);
+                clearInterval(checkConnection);
+              }
+            }, 1000);
+            // Clear interval after 10 seconds
+            setTimeout(() => clearInterval(checkConnection), 10000);
+          }
+          
+          // Mark conversation as read when opened
+          console.log("Marking conversation as read:", response.data.conversation.id);
+          try {
+            await markConversationAsReadAPI(response.data.conversation.id);
+            // Mark messages as read via socket
+            const unreadMessages = messages.filter(msg => !msg.isRead && msg.senderType === 'doctor');
+            if (unreadMessages.length > 0) {
+              markAsRead(response.data.conversation.id, unreadMessages.map(msg => msg.id));
+            }
+          } catch (error) {
+            console.error("Error marking conversation as read:", error);
+          }
+        } else {
+          console.log("No conversation found, creating new one");
+          // If no conversation exists, create one
+          await createConversation();
+        }
+      }
+    } catch (error: any) {
+      console.error("Error loading conversation:", error);
+      toast.error("Failed to load conversation");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createConversation = async () => {
+    if (!doctorId) return;
+
+    try {
+      const response = await createConversationAPI(doctorId);
+      if (response.data.success) {
+        setConversation(response.data.conversation);
+        
+        // Join socket conversation room
+        if (isConnected) {
+          joinConversation(response.data.conversation.id);
+        } else {
+          console.log("Socket not connected, will join when connected");
+          // Retry joining when socket connects
+          const checkConnection = setInterval(() => {
+            if (isConnected) {
+              joinConversation(response.data.conversation.id);
+              clearInterval(checkConnection);
+            }
+          }, 1000);
+          // Clear interval after 10 seconds
+          setTimeout(() => clearInterval(checkConnection), 10000);
+        }
+        
+        toast.success("Chat started successfully!");
+      }
+    } catch (error: any) {
+      console.error("Error creating conversation:", error);
+      toast.error("Failed to start chat");
+    }
+  };
+
+  const loadMessages = async (conversationId?: string) => {
+    if (!conversationId) return;
+
+    try {
+      console.log("Loading messages for conversationId:", conversationId);
+      const response = await getMessagesAPI(conversationId, 1, 50);
+      console.log("Messages response:", response.data);
+      if (response.data.success) {
+        setMessages(response.data.messages.reverse()); // Reverse to show oldest first
+      }
+    } catch (error: any) {
+      console.error("Error loading messages:", error);
+      toast.error("Failed to load messages");
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent | React.MouseEvent) => {
+    e.preventDefault();
+    if (newMessage.trim() === "" || !conversation) return;
+
+    setIsSending(true);
+    try {
+      console.log("Sending message:", newMessage.trim(), "to conversation:", conversation.id);
+      
+      // Send message via Socket.IO for real-time delivery
+      if (isConnected) {
+        // Add temporary message to show it's being sent
+        const tempMsg: ChatMessage = {
+          id: `temp-${Date.now()}`,
+          conversationId: conversation.id,
+          senderId: "user",
+          senderType: "user" as const,
+          message: newMessage.trim(),
+          messageType: "text",
+          timestamp: new Date(),
+          isRead: false,
+          attachments: []
+        };
+        setMessages(prev => [...prev, tempMsg]);
+        setTempMessage(newMessage.trim());
+        
+        sendMessage(conversation.id, newMessage.trim(), "text");
+        setNewMessage("");
+        setIsSending(false);
+      } else {
+        // Fallback to REST API if socket is not connected
+        const response = await sendMessageAPI(
+          conversation.id,
+          newMessage.trim(),
+          "text"
+        );
+        console.log("Send message response:", response.data);
+
+        if (response.data.success) {
+          setMessages((prev) => [...prev, response.data.message]);
+          setNewMessage("");
+        }
+        setIsSending(false);
+      }
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+      setIsSending(false);
+    }
   };
 
   const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString("en-US", {
+    return new Date(date).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-gray-100 items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4 text-center">Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!doctorId || !conversation) {
+    return (
+      <div className="flex h-screen bg-gray-100 items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Chat Not Found</h2>
+          <p className="text-gray-600">The chat you're looking for doesn't exist.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
+      <SocketStatus />
       {/* LEFT SIDEBAR - Doctor Profile */}
       <div className="w-80 h-full flex flex-col items-center justify-center text-center px-4 bg-white border-r border-gray-200 p-6 shadow-md">
         <img
-          src={Doctor.avatar}
-          alt={Doctor.name}
+          src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=100&h=100&fit=crop&crop=face"}
+          alt={doctor?.name || "Doctor"}
           className="w-32 h-32 rounded-full object-cover shadow-lg mb-4"
         />
-        <h2 className="text-xl font-semibold text-gray-800">{Doctor.name}</h2>
-        <p className="text-sm text-gray-500">{Doctor.specialization}</p>
+        <h2 className="text-xl font-semibold text-gray-800">{doctor?.name || "Doctor"}</h2>
+        <p className="text-sm text-gray-500">{doctor?.specialization || "Specialist"}</p>
         <p className="mt-2 text-xs text-green-600">
-          {Doctor.isOnline ? "Online" : `Last seen ${Doctor.lastSeen}`}
+          {doctor?.isOnline ? "Online" : `Last seen ${doctor?.lastSeen || "recently"}`}
         </p>
       </div>
 
@@ -151,22 +341,22 @@ const ChatPage: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <img
-                    src={Doctor.avatar}
-                    alt={Doctor.name}
+                    src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face"}
+                    alt={doctor?.name || "Doctor"}
                     className="w-10 h-10 rounded-full object-cover"
                   />
-                  {Doctor.isOnline && (
+                  {doctor?.isOnline && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                   )}
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">
-                    {Doctor.name}
+                    {doctor?.name || "Doctor"}
                   </h2>
                   <p className="text-sm text-gray-500">
-                    {Doctor.isOnline
+                    {doctor?.isOnline
                       ? "Online"
-                      : `Last seen ${Doctor.lastSeen}`}
+                      : `Last seen ${doctor?.lastSeen || "recently"}`}
                   </p>
                 </div>
               </div>
@@ -206,56 +396,65 @@ const ChatPage: React.FC = () => {
 
             {/* Messages Container */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${
-                    message.sender === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
+              {messages.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p>No messages yet. Start the conversation!</p>
+                </div>
+              ) : (
+                messages.map((message) => (
                   <div
-                    className={`flex max-w-xs lg:max-w-md ${
-                      message.sender === "user"
-                        ? "flex-row-reverse"
-                        : "flex-row"
-                    } items-end space-x-2`}
+                    key={message.id}
+                    className={`flex ${
+                      message.senderType === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
-                    {message.sender === "other" && message.avatar && (
-                      <img
-                        src={message.avatar}
-                        alt="Avatar"
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    )}
                     <div
-                      className={`px-4 py-2 rounded-2xl ${
-                        message.sender === "user"
-                          ? "bg-blue-500 text-white rounded-br-sm"
-                          : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
-                      }`}
+                      className={`flex max-w-xs lg:max-w-md ${
+                        message.senderType === "user"
+                          ? "flex-row-reverse"
+                          : "flex-row"
+                      } items-end space-x-2`}
                     >
-                      <p className="text-sm">{message.text}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          message.sender === "user"
-                            ? "text-blue-100"
-                            : "text-gray-500"
+                      {message.senderType === "doctor" && (
+                        <img
+                          src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face"}
+                          alt="Doctor Avatar"
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      )}
+                      <div
+                        className={`px-4 py-2 rounded-2xl ${
+                          message.senderType === "user"
+                            ? "bg-blue-500 text-white rounded-br-sm"
+                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
                         }`}
                       >
-                        {formatTime(message.timestamp)}
-                      </p>
+                        <p className="text-sm">{message.message}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            message.senderType === "user"
+                              ? "text-blue-100"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {formatTime(message.timestamp)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
 
               {/* Typing Indicator */}
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="flex items-end space-x-2">
                     <img
-                      src={Doctor.avatar}
-                      alt="Avatar"
+                      src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face"}
+                      alt="Doctor Avatar"
                       className="w-8 h-8 rounded-full object-cover"
                     />
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-2">
@@ -304,34 +503,59 @@ const ChatPage: React.FC = () => {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      
+                      // Handle typing indicators
+                      if (isConnected && conversation) {
+                        // Clear existing timeout
+                        if (typingTimeout) {
+                          clearTimeout(typingTimeout);
+                        }
+                        
+                        // Start typing indicator
+                        startTyping(conversation.id);
+                        
+                        // Set timeout to stop typing indicator
+                        const timeout = setTimeout(() => {
+                          stopTyping(conversation.id);
+                        }, 2000);
+                        
+                        setTypingTimeout(timeout);
+                      }
+                    }}
                     onKeyPress={(e) =>
                       e.key === "Enter" && handleSendMessage(e)
                     }
                     placeholder="Type a message..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isSending}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={newMessage.trim() === ""}
+                  disabled={newMessage.trim() === "" || isSending}
                   className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                    />
-                  </svg>
+                  {isSending ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                      />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>

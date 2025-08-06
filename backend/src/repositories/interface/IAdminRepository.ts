@@ -25,4 +25,6 @@ export interface IAdminRepository {
   getAllAppointments():Promise<AppointmentDocument[]>;
   getAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>>;
   cancelAppointment(appointmentId: string): Promise<void>;
+  getAppointmentById(appointmentId: string): Promise<AppointmentDocument | null>;
+  findPayableAppointment(appointmentId: string): Promise<AppointmentDocument>;
 }

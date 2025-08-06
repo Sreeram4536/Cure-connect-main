@@ -13,4 +13,10 @@ export interface IUserController {
   cancelAppointment(req: Request, res: Response): Promise<void>;
   refreshToken(req: Request, res: Response): Promise<void>;
   logout(req: Request, res: Response): Promise<void>;
+  getWalletBalance(req: Request, res: Response): Promise<void>;
+  getWalletTransactions(req: Request, res: Response): Promise<void>;
+  getWalletDetails(req: Request, res: Response): Promise<void>;
+  processWalletPayment(req: Request, res: Response): Promise<void>;
+  finalizeWalletPayment(req: Request, res: Response): Promise<void>;
+  validateWalletBalance(req: Request, res: Response): Promise<void>;
 }

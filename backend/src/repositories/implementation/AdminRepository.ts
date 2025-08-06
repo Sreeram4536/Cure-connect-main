@@ -11,6 +11,7 @@ import { userData } from "../../types/user";
 import { AdminDocument } from "../../types/admin";
 import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
 import { releaseSlotLock } from "../../utils/slot.util";
+import mongoose from "mongoose";
 
 export class AdminRepository extends BaseRepository<AdminDocument> {
   constructor() {
@@ -161,6 +162,48 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     const doctor = await doctorModel.findById(docId);
     if (doctor) {
       await releaseSlotLock(doctor, slotDate, slotTime);
+    }
+  }
+
+  async getAppointmentById(appointmentId: string): Promise<AppointmentDocument | null> {
+    return appointmentModel.findById(appointmentId);
+  }
+
+  async findPayableAppointment(
+    appointmentId: string
+  ): Promise<AppointmentDocument> {
+    try {
+      console.log(`Finding payable appointment: ${appointmentId} for admin`);
+      
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+        console.log(`Invalid ObjectId: ${appointmentId}`);
+        throw new Error("Invalid appointment ID");
+      }
+      
+      const appointment = await appointmentModel.findById<AppointmentDocument>(appointmentId);
+      if (!appointment) {
+        console.log(`Appointment not found: ${appointmentId}`);
+        throw new Error("Appointment not found");
+      }
+
+      console.log(`Found appointment:`, {
+        appointmentId: appointment._id,
+        userId: appointment.userId,
+        cancelled: appointment.cancelled,
+        payment: appointment.payment,
+        amount: appointment.amount
+      });
+
+      if (appointment.cancelled) {
+        console.log(`Appointment already cancelled`);
+        throw new Error("Appointment cancelled");
+      }
+
+      return appointment;
+    } catch (error) {
+      console.error(`Error in findPayableAppointment:`, error);
+      throw error;
     }
   }
 }

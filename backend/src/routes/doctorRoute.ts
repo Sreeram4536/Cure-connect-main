@@ -80,6 +80,12 @@ doctorRouter.get(
   doctorController.doctorProfile.bind(doctorController)
 );
 
+doctorRouter.get(
+  "/dashboard",
+  authRole(["doctor"]),
+  doctorController.doctorDashboard.bind(doctorController)
+);
+
 doctorRouter.patch(
   "/profile/update",
   authRole(["doctor"]),

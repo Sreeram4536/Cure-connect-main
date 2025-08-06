@@ -7,6 +7,7 @@ import AppContextProvider from "./context/AppContext.tsx";
 import PanelContextProvider from "./context/PanelContext.tsx";
 import AdminContextProvider from "./context/AdminContext.tsx";
 import DoctorContextProvider from "./context/DoctorContext.tsx";
+import { SocketProvider } from "./context/SocketContext.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
@@ -14,7 +15,9 @@ createRoot(document.getElementById("root")!).render(
       <DoctorContextProvider>
         <PanelContextProvider>
           <AppContextProvider>
-            <App />
+            <SocketProvider>
+              <App />
+            </SocketProvider>
           </AppContextProvider>
         </PanelContextProvider>
       </DoctorContextProvider>
