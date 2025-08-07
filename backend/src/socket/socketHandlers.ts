@@ -121,8 +121,11 @@ export const setupSocketHandlers = (io: Server) => {
         console.log("Message saved to database:", newMessage._id);
 
         // Update conversation's last message
+        const lastMessageText = messageType === "image" ? "📷 Image" : 
+                               messageType === "file" ? "📎 File" : message;
+        
         await Conversation.findByIdAndUpdate(conversationId, {
-          lastMessage: message,
+          lastMessage: lastMessageText,
           lastMessageTime: new Date(),
           $inc: { unreadCount: 1 },
         });
@@ -132,7 +135,9 @@ export const setupSocketHandlers = (io: Server) => {
           messageId: newMessage._id,
           senderId: newMessage.senderId,
           senderType: newMessage.senderType,
-          message: newMessage.message
+          message: newMessage.message,
+          messageType: newMessage.messageType,
+          attachments: newMessage.attachments
         });
         
         const roomName = `conversation_${conversationId}`;
@@ -206,6 +211,42 @@ export const setupSocketHandlers = (io: Server) => {
           userType: socket.userType,
           isOnline: data.isOnline,
         });
+      }
+    });
+
+    // Handle message deletion
+    socket.on("delete_message", async (data: { messageId: string, conversationId: string }) => {
+      try {
+        const { messageId, conversationId } = data;
+        console.log(`Deleting message ${messageId} from conversation ${conversationId}`);
+
+        // Find the message and verify ownership
+        const message = await ChatMessage.findById(messageId);
+        if (!message) {
+          socket.emit("delete_error", { error: "Message not found" });
+          return;
+        }
+
+        if (message.senderId !== socket.userId) {
+          socket.emit("delete_error", { error: "Not authorized to delete this message" });
+          return;
+        }
+
+        // Delete the message
+        await ChatMessage.findByIdAndDelete(messageId);
+        console.log("Message deleted from database:", messageId);
+
+        // Emit deletion to all users in the conversation
+        const roomName = `conversation_${conversationId}`;
+        io.to(roomName).emit("message_deleted", {
+          messageId,
+          conversationId,
+          deletedBy: socket.userId,
+        });
+
+      } catch (error) {
+        console.error("Error deleting message:", error);
+        socket.emit("delete_error", { error: "Failed to delete message" });
       }
     });
 

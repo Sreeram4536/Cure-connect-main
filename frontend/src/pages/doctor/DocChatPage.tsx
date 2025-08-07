@@ -7,6 +7,8 @@ import {
   sendDoctorMessageAPI,
   markConversationAsReadAPI,
   getDoctorConversationWithUserAPI,
+  sendDoctorMessageWithFilesAPI,
+  deleteMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -22,7 +24,7 @@ interface User {
 
 const DocChatPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
+  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead, deleteMessage } = useSocket();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [user, setUser] = useState<User | null>(null);

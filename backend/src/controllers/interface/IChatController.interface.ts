@@ -16,4 +16,9 @@ export interface IChatController {
   markConversationAsRead(req: Request, res: Response): Promise<void>;
   getUnreadCount(req: Request, res: Response): Promise<void>;
   deleteMessage(req: Request, res: Response): Promise<void>;
+  
+  // File upload methods
+  uploadFile(req: Request, res: Response): Promise<void>;
+  sendMessageWithFiles(req: Request, res: Response): Promise<void>;
+  sendDoctorMessageWithFiles(req: Request, res: Response): Promise<void>;
 } 
