@@ -45,6 +45,9 @@ app.use(
   })
 );
 
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
+
 // initialize passport
 app.use(passport.initialize());
 

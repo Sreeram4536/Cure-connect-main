@@ -7,6 +7,8 @@ import {
   sendMessageAPI,
   markConversationAsReadAPI,
   createConversationAPI,
+  sendMessageWithFilesAPI,
+  deleteMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -23,7 +25,7 @@ interface Doctor {
 
 const ChatPage: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
-  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
+  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead, deleteMessage } = useSocket();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
@@ -33,7 +35,11 @@ const ChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showFilePreview, setShowFilePreview] = useState<boolean>(false);
+  const [dragActive, setDragActive] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,11 +102,27 @@ const ChatPage: React.FC = () => {
       }
     });
 
+    // Listen for message deletion
+    socket.on('message_deleted', (data: { messageId: string; conversationId: string; deletedBy: string }) => {
+      if (conversation && data.conversationId === conversation.id) {
+        console.log('Message deleted:', data.messageId);
+        setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+      }
+    });
+
+    // Listen for deletion errors
+    socket.on('delete_error', (data: { error: string }) => {
+      console.error('Delete error:', data.error);
+      toast.error(data.error);
+    });
+
     return () => {
       socket.off('new_message');
       socket.off('typing_start');
       socket.off('typing_stopped');
       socket.off('messages_read');
+      socket.off('message_deleted');
+      socket.off('delete_error');
     };
   }, [socket, conversation]);
 
@@ -235,53 +257,137 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files) return;
+    
+    const validFiles = Array.from(files).filter(file => {
+      const isValidType = file.type.startsWith('image/') || 
+                         file.type === 'application/pdf' ||
+                         file.type.startsWith('text/') ||
+                         file.type.includes('document');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+      
+      if (!isValidType) {
+        toast.error(`${file.name} is not a supported file type`);
+        return false;
+      }
+      if (!isValidSize) {
+        toast.error(`${file.name} is too large. Maximum size is 10MB`);
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+    if (validFiles.length > 0) {
+      setShowFilePreview(true);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    if (selectedFiles.length === 1) {
+      setShowFilePreview(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !conversation) return;
+    if ((newMessage.trim() === "" && selectedFiles.length === 0) || !conversation) return;
 
     setIsSending(true);
     try {
       console.log("Sending message:", newMessage.trim(), "to conversation:", conversation.id);
       
-      // Send message via Socket.IO for real-time delivery
-      if (isConnected) {
-        // Add temporary message to show it's being sent
-        const tempMsg: ChatMessage = {
-          id: `temp-${Date.now()}`,
-          conversationId: conversation.id,
-          senderId: "user",
-          senderType: "user" as const,
-          message: newMessage.trim(),
-          messageType: "text",
-          timestamp: new Date(),
-          isRead: false,
-          attachments: []
-        };
-        setMessages(prev => [...prev, tempMsg]);
-        setTempMessage(newMessage.trim());
-        
-        sendMessage(conversation.id, newMessage.trim(), "text");
-        setNewMessage("");
-        setIsSending(false);
-      } else {
-        // Fallback to REST API if socket is not connected
-        const response = await sendMessageAPI(
+      // If files are selected, send with files
+      if (selectedFiles.length > 0) {
+        const response = await sendMessageWithFilesAPI(
           conversation.id,
-          newMessage.trim(),
-          "text"
+          newMessage.trim() || "Sent a file",
+          selectedFiles
         );
-        console.log("Send message response:", response.data);
-
+        
         if (response.data.success) {
           setMessages((prev) => [...prev, response.data.message]);
           setNewMessage("");
+          setSelectedFiles([]);
+          setShowFilePreview(false);
         }
-        setIsSending(false);
+      } else {
+        // Send text message via Socket.IO for real-time delivery
+        if (isConnected) {
+          // Add temporary message to show it's being sent
+          const tempMsg: ChatMessage = {
+            id: `temp-${Date.now()}`,
+            conversationId: conversation.id,
+            senderId: "user",
+            senderType: "user" as const,
+            message: newMessage.trim(),
+            messageType: "text",
+            timestamp: new Date(),
+            isRead: false,
+            attachments: []
+          };
+          setMessages(prev => [...prev, tempMsg]);
+          setTempMessage(newMessage.trim());
+          
+          sendMessage(conversation.id, newMessage.trim(), "text");
+          setNewMessage("");
+        } else {
+          // Fallback to REST API if socket is not connected
+          const response = await sendMessageAPI(
+            conversation.id,
+            newMessage.trim(),
+            "text"
+          );
+          console.log("Send message response:", response.data);
+
+          if (response.data.success) {
+            setMessages((prev) => [...prev, response.data.message]);
+            setNewMessage("");
+          }
+        }
       }
+      setIsSending(false);
     } catch (error: any) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!conversation) return;
+    
+    try {
+      if (isConnected) {
+        // Delete via socket for real-time updates
+        deleteMessage(messageId, conversation.id);
+      } else {
+        // Fallback to REST API
+        await deleteMessageAPI(messageId);
+        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        toast.success("Message deleted");
+      }
+    } catch (error: any) {
+      console.error("Error deleting message:", error);
+      toast.error("Failed to delete message");
     }
   };
 
@@ -409,7 +515,7 @@ const ChatPage: React.FC = () => {
                     key={message.id}
                     className={`flex ${
                       message.senderType === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    } group`}
                   >
                     <div
                       className={`flex max-w-xs lg:max-w-md ${
@@ -425,23 +531,78 @@ const ChatPage: React.FC = () => {
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       )}
-                      <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          message.senderType === "user"
-                            ? "bg-blue-500 text-white rounded-br-sm"
-                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
-                        }`}
-                      >
-                        <p className="text-sm">{message.message}</p>
-                        <p
-                          className={`text-xs mt-1 ${
+                      <div className="relative">
+                        <div
+                          className={`px-4 py-2 rounded-2xl ${
                             message.senderType === "user"
-                              ? "text-blue-100"
-                              : "text-gray-500"
+                              ? "bg-blue-500 text-white rounded-br-sm"
+                              : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
                           }`}
                         >
-                          {formatTime(message.timestamp)}
-                        </p>
+                          {/* Message content based on type */}
+                          {message.messageType === "image" && message.attachments?.length ? (
+                            <div className="space-y-2">
+                              {message.attachments.map((attachment, index) => (
+                                <img
+                                  key={index}
+                                  src={`http://localhost:4000${attachment}`}
+                                  alt="Shared image"
+                                  className="max-w-full h-auto rounded-lg cursor-pointer"
+                                  onClick={() => window.open(`http://localhost:4000${attachment}`, '_blank')}
+                                />
+                              ))}
+                              {message.message && message.message !== "Sent a file" && (
+                                <p className="text-sm mt-2">{message.message}</p>
+                              )}
+                            </div>
+                          ) : message.messageType === "file" && message.attachments?.length ? (
+                            <div className="space-y-2">
+                              {message.attachments.map((attachment, index) => (
+                                <div key={index} className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                                  <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  <a
+                                    href={`http://localhost:4000${attachment}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:underline"
+                                  >
+                                    {attachment.split('/').pop()}
+                                  </a>
+                                </div>
+                              ))}
+                              {message.message && message.message !== "Sent a file" && (
+                                <p className="text-sm mt-2">{message.message}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm">{message.message}</p>
+                          )}
+                          
+                          <p
+                            className={`text-xs mt-1 ${
+                              message.senderType === "user"
+                                ? "text-blue-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {formatTime(message.timestamp)}
+                          </p>
+                        </div>
+                        
+                        {/* Delete button for user's own messages */}
+                        {message.senderType === "user" && !message.id.startsWith('temp-') && (
+                          <button
+                            onClick={() => handleDeleteMessage(message.id)}
+                            className="absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            title="Delete message"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -477,12 +638,76 @@ const ChatPage: React.FC = () => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* File Preview */}
+            {showFilePreview && selectedFiles.length > 0 && (
+              <div className="bg-gray-50 border-t border-gray-200 px-6 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedFiles.length} file(s) selected
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedFiles([]);
+                      setShowFilePreview(false);
+                    }}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Clear all
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center bg-white rounded-lg p-2 border">
+                      {file.type.startsWith('image/') ? (
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          className="w-8 h-8 object-cover rounded mr-2"
+                        />
+                      ) : (
+                        <svg className="w-8 h-8 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
+                      <span className="text-sm text-gray-700 truncate max-w-32">{file.name}</span>
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="ml-2 text-red-500 hover:text-red-700"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Message Input */}
-            <div className="bg-white border-t border-gray-200 px-6 py-4">
+            <div 
+              className={`bg-white border-t border-gray-200 px-6 py-4 ${
+                dragActive ? 'bg-blue-50 border-blue-300' : ''
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
               <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                  multiple
+                  accept="image/*,.pdf,.txt,.doc,.docx"
+                  className="hidden"
+                />
+                
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current?.click()}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Attach files"
                 >
                   <svg
                     className="w-5 h-5"
@@ -527,7 +752,7 @@ const ChatPage: React.FC = () => {
                     onKeyPress={(e) =>
                       e.key === "Enter" && handleSendMessage(e)
                     }
-                    placeholder="Type a message..."
+                    placeholder={dragActive ? "Drop files here..." : "Type a message..."}
                     disabled={isSending}
                     className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
@@ -536,7 +761,7 @@ const ChatPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={newMessage.trim() === "" || isSending}
+                  disabled={(newMessage.trim() === "" && selectedFiles.length === 0) || isSending}
                   className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSending ? (
@@ -558,6 +783,17 @@ const ChatPage: React.FC = () => {
                   )}
                 </button>
               </div>
+              
+              {dragActive && (
+                <div className="absolute inset-0 bg-blue-100 bg-opacity-50 flex items-center justify-center border-2 border-dashed border-blue-300 rounded-lg">
+                  <div className="text-center">
+                    <svg className="w-12 h-12 mx-auto text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-blue-700 font-medium">Drop files here to upload</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

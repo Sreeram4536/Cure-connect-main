@@ -418,4 +418,133 @@ export class ChatController implements IChatController {
       });
     }
   }
+
+  // Upload file endpoint
+  async uploadFile(req: CustomRequest, res: Response): Promise<void> {
+    try {
+      if (!req.file) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "No file uploaded",
+        });
+        return;
+      }
+
+      const fileUrl = `/uploads/chat/${req.file.filename}`;
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "File uploaded successfully",
+        fileUrl: fileUrl,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  // Send message with files for users
+  async sendMessageWithFiles(req: CustomRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      const { conversationId, message, messageType = "file" } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      if (!conversationId || (!message && !files?.length)) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID and message or files are required",
+        });
+        return;
+      }
+
+      // Prepare attachments from uploaded files
+      const attachments = files?.map(file => `/uploads/chat/${file.filename}`) || [];
+
+      const messageData: ChatMessageDTO = {
+        conversationId,
+        senderId: userId,
+        senderType: "user",
+        message: message || "Sent a file",
+        messageType: files?.some(f => f.mimetype.startsWith('image/')) ? "image" : "file",
+        attachments: attachments,
+      };
+
+      const sentMessage = await this.chatService.sendMessage(messageData, userId);
+
+      res.status(HttpStatus.CREATED).json({
+        success: true,
+        message: "Message sent successfully",
+        message: sentMessage,
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  // Send message with files for doctors
+  async sendDoctorMessageWithFiles(req: CustomRequest, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.id;
+      if (!doctorId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: "Doctor not authenticated",
+        });
+        return;
+      }
+
+      const { conversationId, message, messageType = "file" } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      if (!conversationId || (!message && !files?.length)) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID and message or files are required",
+        });
+        return;
+      }
+
+      // Prepare attachments from uploaded files
+      const attachments = files?.map(file => `/uploads/chat/${file.filename}`) || [];
+
+      const messageData: ChatMessageDTO = {
+        conversationId,
+        senderId: doctorId,
+        senderType: "doctor",
+        message: message || "Sent a file",
+        messageType: files?.some(f => f.mimetype.startsWith('image/')) ? "image" : "file",
+        attachments: attachments,
+      };
+
+      const sentMessage = await this.chatService.sendMessage(messageData, doctorId);
+
+      res.status(HttpStatus.CREATED).json({
+        success: true,
+        message: "Message sent successfully",
+        message: sentMessage,
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
 } 
