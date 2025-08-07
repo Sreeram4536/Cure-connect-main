@@ -12,8 +12,12 @@ export const adminApi = axios.create({
 adminApi.interceptors.request.use(
   (config) => {
     const token = getAdminAccessToken();
+    console.log("AdminAPI: Getting admin token:", token ? "Present" : "Not present");
     if (token) {
+      console.log("AdminAPI: Adding admin token to headers");
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.log("AdminAPI: No admin token found, making request without auth header");
     }
     return config;
   },
@@ -29,6 +33,7 @@ adminApi.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
+        console.log("AdminAPI: Attempting to refresh admin token");
         const refreshRes = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/admin/refresh-token`,
           {},
@@ -36,10 +41,12 @@ adminApi.interceptors.response.use(
         );
 
         const newToken = refreshRes.data.token;
+        console.log("AdminAPI: Token refresh successful");
         updateAdminAccessToken(newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return adminApi(originalRequest);
       } catch (refreshErr) {
+        console.error("AdminAPI: Token refresh failed", refreshErr);
         return Promise.reject(refreshErr);
       }
     }

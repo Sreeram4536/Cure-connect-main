@@ -34,11 +34,7 @@ const AdminAppointments = () => {
     }
   }, [aToken, currentPage]);
 
-  useEffect(() => {
-    if (!aToken) {
-      navigate("/admin/login");
-    }
-  }, [aToken, navigate]);
+  // Token check is now handled by AdminProtectedRoute
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });

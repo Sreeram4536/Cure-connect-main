@@ -2,6 +2,7 @@ import { Route } from "react-router-dom";
 
 // Layout
 import AdminLayout from "../layouts/AdminLayout";
+import AdminProtectedRoute from "../components/admin/AdminProtectedRoute";
 
 // Admin Pages
 import AdminLogin from "../pages/admin/AdminLogin";
@@ -22,57 +23,71 @@ const AdminRoutes = () => {
       <Route
         path="/admin/dashboard"
         element={
-          <AdminLayout>
-            <AdminDashboard />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
       <Route
         path="/admin/user-management"
         element={
-          <AdminLayout>
-            <AdminUsersList />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminUsersList />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
       <Route
         path="/admin/appointments"
         element={
-          <AdminLayout>
-            <AdminAppointments />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminAppointments />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
       <Route
         path="/admin/doctor-requests"
         element={
-          <AdminLayout>
-            <AdminDoctorRequests />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminDoctorRequests />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
       <Route
         path="/admin/update-doctor"
         element={
-          <AdminLayout>
-            <AdminUpdateDoctor />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminUpdateDoctor />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
       <Route
         path="/admin/all-doctors"
         element={
-          <AdminLayout>
-            <AdminDoctorList />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminDoctorList />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
       <Route
         path="/admin/inbox"
         element={
-          <AdminLayout>
-            <AdminInbox />
-          </AdminLayout>
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminInbox />
+            </AdminLayout>
+          </AdminProtectedRoute>
         }
       />
     </>
