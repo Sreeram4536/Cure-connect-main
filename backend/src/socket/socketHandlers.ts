@@ -105,11 +105,27 @@ export const setupSocketHandlers = (io: Server) => {
 
         console.log(`Processing message from ${socket.userType} ${socket.userId} to conversation ${conversationId}`);
 
-        // Create new message in database
+        // Validate and fetch conversation to derive accurate sender type
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+          throw new Error("Conversation not found");
+        }
+
+        if (!socket.userId) {
+          throw new Error("Unauthenticated socket user");
+        }
+
+        if (socket.userId !== conversation.userId && socket.userId !== conversation.doctorId) {
+          throw new Error("Access denied to this conversation");
+        }
+
+        const derivedSenderType: "user" | "doctor" = socket.userId === conversation.userId ? "user" : "doctor";
+
+        // Create new message in database with derived sender type
         const newMessage = new ChatMessage({
           conversationId,
           senderId: socket.userId,
-          senderType: socket.userType,
+          senderType: derivedSenderType,
           message,
           messageType,
           attachments,
@@ -147,7 +163,7 @@ export const setupSocketHandlers = (io: Server) => {
         // Emit typing stopped event
         socket.to(roomName).emit("typing_stopped", {
           userId: socket.userId,
-          userType: socket.userType,
+          userType: derivedSenderType,
         });
 
       } catch (error) {

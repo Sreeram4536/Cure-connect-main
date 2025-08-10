@@ -143,8 +143,8 @@ export class ChatService implements IChatService {
       throw new Error("Access denied to this conversation");
     }
 
-    // Determine sender type
-    const senderType = conversation.userId === senderIdString ? "user" : "doctor";
+    // Determine sender type from conversation participants to avoid trusting client-provided role
+    const senderType: "user" | "doctor" = conversation.userId === senderIdString ? "user" : "doctor";
     console.log("Determined sender type:", senderType);
 
     const messageToSend: ChatMessageDTO = {

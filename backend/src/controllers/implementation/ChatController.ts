@@ -162,7 +162,7 @@ export class ChatController implements IChatController {
       const messageData: ChatMessageDTO = {
         conversationId,
         senderId: userId,
-        senderType: "user", // Will be determined by service
+        senderType: "user",
         message,
         messageType,
         attachments,
