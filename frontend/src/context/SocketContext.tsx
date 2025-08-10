@@ -66,6 +66,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         toast.error('Disconnected from chat server');
       });
 
+      // Handle message errors
+      newSocket.on('message_error', (data: { error: string }) => {
+        console.error('Socket message error:', data.error);
+        toast.error(`Message error: ${data.error}`);
+      });
+
       newSocket.on('connect_error', async (error) => {
         console.error('Socket connection error:', error);
         

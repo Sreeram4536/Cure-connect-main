@@ -39,12 +39,24 @@ export const setupSocketHandlers = (io: Server) => {
 
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-        console.log("Socket auth - Decoded token:", { id: decoded.id, role: decoded.role });
+        console.log("Socket auth - Decoded token:", { id: decoded.id, role: decoded.role, email: decoded.email });
+        
+        // Validate that we have both id and role
+        if (!decoded.id || !decoded.role) {
+          console.log("Socket auth - Missing id or role in token:", { id: decoded.id, role: decoded.role });
+          return next(new Error("Authentication error"));
+        }
+
+        // Validate role is valid
+        if (!["user", "doctor", "admin"].includes(decoded.role)) {
+          console.log("Socket auth - Invalid role in token:", decoded.role);
+          return next(new Error("Authentication error"));
+        }
         
         socket.userId = decoded.id; // JWT uses 'id' field
         socket.userType = decoded.role; // JWT uses 'role' field
         
-        console.log("Socket auth - User authenticated:", { userId: socket.userId, userType: socket.userType });
+        console.log("Socket auth - User authenticated successfully:", { userId: socket.userId, userType: socket.userType });
         next();
       } catch (jwtError: any) {
         if (jwtError.name === 'TokenExpiredError') {
@@ -53,13 +65,13 @@ export const setupSocketHandlers = (io: Server) => {
           
           // For debugging purposes, allow connection with expired token
           // In production, you would implement token refresh here
-          if (jwtError.payload) {
+          if (jwtError.payload && jwtError.payload.id && jwtError.payload.role) {
             socket.userId = jwtError.payload.id;
             socket.userType = jwtError.payload.role;
             console.log("Socket auth - Allowing connection with expired token:", { userId: socket.userId, userType: socket.userType });
             next();
           } else {
-            console.log("Socket auth - No payload in expired token");
+            console.log("Socket auth - No valid payload in expired token");
             next(new Error("Authentication error"));
           }
         } else {
@@ -105,6 +117,20 @@ export const setupSocketHandlers = (io: Server) => {
 
         console.log(`Processing message from ${socket.userType} ${socket.userId} to conversation ${conversationId}`);
 
+        // Validate socket authentication
+        if (!socket.userId || !socket.userType) {
+          console.error("Socket message error - Missing authentication:", { userId: socket.userId, userType: socket.userType });
+          socket.emit("message_error", { error: "Authentication required" });
+          return;
+        }
+
+        // Validate sender type
+        if (!["user", "doctor"].includes(socket.userType)) {
+          console.error("Socket message error - Invalid sender type:", socket.userType);
+          socket.emit("message_error", { error: "Invalid sender type" });
+          return;
+        }
+
         // Create new message in database
         const newMessage = new ChatMessage({
           conversationId,
@@ -117,8 +143,15 @@ export const setupSocketHandlers = (io: Server) => {
           isRead: false,
         });
 
+        console.log("Creating message with data:", {
+          conversationId,
+          senderId: socket.userId,
+          senderType: socket.userType,
+          message: message.substring(0, 50) + (message.length > 50 ? "..." : "")
+        });
+
         await newMessage.save();
-        console.log("Message saved to database:", newMessage._id);
+        console.log("Message saved to database:", newMessage._id, "with senderType:", newMessage.senderType);
 
         // Update conversation's last message
         await Conversation.findByIdAndUpdate(conversationId, {
@@ -132,7 +165,7 @@ export const setupSocketHandlers = (io: Server) => {
           messageId: newMessage._id,
           senderId: newMessage.senderId,
           senderType: newMessage.senderType,
-          message: newMessage.message
+          message: newMessage.message.substring(0, 30) + "..."
         });
         
         const roomName = `conversation_${conversationId}`;

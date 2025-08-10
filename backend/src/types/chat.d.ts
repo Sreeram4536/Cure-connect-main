@@ -1,7 +1,7 @@
 export interface ChatMessageDTO {
   conversationId: string;
   senderId: string;
-  senderType: "user" | "doctor";
+  senderType?: "user" | "doctor"; // Made optional so service can determine it
   message: string;
   messageType: "text" | "image" | "file";
   attachments?: string[];
