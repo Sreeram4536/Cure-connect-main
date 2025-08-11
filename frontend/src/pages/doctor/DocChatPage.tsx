@@ -11,6 +11,7 @@ import {
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
 import SocketStatus from "../../components/common/SocketStatus";
+import { createAttachmentFromUrl } from "../../utils/attachmentUtils";
 
 interface User {
   id: string;
