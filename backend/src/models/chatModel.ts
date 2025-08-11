@@ -1,15 +1,28 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export interface IAttachment {
+  fileName: string;
+  originalName: string;
+  fileType: "image" | "document";
+  mimeType: string;
+  fileSize: number;
+  filePath: string;
+  uploadedAt: Date;
+}
+
 export interface IChatMessage extends Document {
   _id: string;
   conversationId: string;
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
+  messageType: "text" | "image" | "file" | "mixed";
   timestamp: Date;
   isRead: boolean;
-  attachments?: string[];
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
+  attachments: IAttachment[];
 }
 
 export interface IConversation extends Document {
@@ -23,6 +36,38 @@ export interface IConversation extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const attachmentSchema = new Schema<IAttachment>({
+  fileName: {
+    type: String,
+    required: true,
+  },
+  originalName: {
+    type: String,
+    required: true,
+  },
+  fileType: {
+    type: String,
+    enum: ["image", "document"],
+    required: true,
+  },
+  mimeType: {
+    type: String,
+    required: true,
+  },
+  fileSize: {
+    type: Number,
+    required: true,
+  },
+  filePath: {
+    type: String,
+    required: true,
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
 const chatMessageSchema = new Schema<IChatMessage>({
   conversationId: {
@@ -41,11 +86,13 @@ const chatMessageSchema = new Schema<IChatMessage>({
   },
   message: {
     type: String,
-    required: true,
+    required: function(this: IChatMessage) {
+      return this.messageType === "text" || this.attachments.length === 0;
+    },
   },
   messageType: {
     type: String,
-    enum: ["text", "image", "file"],
+    enum: ["text", "image", "file", "mixed"],
     default: "text",
   },
   timestamp: {
@@ -56,9 +103,17 @@ const chatMessageSchema = new Schema<IChatMessage>({
     type: Boolean,
     default: false,
   },
-  attachments: [{
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+  },
+  deletedBy: {
     type: String,
-  }],
+  },
+  attachments: [attachmentSchema],
 }, {
   timestamps: false, // Disable timestamps for messages
 });

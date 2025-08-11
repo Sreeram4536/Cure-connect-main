@@ -1,6 +1,6 @@
 import { IChatService } from "../interface/IChatService";
 import { IChatRepository } from "../../repositories/interface/IChatRepository";
-import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse } from "../../types/chat";
+import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO } from "../../types/chat";
 import { DoctorService } from "./DoctorService";
 import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
 import { UserService } from "./UserService";
@@ -8,6 +8,9 @@ import { UserRepository } from "../../repositories/implementation/UserRepository
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 import { SlotLockService } from "./SlotLockService";
 import { PaymentService } from "./PaymentService";
+import { getFileType, getFileUrl } from "../../middlewares/fileUpload";
+import fs from 'fs';
+import path from 'path';
 
 export class ChatService implements IChatService {
   private doctorService: DoctorService;
@@ -113,111 +116,213 @@ export class ChatService implements IChatService {
     }
   }
 
-  // Message methods
+  // Enhanced message methods
   async sendMessage(messageData: ChatMessageDTO, senderId: string): Promise<ChatMessageResponse> {
-    console.log("ChatService.sendMessage called with:", { messageData, senderId });
-    
-    // Validate message data
-    if (!messageData.message || messageData.message.trim().length === 0) {
-      throw new Error("Message cannot be empty");
+    console.log("Sending message:", messageData);
+
+    // Validate sender
+    if (messageData.senderId !== senderId) {
+      throw new Error("Sender ID mismatch");
     }
 
-    if (!messageData.conversationId) {
-      throw new Error("Conversation ID is required");
-    }
-
-    // Verify conversation exists and sender has access
+    // Validate conversation exists
     const conversation = await this.chatRepository.getConversationById(messageData.conversationId);
-    console.log("Found conversation for message:", conversation);
-    
     if (!conversation) {
       throw new Error("Conversation not found");
     }
 
-    console.log("Conversation userId:", conversation.userId, "doctorId:", conversation.doctorId, "senderId:", senderId);
-    
-    // Convert ObjectId to string for comparison
-    const senderIdString = senderId.toString();
-    
-    if (conversation.userId !== senderIdString && conversation.doctorId !== senderIdString) {
-      throw new Error("Access denied to this conversation");
+    // Check if sender is part of the conversation
+    if (messageData.senderType === "user" && conversation.userId !== senderId) {
+      throw new Error("User not authorized for this conversation");
+    }
+    if (messageData.senderType === "doctor" && conversation.doctorId !== senderId) {
+      throw new Error("Doctor not authorized for this conversation");
     }
 
-    // Determine sender type
-    const senderType = conversation.userId === senderIdString ? "user" : "doctor";
-    console.log("Determined sender type:", senderType);
+    return await this.chatRepository.createMessage(messageData);
+  }
 
-    const messageToSend: ChatMessageDTO = {
-      ...messageData,
-      senderId,
-      senderType,
-      message: messageData.message.trim(),
-    };
-    
-    console.log("Message to send:", messageToSend);
+  async sendMessageWithFiles(
+    conversationId: string,
+    senderId: string,
+    senderType: "user" | "doctor",
+    message: string,
+    files: Express.Multer.File[]
+  ): Promise<ChatMessageResponse> {
+    try {
+      // Validate conversation exists
+      const conversation = await this.chatRepository.getConversationById(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
 
-    return await this.chatRepository.createMessage(messageToSend);
+      // Check authorization
+      if (senderType === "user" && conversation.userId !== senderId) {
+        throw new Error("User not authorized for this conversation");
+      }
+      if (senderType === "doctor" && conversation.doctorId !== senderId) {
+        throw new Error("Doctor not authorized for this conversation");
+      }
+
+      // Process uploaded files
+      const attachments = await this.processUploadedFiles(files);
+
+      // Determine message type
+      let messageType: "text" | "image" | "file" | "mixed" = "text";
+      if (attachments.length > 0) {
+        const hasImages = attachments.some(att => att.fileType === "image");
+        const hasDocuments = attachments.some(att => att.fileType === "document");
+        
+        if (hasImages && hasDocuments) {
+          messageType = "mixed";
+        } else if (hasImages) {
+          messageType = "image";
+        } else {
+          messageType = "file";
+        }
+      }
+
+      const messageData: ChatMessageDTO = {
+        conversationId,
+        senderId,
+        senderType,
+        message: message || "",
+        messageType,
+        attachments,
+      };
+
+      return await this.chatRepository.createMessage(messageData);
+    } catch (error) {
+      // Clean up uploaded files if message creation fails
+      if (files && files.length > 0) {
+        this.cleanupFiles(files);
+      }
+      throw error;
+    }
   }
 
   async getMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse> {
-    if (page < 1) page = 1;
-    if (limit < 1 || limit > 100) limit = 50;
-
-    // Verify conversation exists
-    const conversation = await this.chatRepository.getConversationById(conversationId);
-    if (!conversation) {
-      throw new Error("Conversation not found");
-    }
-
     return await this.chatRepository.getMessages(conversationId, page, limit);
   }
 
   async markConversationAsRead(conversationId: string, userId: string): Promise<boolean> {
-    console.log("ChatService.markConversationAsRead called with:", { conversationId, userId });
-    
-    // Verify conversation exists and user has access
-    const conversation = await this.chatRepository.getConversationById(conversationId);
-    console.log("Found conversation:", conversation);
-    
-    if (!conversation) {
-      throw new Error("Conversation not found");
-    }
-    
-    console.log("Conversation userId:", conversation.userId, "doctorId:", conversation.doctorId, "requested userId:", userId);
-    
-    // Convert ObjectId to string for comparison
-    const userIdString = userId.toString();
-    
-    if (conversation.userId !== userIdString && conversation.doctorId !== userIdString) {
-      throw new Error("Access denied to this conversation");
-    }
-
-    const result = await this.chatRepository.markConversationAsRead(conversationId, userId);
-    console.log("markConversationAsRead result:", result);
-    return result;
+    return await this.chatRepository.markConversationAsRead(conversationId, userId);
   }
 
   async getUnreadCount(conversationId: string, userId: string): Promise<number> {
-    // Verify conversation exists and user has access
-    const conversation = await this.chatRepository.getConversationById(conversationId);
-    if (!conversation || (conversation.userId !== userId.toString() && conversation.doctorId !== userId.toString())) {
-      throw new Error("Conversation not found or access denied");
-    }
-
     return await this.chatRepository.getUnreadCount(conversationId, userId);
   }
 
   async deleteMessage(messageId: string, senderId: string): Promise<boolean> {
-    // Verify message exists and sender has permission to delete
+    // Get message to verify ownership
     const message = await this.chatRepository.getMessageById(messageId);
     if (!message) {
       throw new Error("Message not found");
     }
 
     if (message.senderId !== senderId) {
-      throw new Error("You can only delete your own messages");
+      throw new Error("Not authorized to delete this message");
     }
 
     return await this.chatRepository.deleteMessage(messageId);
+  }
+
+  async softDeleteMessage(messageId: string, deletedBy: string): Promise<boolean> {
+    // Get message to verify ownership
+    const message = await this.chatRepository.getMessageById(messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    if (message.senderId !== deletedBy) {
+      throw new Error("Not authorized to delete this message");
+    }
+
+    return await this.chatRepository.softDeleteMessage(messageId, deletedBy);
+  }
+
+  async restoreMessage(messageId: string, userId: string): Promise<boolean> {
+    // Get message to verify ownership
+    const message = await this.chatRepository.getMessageById(messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    if (message.senderId !== userId && message.deletedBy !== userId) {
+      throw new Error("Not authorized to restore this message");
+    }
+
+    return await this.chatRepository.restoreMessage(messageId);
+  }
+
+  async permanentlyDeleteMessage(messageId: string, userId: string): Promise<boolean> {
+    // Get message to verify ownership and clean up files
+    const message = await this.chatRepository.getMessageById(messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    if (message.senderId !== userId) {
+      throw new Error("Not authorized to permanently delete this message");
+    }
+
+    // Delete associated files
+    if (message.attachments && message.attachments.length > 0) {
+      await this.deleteUploadedFiles(message.attachments);
+    }
+
+    return await this.chatRepository.permanentlyDeleteMessage(messageId);
+  }
+
+  async getDeletedMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse> {
+    return await this.chatRepository.getDeletedMessages(conversationId, page, limit);
+  }
+
+  // File management methods
+  async processUploadedFiles(files: Express.Multer.File[]): Promise<AttachmentDTO[]> {
+    const attachments: AttachmentDTO[] = [];
+
+    for (const file of files) {
+      const attachment: AttachmentDTO = {
+        fileName: file.filename,
+        originalName: file.originalname,
+        fileType: getFileType(file.mimetype),
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        filePath: file.path,
+        uploadedAt: new Date(),
+      };
+      attachments.push(attachment);
+    }
+
+    return attachments;
+  }
+
+  async deleteUploadedFiles(attachments: AttachmentDTO[]): Promise<void> {
+    for (const attachment of attachments) {
+      try {
+        if (fs.existsSync(attachment.filePath)) {
+          fs.unlinkSync(attachment.filePath);
+        }
+      } catch (error) {
+        console.error(`Failed to delete file ${attachment.filePath}:`, error);
+      }
+    }
+  }
+
+  getFileUrl(filePath: string): string {
+    return getFileUrl(filePath);
+  }
+
+  private cleanupFiles(files: Express.Multer.File[]): void {
+    files.forEach(file => {
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (error) {
+        console.error(`Failed to cleanup file ${file.path}:`, error);
+      }
+    });
   }
 } 

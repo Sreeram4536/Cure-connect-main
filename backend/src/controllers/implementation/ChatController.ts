@@ -4,6 +4,8 @@ import { IChatService } from "../../services/interface/IChatService";
 import { HttpStatus } from "../../constants/status.constants";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { ChatMessageDTO } from "../../types/chat";
+import fs from "fs";
+import path from "path";
 
 export class ChatController implements IChatController {
   constructor(private chatService: IChatService) {}
@@ -394,7 +396,7 @@ export class ChatController implements IChatController {
 
   async deleteMessage(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId || (req as any).docId;
+      const userId = (req as any).userId;
       const { messageId } = req.params;
 
       if (!messageId) {
@@ -411,6 +413,235 @@ export class ChatController implements IChatController {
         success: true,
         message: deleted ? "Message deleted successfully" : "Message not found",
       });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async sendMessageWithFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { conversationId, message } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      if (!conversationId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID is required",
+        });
+        return;
+      }
+
+      if (!message && (!files || files.length === 0)) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Either message text or files must be provided",
+        });
+        return;
+      }
+
+      const sentMessage = await this.chatService.sendMessageWithFiles(
+        conversationId,
+        userId,
+        "user",
+        message || "",
+        files || []
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: sentMessage,
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async sendDoctorMessageWithFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = (req as any).doctorId;
+      const { conversationId, message } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      if (!conversationId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID is required",
+        });
+        return;
+      }
+
+      if (!message && (!files || files.length === 0)) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Either message text or files must be provided",
+        });
+        return;
+      }
+
+      const sentMessage = await this.chatService.sendMessageWithFiles(
+        conversationId,
+        doctorId,
+        "doctor",
+        message || "",
+        files || []
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: sentMessage,
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async softDeleteMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).doctorId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const deleted = await this.chatService.softDeleteMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: deleted ? "Message deleted successfully" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async restoreMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).doctorId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const restored = await this.chatService.restoreMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: restored ? "Message restored successfully" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async permanentlyDeleteMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).doctorId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const deleted = await this.chatService.permanentlyDeleteMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: deleted ? "Message permanently deleted" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async getDeletedMessages(req: Request, res: Response): Promise<void> {
+    try {
+      const { conversationId } = req.params;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      if (!conversationId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID is required",
+        });
+        return;
+      }
+
+      const messages = await this.chatService.getDeletedMessages(conversationId, page, limit);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        ...messages,
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async serveFile(req: Request, res: Response): Promise<void> {
+    try {
+      const { fileName } = req.params;
+      const filePath = path.join(process.cwd(), 'uploads', 'chat', fileName);
+
+      // Security check - ensure file path is within uploads directory
+      const normalizedPath = path.normalize(filePath);
+      const uploadsPath = path.normalize(path.join(process.cwd(), 'uploads', 'chat'));
+      
+      if (!normalizedPath.startsWith(uploadsPath)) {
+        res.status(HttpStatus.FORBIDDEN).json({
+          success: false,
+          message: "Access denied",
+        });
+        return;
+      }
+
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        res.status(HttpStatus.NOT_FOUND).json({
+          success: false,
+          message: "File not found",
+        });
+        return;
+      }
+
+      // Serve the file
+      res.sendFile(filePath);
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
