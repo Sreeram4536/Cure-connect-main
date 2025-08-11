@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'react-toastify';
-import { getValidToken } from '../utils/tokenRefresh';
+import { getValidToken, getRoleSpecificToken } from '../utils/tokenRefresh';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -31,18 +31,42 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const connect = async () => {
     try {
+
+  // const token = await getValidToken();
+  
+  // console.log('Socket connection - Token found:', !!token);
+  //   if (token) {
+  //     console.log('Socket connection - Token length:', token.length);
+  //     console.log('Socket connection - Token starts with:', token.substring(0, 20) + '...');
+  //   }
+    
+  //   if (!token) {
+  //     console.log('No valid token found, skipping socket connection');
+  //     return;
+  //   }
+
       const token = await getValidToken();
       
       console.log('Socket connection - Token found:', !!token);
       if (token) {
         console.log('Socket connection - Token length:', token.length);
         console.log('Socket connection - Token starts with:', token.substring(0, 20) + '...');
+        
+        // Decode token to show role information
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('Socket connection - User role:', payload.role);
+          console.log('Socket connection - User ID:', payload.id);
+        } catch (e) {
+          console.log('Socket connection - Could not decode token for debugging');
+        }
       }
       
       if (!token) {
         console.log('No valid token found, skipping socket connection');
         return;
       }
+
 
       const newSocket = io('http://localhost:4000', {
         auth: {
@@ -57,13 +81,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         console.log('Socket connected');
         setIsConnected(true);
         setRetryCount(0); // Reset retry count on successful connection
-        toast.success('Connected to chat server');
+        
       });
 
       newSocket.on('disconnect', () => {
         console.log('Socket disconnected');
         setIsConnected(false);
-        toast.error('Disconnected from chat server');
+        
       });
 
       newSocket.on('connect_error', async (error) => {

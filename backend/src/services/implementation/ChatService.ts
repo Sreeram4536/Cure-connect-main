@@ -105,8 +105,8 @@ export class ChatService implements IChatService {
         id: user._id,
         name: user.name,
         avatar: user.image || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-        isOnline: true, // This should be implemented with real online status
-        lastSeen: "2 min ago" // This should be implemented with real last seen
+        isOnline: true, 
+        lastSeen: "2 min ago" 
       };
     } catch (error) {
       throw new Error("Failed to fetch user information");
@@ -144,15 +144,27 @@ export class ChatService implements IChatService {
     }
 
     // Determine sender type
-    const senderType = conversation.userId === senderIdString ? "user" : "doctor";
-    console.log("Determined sender type:", senderType);
+    // const senderType = conversation.userId === senderIdString ? "user" : "doctor";
+    // console.log("Determined sender type:", senderType);
 
-    const messageToSend: ChatMessageDTO = {
-      ...messageData,
-      senderId,
-      senderType,
-      message: messageData.message.trim(),
-    };
+    // const messageToSend: ChatMessageDTO = {
+    //   ...messageData,
+    //   senderId,
+    //   senderType,
+    //   message: messageData.message.trim(),
+    // };
+    let senderType = messageData.senderType;
+if (!senderType) {
+  senderType = conversation.userId === senderIdString ? "user" : "doctor";
+}
+console.log("Determined sender type:", senderType);
+
+const messageToSend: ChatMessageDTO = {
+  ...messageData,
+  senderId,
+  senderType,
+  message: messageData.message.trim(),
+};
     
     console.log("Message to send:", messageToSend);
 

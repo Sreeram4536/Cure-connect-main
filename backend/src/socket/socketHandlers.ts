@@ -51,8 +51,7 @@ export const setupSocketHandlers = (io: Server) => {
           console.log("Socket auth - Token expired, but allowing connection for debugging");
           console.log("Socket auth - Expired token payload:", jwtError.payload);
           
-          // For debugging purposes, allow connection with expired token
-          // In production, you would implement token refresh here
+          
           if (jwtError.payload) {
             socket.userId = jwtError.payload.id;
             socket.userType = jwtError.payload.role;

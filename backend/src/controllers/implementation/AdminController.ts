@@ -125,13 +125,13 @@ export class AdminController implements IAdminController {
       const token = authHeader.split(" ")[1];
       try {
         const decoded: any = jwt.decode(token);
-        // If token has exp, convert to Date
+        
         if (decoded && decoded.exp) {
           const expiresAt = new Date(decoded.exp * 1000);
           await addTokenToBlacklist(token, expiresAt);
         }
       } catch (e) {
-        // ignore decode errors
+        
       }
     }
     res.clearCookie("refreshToken_admin", {
