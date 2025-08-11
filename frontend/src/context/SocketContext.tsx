@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'react-toastify';
-import { getValidToken } from '../utils/tokenRefresh';
+import { getValidToken, getRoleSpecificToken } from '../utils/tokenRefresh';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -37,6 +37,15 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       if (token) {
         console.log('Socket connection - Token length:', token.length);
         console.log('Socket connection - Token starts with:', token.substring(0, 20) + '...');
+        
+        // Decode token to show role information
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('Socket connection - User role:', payload.role);
+          console.log('Socket connection - User ID:', payload.id);
+        } catch (e) {
+          console.log('Socket connection - Could not decode token for debugging');
+        }
       }
       
       if (!token) {

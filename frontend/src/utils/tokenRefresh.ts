@@ -1,10 +1,98 @@
 // Token refresh utility for Socket.IO connections
+import { getUserAccessToken, updateUserAccessToken } from '../context/tokenManagerUser';
+import { getDoctorAccessToken, updateDoctorAccessToken } from '../context/tokenManagerDoctor';
+import { getAdminAccessToken, updateAdminAccessToken } from '../context/tokenManagerAdmin';
+
+// Determine current user role based on which token exists and current URL
+const getCurrentUserRole = (): 'user' | 'doctor' | 'admin' | null => {
+  // Check URL to determine context - check the route base, not parameters
+  const currentPath = window.location.pathname;
+  
+  // Check for role-specific route prefixes (not parameters)
+  if (currentPath.startsWith('/doctor/') || currentPath.startsWith('/doc-')) {
+    return 'doctor';
+  } else if (currentPath.startsWith('/admin/')) {
+    return 'admin';
+  } else if (currentPath.startsWith('/user/') || currentPath.includes('/chat') || currentPath.includes('/appointment')) {
+    return 'user';
+  }
+  
+  // Fallback: check which token exists
+  if (getDoctorAccessToken()) {
+    return 'doctor';
+  } else if (getAdminAccessToken()) {
+    return 'admin';
+  } else if (getUserAccessToken()) {
+    return 'user';
+  }
+  
+  return null;
+};
+
+// Get role-specific token
+export const getRoleSpecificToken = (): string | null => {
+  const role = getCurrentUserRole();
+  
+  switch (role) {
+    case 'user':
+      return getUserAccessToken();
+    case 'doctor':
+      return getDoctorAccessToken();
+    case 'admin':
+      return getAdminAccessToken();
+    default:
+      return null;
+  }
+};
+
+// Update role-specific token
+const updateRoleSpecificToken = (token: string | null): void => {
+  const role = getCurrentUserRole();
+  
+  switch (role) {
+    case 'user':
+      updateUserAccessToken(token);
+      break;
+    case 'doctor':
+      updateDoctorAccessToken(token);
+      break;
+    case 'admin':
+      updateAdminAccessToken(token);
+      break;
+  }
+};
+
+// Refresh token for specific role
 export const refreshToken = async (): Promise<string | null> => {
   try {
     console.log('Attempting to refresh token...');
+    const role = getCurrentUserRole();
     
-    // Try user refresh token endpoint first (uses HTTP-only cookies)
-    let response = await fetch('http://localhost:4000/api/user/refresh-token', {
+    if (!role) {
+      console.log('No user role detected');
+      return null;
+    }
+    
+    console.log(`Refreshing token for role: ${role}`);
+    
+    // Use role-specific refresh endpoint
+    let endpoint: string;
+    switch (role) {
+      case 'user':
+        endpoint = 'http://localhost:4000/api/user/refresh-token';
+        break;
+      case 'doctor':
+        endpoint = 'http://localhost:4000/api/doctor/refresh-token';
+        break;
+      case 'admin':
+        endpoint = 'http://localhost:4000/api/admin/refresh-token';
+        break;
+      default:
+        console.log('Unknown role, cannot refresh token');
+        return null;
+    }
+    
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -12,36 +100,12 @@ export const refreshToken = async (): Promise<string | null> => {
       credentials: 'include', // Important: include cookies
     });
 
-    // If user endpoint fails, try doctor endpoint
-    if (!response.ok) {
-      console.log('User refresh failed, trying doctor refresh...');
-      response = await fetch('http://localhost:4000/api/doctor/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important: include cookies
-      });
-    }
-
-    // If doctor endpoint fails, try admin endpoint
-    if (!response.ok) {
-      console.log('Doctor refresh failed, trying admin refresh...');
-      response = await fetch('http://localhost:4000/api/admin/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important: include cookies
-      });
-    }
-
     if (response.ok) {
       const data = await response.json();
       if (data.success && data.token) {
-        // Store new access token
-        localStorage.setItem('token', data.token);
-        console.log('Token refreshed successfully');
+        // Store new access token using role-specific storage
+        updateRoleSpecificToken(data.token);
+        console.log(`Token refreshed successfully for ${role}`);
         return data.token;
       }
     }
@@ -55,7 +119,7 @@ export const refreshToken = async (): Promise<string | null> => {
 };
 
 export const getValidToken = async (): Promise<string | null> => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const token = getRoleSpecificToken();
   
   if (!token) {
     console.log('No token found, attempting refresh');
