@@ -78,4 +78,22 @@ export const sendDoctorMessageAPI = (conversationId: string, message: string, me
     messageType,
     attachments,
   });
+};
+
+// Upload attachments (user)
+export const uploadChatAttachmentsAPI = (files: File[]) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  return api.post(`${CHAT_API.MESSAGES}/attachments`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+// Upload attachments (doctor)
+export const uploadDoctorChatAttachmentsAPI = (files: File[]) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  return doctorApi.post(`${CHAT_API.MESSAGES}/attachments`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 }; 

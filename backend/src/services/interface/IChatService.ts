@@ -1,4 +1,5 @@
 import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse } from "../../types/chat";
+import type { Express } from "express";
 
 export interface IChatService {
   // Conversation methods
@@ -17,4 +18,7 @@ export interface IChatService {
   markConversationAsRead(conversationId: string, userId: string): Promise<boolean>;
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
   deleteMessage(messageId: string, senderId: string): Promise<boolean>;
+
+  // Attachment methods
+  uploadAttachments(files: Express.Multer.File[]): Promise<string[]>;
 } 

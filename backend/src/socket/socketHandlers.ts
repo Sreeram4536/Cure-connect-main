@@ -110,7 +110,7 @@ export const setupSocketHandlers = (io: Server) => {
           conversationId,
           senderId: socket.userId,
           senderType: socket.userType,
-          message,
+          message: (message || "").trim(),
           messageType,
           attachments,
           timestamp: new Date(),
@@ -121,8 +121,11 @@ export const setupSocketHandlers = (io: Server) => {
         console.log("Message saved to database:", newMessage._id);
 
         // Update conversation's last message
+        const hasText = typeof message === 'string' && message.trim().length > 0;
+        const hasAttach = Array.isArray(attachments) && attachments.length > 0;
+        const lastMessageText = hasText ? message : hasAttach ? (messageType === 'image' ? '[Image]' : '[File]') : undefined;
         await Conversation.findByIdAndUpdate(conversationId, {
-          lastMessage: message,
+          lastMessage: lastMessageText,
           lastMessageTime: new Date(),
           $inc: { unreadCount: 1 },
         });
@@ -153,6 +156,27 @@ export const setupSocketHandlers = (io: Server) => {
       } catch (error) {
         console.error("Error sending message:", error);
         socket.emit("message_error", { error: "Failed to send message" });
+      }
+    });
+
+    // Handle deleting a message
+    socket.on("delete_message", async (data: { messageId: string; conversationId: string }) => {
+      try {
+        const { messageId, conversationId } = data;
+        const message = await ChatMessage.findById(messageId);
+        if (!message) {
+          socket.emit("message_error", { error: "Message not found" });
+          return;
+        }
+        if (message.senderId !== socket.userId) {
+          socket.emit("message_error", { error: "You can only delete your own messages" });
+          return;
+        }
+        await ChatMessage.findByIdAndDelete(messageId);
+        io.to(`conversation_${conversationId}`).emit("message_deleted", { messageId, conversationId });
+      } catch (error) {
+        console.error("Error deleting message via socket:", error);
+        socket.emit("message_error", { error: "Failed to delete message" });
       }
     });
 

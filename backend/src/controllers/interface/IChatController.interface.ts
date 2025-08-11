@@ -7,6 +7,7 @@ export interface IChatController {
   getUserConversations(req: Request, res: Response): Promise<void>;
   getDoctorConversations(req: Request, res: Response): Promise<void>;
   deleteConversation(req: Request, res: Response): Promise<void>;
+  getConversationWithUserInfo(req: Request, res: Response): Promise<void>;
 
   // Message methods
   sendMessage(req: Request, res: Response): Promise<void>;
@@ -16,4 +17,5 @@ export interface IChatController {
   markConversationAsRead(req: Request, res: Response): Promise<void>;
   getUnreadCount(req: Request, res: Response): Promise<void>;
   deleteMessage(req: Request, res: Response): Promise<void>;
+  uploadAttachments(req: Request, res: Response): Promise<void>;
 } 

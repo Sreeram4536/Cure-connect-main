@@ -105,8 +105,8 @@ export class ChatRepository implements IChatRepository {
       }
       
       // Validate the data before creating
-      if (!messageData.conversationId || !messageData.senderId || !messageData.message) {
-        throw new Error("Missing required fields: conversationId, senderId, or message");
+      if (!messageData.conversationId || !messageData.senderId) {
+        throw new Error("Missing required fields: conversationId or senderId");
       }
       
       const message = new ChatMessage(messageData);
@@ -116,10 +116,18 @@ export class ChatRepository implements IChatRepository {
       console.log("Saved message:", savedMessage);
       
       // Update conversation with last message
+      const hasText = typeof messageData.message === 'string' && messageData.message.trim().length > 0;
+      const hasAttachments = Array.isArray(messageData.attachments) && messageData.attachments.length > 0;
+      let lastMessageText: string | undefined = undefined;
+      if (hasText) {
+        lastMessageText = messageData.message;
+      } else if (hasAttachments) {
+        lastMessageText = messageData.messageType === 'image' ? '[Image]' : '[File]';
+      }
       const conversationUpdate = await Conversation.findOneAndUpdate(
         { _id: messageData.conversationId },
         {
-          lastMessage: messageData.message,
+          lastMessage: lastMessageText,
           lastMessageTime: new Date(),
           $inc: { unreadCount: 1 },
         },

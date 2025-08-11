@@ -151,10 +151,12 @@ export class ChatController implements IChatController {
 
       console.log("sendMessage called with:", { conversationId, message, userId });
 
-      if (!conversationId || !message) {
+      const hasText = typeof message === 'string' && message.trim().length > 0;
+      const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+      if (!conversationId || (!hasText && !hasAttachments)) {
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
-          message: "Conversation ID and message are required",
+          message: "Conversation ID and either message text or attachments are required",
         });
         return;
       }
@@ -163,7 +165,7 @@ export class ChatController implements IChatController {
         conversationId,
         senderId: userId,
         senderType: "user", // Will be determined by service
-        message,
+        message: hasText ? message : "",
         messageType,
         attachments,
       };
@@ -190,10 +192,12 @@ export class ChatController implements IChatController {
 
       console.log("sendDoctorMessage called with:", { conversationId, message, doctorId });
 
-      if (!conversationId || !message) {
+      const hasText = typeof message === 'string' && message.trim().length > 0;
+      const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+      if (!conversationId || (!hasText && !hasAttachments)) {
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
-          message: "Conversation ID and message are required",
+          message: "Conversation ID and either message text or attachments are required",
         });
         return;
       }
@@ -202,7 +206,7 @@ export class ChatController implements IChatController {
         conversationId,
         senderId: doctorId,
         senderType: "doctor",
-        message,
+        message: hasText ? message : "",
         messageType,
         attachments,
       };
@@ -411,6 +415,23 @@ export class ChatController implements IChatController {
         success: true,
         message: deleted ? "Message deleted successfully" : "Message not found",
       });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async uploadAttachments(req: Request, res: Response): Promise<void> {
+    try {
+      const files = (req as any).files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "No files uploaded" });
+        return;
+      }
+      const urls = await this.chatService.uploadAttachments(files);
+      res.status(HttpStatus.OK).json({ success: true, urls });
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,

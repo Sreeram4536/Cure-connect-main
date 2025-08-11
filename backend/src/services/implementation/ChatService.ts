@@ -8,6 +8,8 @@ import { UserRepository } from "../../repositories/implementation/UserRepository
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 import { SlotLockService } from "./SlotLockService";
 import { PaymentService } from "./PaymentService";
+import { v2 as cloudinary } from "cloudinary";
+import type { Express } from "express";
 
 export class ChatService implements IChatService {
   private doctorService: DoctorService;
@@ -118,8 +120,10 @@ export class ChatService implements IChatService {
     console.log("ChatService.sendMessage called with:", { messageData, senderId });
     
     // Validate message data
-    if (!messageData.message || messageData.message.trim().length === 0) {
-      throw new Error("Message cannot be empty");
+    const hasNonEmptyMessage = !!messageData.message && messageData.message.trim().length > 0;
+    const hasAttachments = Array.isArray(messageData.attachments) && messageData.attachments.length > 0;
+    if (!hasNonEmptyMessage && !hasAttachments) {
+      throw new Error("Message must contain text or at least one attachment");
     }
 
     if (!messageData.conversationId) {
@@ -151,7 +155,7 @@ export class ChatService implements IChatService {
       ...messageData,
       senderId,
       senderType,
-      message: messageData.message.trim(),
+      message: (messageData.message || "").trim(),
     };
     
     console.log("Message to send:", messageToSend);
@@ -219,5 +223,19 @@ export class ChatService implements IChatService {
     }
 
     return await this.chatRepository.deleteMessage(messageId);
+  }
+
+  async uploadAttachments(files: Express.Multer.File[]): Promise<string[]> {
+    if (!files || files.length === 0) {
+      throw new Error("No files provided");
+    }
+    const uploads = await Promise.all(
+      files.map((file) =>
+        cloudinary.uploader.upload(file.path, {
+          resource_type: "auto",
+        })
+      )
+    );
+    return uploads.map((u) => u.secure_url);
   }
 } 

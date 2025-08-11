@@ -3,6 +3,7 @@ import { ChatController } from "../controllers/implementation/ChatController";
 import { ChatService } from "../services/implementation/ChatService";
 import { ChatRepository } from "../repositories/implementation/ChatRepository";
 import authRole from "../middlewares/authRole";
+import upload from "../middlewares/multer";
 
 const chatRepository = new ChatRepository();
 const chatService = new ChatService(chatRepository);
@@ -89,6 +90,14 @@ chatRouter.delete(
   "/messages/:messageId",
   authRole(["user", "doctor"]),
   chatController.deleteMessage.bind(chatController)
+);
+
+// Upload attachments (supports multiple)
+chatRouter.post(
+  "/messages/attachments",
+  authRole(["user", "doctor"]),
+  upload.array("files", 10),
+  chatController.uploadAttachments.bind(chatController)
 );
 
 export default chatRouter; 

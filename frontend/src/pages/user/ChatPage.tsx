@@ -7,6 +7,8 @@ import {
   sendMessageAPI,
   markConversationAsReadAPI,
   createConversationAPI,
+  deleteMessageAPI,
+  uploadChatAttachmentsAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -23,7 +25,7 @@ interface Doctor {
 
 const ChatPage: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
-  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
+  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead, deleteMessage: emitDeleteMessage } = useSocket();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
@@ -33,6 +35,7 @@ const ChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -72,6 +75,12 @@ const ChatPage: React.FC = () => {
       }
     });
 
+    socket.on('message_deleted', (data: { messageId: string; conversationId: string }) => {
+      if (conversation && data.conversationId === conversation.id) {
+        setMessages(prev => prev.filter(m => m.id !== data.messageId));
+      }
+    });
+
     // Listen for typing indicators
     socket.on('typing_start', (data: { userId: string; userType: string }) => {
       if (data.userType === 'doctor') {
@@ -98,6 +107,7 @@ const ChatPage: React.FC = () => {
 
     return () => {
       socket.off('new_message');
+      socket.off('message_deleted');
       socket.off('typing_start');
       socket.off('typing_stopped');
       socket.off('messages_read');
@@ -235,14 +245,32 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const detectMessageType = (files: File[]): "text" | "image" | "file" => {
+    if (files.length === 0) return "text";
+    const allImages = files.every((f) => f.type.startsWith("image/"));
+    return allImages ? "image" : "file";
+  };
+
   const handleSendMessage = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !conversation) return;
+    if (!conversation) return;
+    if (newMessage.trim() === "" && selectedFiles.length === 0) return;
 
     setIsSending(true);
     try {
       console.log("Sending message:", newMessage.trim(), "to conversation:", conversation.id);
       
+      // Upload attachments if any
+      let attachmentUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        const res = await uploadChatAttachmentsAPI(selectedFiles);
+        if (res.data.success) {
+          attachmentUrls = res.data.urls as string[];
+        }
+      }
+
+      const messageType = selectedFiles.length > 0 ? detectMessageType(selectedFiles) : "text";
+
       // Send message via Socket.IO for real-time delivery
       if (isConnected) {
         // Add temporary message to show it's being sent
@@ -252,29 +280,32 @@ const ChatPage: React.FC = () => {
           senderId: "user",
           senderType: "user" as const,
           message: newMessage.trim(),
-          messageType: "text",
+          messageType,
           timestamp: new Date(),
           isRead: false,
-          attachments: []
+          attachments: attachmentUrls
         };
         setMessages(prev => [...prev, tempMsg]);
         setTempMessage(newMessage.trim());
         
-        sendMessage(conversation.id, newMessage.trim(), "text");
+        sendMessage(conversation.id, newMessage.trim(), messageType, attachmentUrls);
         setNewMessage("");
+        setSelectedFiles([]);
         setIsSending(false);
       } else {
         // Fallback to REST API if socket is not connected
         const response = await sendMessageAPI(
           conversation.id,
           newMessage.trim(),
-          "text"
+          messageType,
+          attachmentUrls
         );
         console.log("Send message response:", response.data);
 
         if (response.data.success) {
           setMessages((prev) => [...prev, response.data.message]);
           setNewMessage("");
+          setSelectedFiles([]);
         }
         setIsSending(false);
       }
@@ -282,6 +313,18 @@ const ChatPage: React.FC = () => {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const res = await deleteMessageAPI(messageId);
+      if (res.data.success) {
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        if (conversation) emitDeleteMessage(conversation.id, messageId);
+      }
+    } catch (error) {
+      toast.error("Failed to delete message");
     }
   };
 
@@ -432,7 +475,22 @@ const ChatPage: React.FC = () => {
                             : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
                         }`}
                       >
-                        <p className="text-sm">{message.message}</p>
+                        {message.message && <p className="text-sm">{message.message}</p>}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {message.attachments.map((url, idx) => (
+                              <div key={idx}>
+                                {url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                  <img src={url} alt="attachment" className="max-w-[200px] rounded-lg" />
+                                ) : (
+                                  <a href={url} target="_blank" rel="noreferrer" className="text-sm underline text-blue-100">
+                                    Attachment {idx + 1}
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <p
                           className={`text-xs mt-1 ${
                             message.senderType === "user"
@@ -442,6 +500,11 @@ const ChatPage: React.FC = () => {
                         >
                           {formatTime(message.timestamp)}
                         </p>
+                        {message.senderType === 'user' && (
+                          <button onClick={() => handleDeleteMessage(message.id)} className="mt-1 text-xs underline">
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -483,6 +546,7 @@ const ChatPage: React.FC = () => {
                 <button
                   type="button"
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => document.getElementById('file-input')?.click()}
                 >
                   <svg
                     className="w-5 h-5"
@@ -498,6 +562,14 @@ const ChatPage: React.FC = () => {
                     />
                   </svg>
                 </button>
+                <input id="file-input" type="file" className="hidden" multiple onChange={(e) => {
+                  if (e.target.files) {
+                    setSelectedFiles(Array.from(e.target.files));
+                  }
+                }} />
+                {selectedFiles.length > 0 && (
+                  <span className="text-xs text-gray-500">{selectedFiles.length} file(s) selected</span>
+                )}
 
                 <div className="flex-1 relative">
                   <input
@@ -536,7 +608,7 @@ const ChatPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={newMessage.trim() === "" || isSending}
+                  disabled={(newMessage.trim() === "" && selectedFiles.length === 0) || isSending}
                   className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSending ? (
