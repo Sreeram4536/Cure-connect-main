@@ -1,80 +1,90 @@
-// Token refresh utility for Socket.IO connections
-export const refreshToken = async (): Promise<string | null> => {
+import { getDoctorAccessToken, updateDoctorAccessToken } from "../context/tokenManagerDoctor";
+import { getUserAccessToken, updateUserAccessToken } from "../context/tokenManagerUser";
+import { getAdminAccessToken, updateAdminAccessToken } from "../context/tokenManagerAdmin";
+
+// Determine which role token we currently have
+const getCurrentRoleAndToken = (): { role: "doctor" | "user" | "admin"; token: string } | null => {
+  const d = getDoctorAccessToken();
+  if (d) return { role: "doctor", token: d };
+  const u = getUserAccessToken();
+  if (u) return { role: "user", token: u };
+  const a = getAdminAccessToken?.();
+  if (a) return { role: "admin", token: a };
+  return null;
+};
+
+const decodeJwt = (token: string): any | null => {
   try {
-    console.log('Attempting to refresh token...');
-    
-    // Try user refresh token endpoint first (uses HTTP-only cookies)
-    let response = await fetch('http://localhost:4000/api/user/refresh-token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include', // Important: include cookies
-    });
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload;
+  } catch {
+    return null;
+  }
+};
 
-    // If user endpoint fails, try doctor endpoint
-    if (!response.ok) {
-      console.log('User refresh failed, trying doctor refresh...');
-      response = await fetch('http://localhost:4000/api/doctor/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important: include cookies
-      });
-    }
+const isExpired = (token: string): boolean => {
+  const payload = decodeJwt(token);
+  if (!payload || !payload.exp) return false;
+  const now = Date.now() / 1000;
+  return payload.exp < now;
+};
 
-    // If doctor endpoint fails, try admin endpoint
-    if (!response.ok) {
-      console.log('Doctor refresh failed, trying admin refresh...');
-      response = await fetch('http://localhost:4000/api/admin/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important: include cookies
-      });
-    }
+// Role-aware refresh. Tries a specific role if provided; otherwise attempts doctor -> user -> admin
+export const refreshToken = async (preferredRole?: "doctor" | "user" | "admin"): Promise<string | null> => {
+  try {
+    const endpoints: Array<{
+      role: "doctor" | "user" | "admin";
+      url: string;
+      onToken: (t: string | null) => void;
+      // key in response that contains the access token
+      tokenKey: "accessToken" | "token";
+    }> = [
+      { role: "doctor", url: `${import.meta.env.VITE_BACKEND_URL}/api/doctor/refresh-token`, onToken: updateDoctorAccessToken, tokenKey: "accessToken" },
+      { role: "user", url: `${import.meta.env.VITE_BACKEND_URL}/api/user/refresh-token`, onToken: updateUserAccessToken, tokenKey: "token" },
+      { role: "admin", url: `${import.meta.env.VITE_BACKEND_URL}/api/admin/refresh-token`, onToken: updateAdminAccessToken, tokenKey: "token" },
+    ];
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.token) {
-        // Store new access token
-        localStorage.setItem('token', data.token);
-        console.log('Token refreshed successfully');
-        return data.token;
+    const ordered = preferredRole
+      ? [endpoints.find(e => e.role === preferredRole)!, ...endpoints.filter(e => e.role !== preferredRole)]
+      : endpoints;
+
+    for (const ep of ordered) {
+      try {
+        const res = await fetch(ep.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const newToken = data?.[ep.tokenKey];
+        if (data?.success && typeof newToken === "string" && newToken.length > 0) {
+          ep.onToken(newToken);
+          return newToken;
+        }
+      } catch {
+        // try next
       }
     }
-    
-    console.log('Token refresh failed:', response.status, response.statusText);
+
     return null;
   } catch (error) {
-    console.error('Error refreshing token:', error);
+    console.error("Error refreshing token (socket)", error);
     return null;
   }
 };
 
 export const getValidToken = async (): Promise<string | null> => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  
-  if (!token) {
-    console.log('No token found, attempting refresh');
-    return await refreshToken();
+  // Prefer doctor, then user, then admin
+  const current = getCurrentRoleAndToken();
+  if (current && !isExpired(current.token)) return current.token;
+
+  // If we know which role we have but token is expired, try that role first
+  if (current && isExpired(current.token)) {
+    const refreshed = await refreshToken(current.role);
+    if (refreshed) return refreshed;
   }
 
-  try {
-    // Check if token is expired by decoding it (without verification)
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-    
-    if (payload.exp && payload.exp < currentTime) {
-      console.log('Token expired, attempting refresh');
-      return await refreshToken();
-    }
-    
-    return token;
-  } catch (error) {
-    console.error('Error checking token:', error);
-    return await refreshToken();
-  }
+  // If no token present or refresh failed, attempt any role in order doctor -> user -> admin
+  return await refreshToken();
 }; 
