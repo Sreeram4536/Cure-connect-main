@@ -207,15 +207,29 @@ export class ChatService implements IChatService {
     return await this.chatRepository.getUnreadCount(conversationId, userId);
   }
 
-  async deleteMessage(messageId: string, senderId: string): Promise<boolean> {
+  async deleteMessage(messageId: string, senderId: string, userRole?: "user" | "doctor"): Promise<boolean> {
     // Verify message exists and sender has permission to delete
     const message = await this.chatRepository.getMessageById(messageId);
     if (!message) {
       throw new Error("Message not found");
     }
 
+    // Check if the sender is the one who sent the message
     if (message.senderId !== senderId) {
       throw new Error("You can only delete your own messages");
+    }
+
+    // Additional role-based validation
+    if (userRole) {
+      // Doctors can only delete doctor messages
+      if (userRole === "doctor" && message.senderType !== "doctor") {
+        throw new Error("Doctors can only delete their own doctor messages");
+      }
+      
+      // Users can only delete user messages
+      if (userRole === "user" && message.senderType !== "user") {
+        throw new Error("Users can only delete their own user messages");
+      }
     }
 
     return await this.chatRepository.deleteMessage(messageId);

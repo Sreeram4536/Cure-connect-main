@@ -3,12 +3,21 @@ import { ChatController } from "../controllers/implementation/ChatController";
 import { ChatService } from "../services/implementation/ChatService";
 import { ChatRepository } from "../repositories/implementation/ChatRepository";
 import authRole from "../middlewares/authRole";
+import upload from "../middlewares/multer";
 
 const chatRepository = new ChatRepository();
 const chatService = new ChatService(chatRepository);
 const chatController = new ChatController(chatService);
 
 const chatRouter = express.Router();
+
+// File upload endpoint
+chatRouter.post(
+  "/upload",
+  authRole(["user", "doctor"]),
+  upload.array("attachments", 5),
+  chatController.uploadFiles.bind(chatController)
+);
 
 // Conversation routes
 chatRouter.post(

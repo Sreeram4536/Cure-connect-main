@@ -7,6 +7,8 @@ import {
   sendDoctorMessageAPI,
   markConversationAsReadAPI,
   getDoctorConversationWithUserAPI,
+  uploadDoctorChatFilesAPI,
+  deleteMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -32,7 +34,10 @@ const DocChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -193,13 +198,61 @@ const DocChatPage: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setSelectedFiles(files);
+    }
+  };
+
+  const handleFileUpload = async (): Promise<string[]> => {
+    if (!selectedFiles) return [];
+
+    setIsUploading(true);
+    try {
+      const response = await uploadDoctorChatFilesAPI(selectedFiles);
+      if (response.data.success) {
+        return response.data.attachments.map((att: any) => att.path);
+      }
+      return [];
+    } catch (error: any) {
+      console.error("Error uploading files:", error);
+      toast.error("Failed to upload files");
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const response = await deleteMessageAPI(messageId);
+      if (response.data.success) {
+        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        toast.success("Message deleted successfully");
+      }
+    } catch (error: any) {
+      console.error("Error deleting message:", error);
+      toast.error(error.response?.data?.message || "Failed to delete message");
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !conversationId) return;
+    if ((newMessage.trim() === "" && !selectedFiles) || !conversationId) return;
 
     setIsSending(true);
     try {
       console.log("Doctor sending message:", newMessage.trim(), "to conversation:", conversationId);
+      
+      // Upload files first if any are selected
+      let attachments: string[] = [];
+      if (selectedFiles) {
+        attachments = await handleFileUpload();
+      }
+
+      const messageText = newMessage.trim() || (attachments.length > 0 ? "📎 File attachment" : "");
+      const messageType = attachments.length > 0 ? "file" : "text";
       
       // Send message via Socket.IO for real-time delivery
       if (isConnected) {
@@ -209,30 +262,35 @@ const DocChatPage: React.FC = () => {
           conversationId: conversationId,
           senderId: "doctor",
           senderType: "doctor" as const,
-          message: newMessage.trim(),
-          messageType: "text",
+          message: messageText,
+          messageType: messageType as any,
           timestamp: new Date(),
           isRead: false,
-          attachments: []
+          attachments: attachments
         };
         setMessages(prev => [...prev, tempMsg]);
-        setTempMessage(newMessage.trim());
+        setTempMessage(messageText);
         
-        sendMessage(conversationId, newMessage.trim(), "text");
+        sendMessage(conversationId, messageText, messageType, attachments);
         setNewMessage("");
+        setSelectedFiles(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
         setIsSending(false);
       } else {
         // Fallback to REST API if socket is not connected
         const response = await sendDoctorMessageAPI(
           conversationId,
-          newMessage.trim(),
-          "text"
+          messageText,
+          messageType,
+          attachments
         );
         console.log("Doctor send message response:", response.data);
 
         if (response.data.success) {
           setMessages((prev) => [...prev, response.data.message]);
           setNewMessage("");
+          setSelectedFiles(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
         }
         setIsSending(false);
       }
@@ -367,7 +425,7 @@ const DocChatPage: React.FC = () => {
                     key={message.id}
                     className={`flex ${
                       message.senderType === "doctor" ? "justify-end" : "justify-start"
-                    }`}
+                    } group`}
                   >
                     <div
                       className={`flex max-w-xs lg:max-w-md ${
@@ -376,9 +434,22 @@ const DocChatPage: React.FC = () => {
                           : "flex-row"
                       } items-end space-x-2`}
                     >
+                      {/* Delete button for doctor messages */}
+                      {message.senderType === "doctor" && !message.id.startsWith('temp-') && (
+                        <button
+                          onClick={() => handleDeleteMessage(message.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-600 rounded"
+                          title="Delete message"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
+                      
                       {message.senderType === "user" && (
                         <img
-                          src={user.avatar}
+                          src={user?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"}
                           alt="User Avatar"
                           className="w-8 h-8 rounded-full object-cover"
                         />
@@ -391,6 +462,29 @@ const DocChatPage: React.FC = () => {
                         }`}
                       >
                         <p className="text-sm">{message.message}</p>
+                        
+                        {/* Render attachments */}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {message.attachments.map((attachment, index) => (
+                              <div key={index} className="flex items-center space-x-2">
+                                <a
+                                  href={`http://localhost:4000${attachment}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`text-xs underline ${
+                                    message.senderType === "doctor"
+                                      ? "text-blue-100 hover:text-white"
+                                      : "text-blue-600 hover:text-blue-800"
+                                  }`}
+                                >
+                                  📎 {attachment.split('/').pop()}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
                         <p
                           className={`text-xs mt-1 ${
                             message.senderType === "doctor"
@@ -437,24 +531,72 @@ const DocChatPage: React.FC = () => {
 
             {/* Message Input */}
             <div className="bg-white border-t border-gray-200 px-6 py-4">
+              {/* File Preview */}
+              {selectedFiles && selectedFiles.length > 0 && (
+                <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      <span className="text-sm text-gray-600">
+                        {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedFiles(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {Array.from(selectedFiles).map((file, index) => (
+                      <div key={index} className="text-xs text-gray-500 truncate">
+                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx"
+                  className="hidden"
+                />
                 <button
                   type="button"
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    />
-                  </svg>
+                  {isUploading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                  ) : (
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                      />
+                    </svg>
+                  )}
                 </button>
 
                 <div className="flex-1 relative">
@@ -494,7 +636,7 @@ const DocChatPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={newMessage.trim() === "" || isSending}
+                  disabled={(newMessage.trim() === "" && !selectedFiles) || isSending || isUploading}
                   className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSending ? (

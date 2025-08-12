@@ -16,5 +16,5 @@ export interface IChatService {
   getMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse>;
   markConversationAsRead(conversationId: string, userId: string): Promise<boolean>;
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
-  deleteMessage(messageId: string, senderId: string): Promise<boolean>;
+  deleteMessage(messageId: string, senderId: string, userRole?: "user" | "doctor"): Promise<boolean>;
 } 

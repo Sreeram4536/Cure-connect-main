@@ -405,13 +405,56 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const deleted = await this.chatService.deleteMessage(messageId, userId);
+      // Determine user role based on which ID is present
+      let userRole: "user" | "doctor" | undefined;
+      if ((req as any).userId) {
+        userRole = "user";
+      } else if ((req as any).docId) {
+        userRole = "doctor";
+      }
+
+      const deleted = await this.chatService.deleteMessage(messageId, userId, userRole);
       
       res.status(HttpStatus.OK).json({
         success: true,
         message: deleted ? "Message deleted successfully" : "Message not found",
       });
     } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async uploadFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const files = req.files as Express.Multer.File[];
+      
+      if (!files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "No files uploaded",
+        });
+        return;
+      }
+
+      // Process uploaded files and return their information
+      const attachments = files.map(file => ({
+        originalName: file.originalname,
+        filename: file.filename,
+        path: `/uploads/chat-attachments/${file.filename}`,
+        size: file.size,
+        mimetype: file.mimetype
+      }));
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Files uploaded successfully",
+        attachments,
+      });
+    } catch (error) {
+      console.error("Error uploading files:", error);
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: (error as Error).message,

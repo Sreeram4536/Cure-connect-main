@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { connectDB } from "./config/mongodb";
 import connectCloudinary from "./config/cloudinary";
 import dotenv from "dotenv";
@@ -47,6 +48,9 @@ app.use(
 
 // initialize passport
 app.use(passport.initialize());
+
+// Serve static files for chat attachments
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // api endpoints
 app.use("/api/admin", adminRouter);
