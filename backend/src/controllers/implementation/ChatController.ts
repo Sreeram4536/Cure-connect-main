@@ -397,10 +397,20 @@ export class ChatController implements IChatController {
       const userId = (req as any).userId || (req as any).docId;
       const { messageId } = req.params;
 
+      console.log("Delete message request:", { messageId, userId, hasUserId: !!(req as any).userId, hasDocId: !!(req as any).docId });
+
       if (!messageId) {
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
           message: "Message ID is required",
+        });
+        return;
+      }
+
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: "User authentication required",
         });
         return;
       }
@@ -413,6 +423,8 @@ export class ChatController implements IChatController {
         userRole = "doctor";
       }
 
+      console.log("User role determined:", userRole);
+
       const deleted = await this.chatService.deleteMessage(messageId, userId, userRole);
       
       res.status(HttpStatus.OK).json({
@@ -420,6 +432,7 @@ export class ChatController implements IChatController {
         message: deleted ? "Message deleted successfully" : "Message not found",
       });
     } catch (error) {
+      console.error("Error in deleteMessage controller:", error);
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: (error as Error).message,

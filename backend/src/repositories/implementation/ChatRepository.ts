@@ -157,8 +157,19 @@ export class ChatRepository implements IChatRepository {
   }
 
   async getMessageById(messageId: string): Promise<ChatMessageResponse | null> {
-    const message = await ChatMessage.findById(messageId);
-    return message ? this.mapMessageToResponse(message) : null;
+    try {
+      // Validate ObjectId format
+      if (!messageId || !mongoose.Types.ObjectId.isValid(messageId)) {
+        console.log("Invalid messageId format:", messageId);
+        return null;
+      }
+      
+      const message = await ChatMessage.findById(messageId);
+      return message ? this.mapMessageToResponse(message) : null;
+    } catch (error) {
+      console.error("Error in getMessageById:", error);
+      return null;
+    }
   }
 
   async markMessageAsRead(messageId: string): Promise<boolean> {
@@ -230,8 +241,19 @@ export class ChatRepository implements IChatRepository {
   }
 
   async deleteMessage(messageId: string): Promise<boolean> {
-    const result = await ChatMessage.findByIdAndDelete(messageId);
-    return !!result;
+    try {
+      // Validate ObjectId format
+      if (!messageId || !mongoose.Types.ObjectId.isValid(messageId)) {
+        console.log("Invalid messageId format for deletion:", messageId);
+        return false;
+      }
+      
+      const result = await ChatMessage.findByIdAndDelete(messageId);
+      return !!result;
+    } catch (error) {
+      console.error("Error in deleteMessage:", error);
+      return false;
+    }
   }
 
   // Helper methods for mapping

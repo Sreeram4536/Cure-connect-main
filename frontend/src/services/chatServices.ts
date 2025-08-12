@@ -60,6 +60,10 @@ export const deleteMessageAPI = (messageId: string) => {
   return api.delete(`${CHAT_API.MESSAGES}/${messageId}`);
 };
 
+export const deleteDoctorMessageAPI = (messageId: string) => {
+  return doctorApi.delete(`${CHAT_API.MESSAGES}/${messageId}`);
+};
+
 // Doctor chat services
 export const getDoctorConversationsAPI = (page: number = 1, limit: number = 20) => {
   return doctorApi.get(CHAT_API.DOCTOR_CONVERSATIONS, {
@@ -86,7 +90,7 @@ export const uploadChatFilesAPI = (files: FileList) => {
   for (let i = 0; i < files.length; i++) {
     formData.append('attachments', files[i]);
   }
-  return api.post(`${CHAT_API.MESSAGES.replace('/messages', '')}/upload`, formData, {
+  return api.post('/api/chat/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -98,7 +102,7 @@ export const uploadDoctorChatFilesAPI = (files: FileList) => {
   for (let i = 0; i < files.length; i++) {
     formData.append('attachments', files[i]);
   }
-  return doctorApi.post(`${CHAT_API.MESSAGES.replace('/messages', '')}/upload`, formData, {
+  return doctorApi.post('/api/chat/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

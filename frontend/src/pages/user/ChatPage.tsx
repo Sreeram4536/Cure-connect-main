@@ -332,13 +332,16 @@ const ChatPage: React.FC = () => {
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
+      console.log("User attempting to delete message:", messageId);
       const response = await deleteMessageAPI(messageId);
+      console.log("Delete response:", response.data);
       if (response.data.success) {
         setMessages(prev => prev.filter(msg => msg.id !== messageId));
         toast.success("Message deleted successfully");
       }
     } catch (error: any) {
       console.error("Error deleting message:", error);
+      console.error("Error response:", error.response?.data);
       toast.error(error.response?.data?.message || "Failed to delete message");
     }
   };

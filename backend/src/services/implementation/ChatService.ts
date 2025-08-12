@@ -208,30 +208,44 @@ export class ChatService implements IChatService {
   }
 
   async deleteMessage(messageId: string, senderId: string, userRole?: "user" | "doctor"): Promise<boolean> {
-    // Verify message exists and sender has permission to delete
-    const message = await this.chatRepository.getMessageById(messageId);
-    if (!message) {
-      throw new Error("Message not found");
-    }
-
-    // Check if the sender is the one who sent the message
-    if (message.senderId !== senderId) {
-      throw new Error("You can only delete your own messages");
-    }
-
-    // Additional role-based validation
-    if (userRole) {
-      // Doctors can only delete doctor messages
-      if (userRole === "doctor" && message.senderType !== "doctor") {
-        throw new Error("Doctors can only delete their own doctor messages");
-      }
+    try {
+      console.log("ChatService.deleteMessage called:", { messageId, senderId, userRole });
       
-      // Users can only delete user messages
-      if (userRole === "user" && message.senderType !== "user") {
-        throw new Error("Users can only delete their own user messages");
+      // Verify message exists and sender has permission to delete
+      const message = await this.chatRepository.getMessageById(messageId);
+      console.log("Found message:", message);
+      
+      if (!message) {
+        throw new Error("Message not found");
       }
-    }
 
-    return await this.chatRepository.deleteMessage(messageId);
+      // Check if the sender is the one who sent the message
+      if (message.senderId !== senderId) {
+        console.log("Sender mismatch:", { messageSenderId: message.senderId, requestSenderId: senderId });
+        throw new Error("You can only delete your own messages");
+      }
+
+      // Additional role-based validation
+      if (userRole) {
+        console.log("Role validation:", { userRole, messageSenderType: message.senderType });
+        
+        // Doctors can only delete doctor messages
+        if (userRole === "doctor" && message.senderType !== "doctor") {
+          throw new Error("Doctors can only delete their own doctor messages");
+        }
+        
+        // Users can only delete user messages
+        if (userRole === "user" && message.senderType !== "user") {
+          throw new Error("Users can only delete their own user messages");
+        }
+      }
+
+      const result = await this.chatRepository.deleteMessage(messageId);
+      console.log("Delete result:", result);
+      return result;
+    } catch (error) {
+      console.error("Error in ChatService.deleteMessage:", error);
+      throw error;
+    }
   }
 } 
