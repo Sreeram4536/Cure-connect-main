@@ -16,4 +16,5 @@ export interface IChatController {
   markConversationAsRead(req: Request, res: Response): Promise<void>;
   getUnreadCount(req: Request, res: Response): Promise<void>;
   deleteMessage(req: Request, res: Response): Promise<void>;
+  softDeleteMessage(req: Request, res: Response): Promise<void>;
 } 

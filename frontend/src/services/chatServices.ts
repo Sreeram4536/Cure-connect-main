@@ -57,7 +57,7 @@ export const deleteConversationAPI = (conversationId: string) => {
 };
 
 export const deleteMessageAPI = (messageId: string) => {
-  return api.delete(`${CHAT_API.MESSAGES}/${messageId}`);
+  return api.patch(`${CHAT_API.MESSAGES}/${messageId}/soft-delete`);
 };
 
 // Doctor chat services

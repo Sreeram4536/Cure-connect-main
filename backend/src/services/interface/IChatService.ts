@@ -17,4 +17,5 @@ export interface IChatService {
   markConversationAsRead(conversationId: string, userId: string): Promise<boolean>;
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
   deleteMessage(messageId: string, senderId: string): Promise<boolean>;
+  softDeleteMessage(messageId: string, senderId: string): Promise<boolean>;
 } 

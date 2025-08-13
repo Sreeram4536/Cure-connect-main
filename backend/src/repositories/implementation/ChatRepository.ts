@@ -140,12 +140,12 @@ export class ChatRepository implements IChatRepository {
 
   async getMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse> {
     const skip = (page - 1) * limit;
-    const messages = await ChatMessage.find({ conversationId })
+    const messages = await ChatMessage.find({ conversationId, isDeleted: false })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit);
     
-    const totalCount = await ChatMessage.countDocuments({ conversationId });
+    const totalCount = await ChatMessage.countDocuments({ conversationId, isDeleted: false });
     
     return {
       messages: messages.map(this.mapMessageToResponse),
@@ -225,12 +225,22 @@ export class ChatRepository implements IChatRepository {
       conversationId,
       senderId: { $ne: userId },
       isRead: false,
+      isDeleted: false,
     });
     return count;
   }
 
   async deleteMessage(messageId: string): Promise<boolean> {
     const result = await ChatMessage.findByIdAndDelete(messageId);
+    return !!result;
+  }
+
+  async softDeleteMessage(messageId: string): Promise<boolean> {
+    const result = await ChatMessage.findByIdAndUpdate(
+      messageId,
+      { isDeleted: true },
+      { new: true }
+    );
     return !!result;
   }
 

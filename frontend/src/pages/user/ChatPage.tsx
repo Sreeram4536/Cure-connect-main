@@ -7,6 +7,7 @@ import {
   sendMessageAPI,
   markConversationAsReadAPI,
   createConversationAPI,
+  deleteMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -285,6 +286,19 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!conversation) return;
+
+    try {
+      await deleteMessageAPI(messageId);
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      toast.success("Message deleted successfully!");
+    } catch (error: any) {
+      console.error("Error deleting message:", error);
+      toast.error("Failed to delete message");
+    }
+  };
+
   const formatTime = (date: Date): string => {
     return new Date(date).toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -416,7 +430,7 @@ const ChatPage: React.FC = () => {
                         message.senderType === "user"
                           ? "flex-row-reverse"
                           : "flex-row"
-                      } items-end space-x-2`}
+                      } items-end space-x-2 group`}
                     >
                       {message.senderType === "doctor" && (
                         <img
@@ -425,23 +439,36 @@ const ChatPage: React.FC = () => {
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       )}
-                      <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          message.senderType === "user"
-                            ? "bg-blue-500 text-white rounded-br-sm"
-                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
-                        }`}
-                      >
-                        <p className="text-sm">{message.message}</p>
-                        <p
-                          className={`text-xs mt-1 ${
+                      <div className="relative">
+                        <div
+                          className={`px-4 py-2 rounded-2xl ${
                             message.senderType === "user"
-                              ? "text-blue-100"
-                              : "text-gray-500"
+                              ? "bg-blue-500 text-white rounded-br-sm"
+                              : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
                           }`}
                         >
-                          {formatTime(message.timestamp)}
-                        </p>
+                          <p className="text-sm">{message.message}</p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              message.senderType === "user"
+                                ? "text-blue-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {formatTime(message.timestamp)}
+                          </p>
+                        </div>
+                        {message.senderType === "user" && (
+                          <button
+                            onClick={() => handleDeleteMessage(message.id)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 flex items-center justify-center"
+                            title="Delete message"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

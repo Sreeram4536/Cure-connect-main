@@ -220,4 +220,18 @@ export class ChatService implements IChatService {
 
     return await this.chatRepository.deleteMessage(messageId);
   }
+
+  async softDeleteMessage(messageId: string, senderId: string): Promise<boolean> {
+    // Verify message exists and sender has permission to delete
+    const message = await this.chatRepository.getMessageById(messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    if (message.senderId !== senderId) {
+      throw new Error("You can only delete your own messages");
+    }
+
+    return await this.chatRepository.softDeleteMessage(messageId);
+  }
 } 

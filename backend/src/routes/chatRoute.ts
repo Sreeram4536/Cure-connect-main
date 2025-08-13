@@ -91,4 +91,10 @@ chatRouter.delete(
   chatController.deleteMessage.bind(chatController)
 );
 
+chatRouter.patch(
+  "/messages/:messageId/soft-delete",
+  authRole(["user", "doctor"]),
+  chatController.softDeleteMessage.bind(chatController)
+);
+
 export default chatRouter; 

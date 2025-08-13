@@ -418,4 +418,31 @@ export class ChatController implements IChatController {
       });
     }
   }
+
+  async softDeleteMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).docId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const deleted = await this.chatService.softDeleteMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: deleted ? "Message deleted successfully" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
 } 
