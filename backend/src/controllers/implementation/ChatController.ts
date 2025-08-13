@@ -445,4 +445,88 @@ export class ChatController implements IChatController {
       });
     }
   }
+
+  async sendMessageWithFiles(req: Request, res: Response): Promise<void> {
+    try {
+      // TODO: Implement file upload functionality for messages
+      res.status(HttpStatus.NOT_IMPLEMENTED).json({
+        success: false,
+        message: "File upload functionality not yet implemented",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async sendDoctorMessageWithFiles(req: Request, res: Response): Promise<void> {
+    try {
+      // TODO: Implement file upload functionality for doctor messages
+      res.status(HttpStatus.NOT_IMPLEMENTED).json({
+        success: false,
+        message: "File upload functionality not yet implemented",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async restoreMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).docId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const restored = await this.chatService.restoreMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: restored ? "Message restored successfully" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  async permanentlyDeleteMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).docId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const deleted = await this.chatService.permanentlyDeleteMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: deleted ? "Message permanently deleted successfully" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
 } 

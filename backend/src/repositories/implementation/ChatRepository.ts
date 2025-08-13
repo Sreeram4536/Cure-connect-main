@@ -244,6 +244,15 @@ export class ChatRepository implements IChatRepository {
     return !!result;
   }
 
+  async restoreMessage(messageId: string): Promise<boolean> {
+    const result = await ChatMessage.findByIdAndUpdate(
+      messageId,
+      { isDeleted: false },
+      { new: true }
+    );
+    return !!result;
+  }
+
   // Helper methods for mapping
   private mapConversationToResponse(conversation: IConversation): ConversationResponse {
     return {

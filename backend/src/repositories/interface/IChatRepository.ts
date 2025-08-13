@@ -19,4 +19,5 @@ export interface IChatRepository {
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
   deleteMessage(messageId: string): Promise<boolean>;
   softDeleteMessage(messageId: string): Promise<boolean>;
+  restoreMessage(messageId: string): Promise<boolean>;
 } 

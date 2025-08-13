@@ -7,14 +7,19 @@ export interface IChatController {
   getUserConversations(req: Request, res: Response): Promise<void>;
   getDoctorConversations(req: Request, res: Response): Promise<void>;
   deleteConversation(req: Request, res: Response): Promise<void>;
+  getConversationWithUserInfo(req: Request, res: Response): Promise<void>;
 
   // Message methods
   sendMessage(req: Request, res: Response): Promise<void>;
   sendDoctorMessage(req: Request, res: Response): Promise<void>;
+  sendMessageWithFiles(req: Request, res: Response): Promise<void>;
+  sendDoctorMessageWithFiles(req: Request, res: Response): Promise<void>;
   getMessages(req: Request, res: Response): Promise<void>;
   getMessagesByDoctor(req: Request, res: Response): Promise<void>;
   markConversationAsRead(req: Request, res: Response): Promise<void>;
   getUnreadCount(req: Request, res: Response): Promise<void>;
   deleteMessage(req: Request, res: Response): Promise<void>;
   softDeleteMessage(req: Request, res: Response): Promise<void>;
+  restoreMessage(req: Request, res: Response): Promise<void>;
+  permanentlyDeleteMessage(req: Request, res: Response): Promise<void>;
 } 

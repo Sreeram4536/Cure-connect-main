@@ -18,4 +18,6 @@ export interface IChatService {
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
   deleteMessage(messageId: string, senderId: string): Promise<boolean>;
   softDeleteMessage(messageId: string, senderId: string): Promise<boolean>;
+  restoreMessage(messageId: string, senderId: string): Promise<boolean>;
+  permanentlyDeleteMessage(messageId: string, senderId: string): Promise<boolean>;
 } 

@@ -97,4 +97,28 @@ chatRouter.patch(
   chatController.softDeleteMessage.bind(chatController)
 );
 
+chatRouter.patch(
+  "/messages/:messageId/restore",
+  authRole(["user", "doctor"]),
+  chatController.restoreMessage.bind(chatController)
+);
+
+chatRouter.delete(
+  "/messages/:messageId/permanent",
+  authRole(["user", "doctor"]),
+  chatController.permanentlyDeleteMessage.bind(chatController)
+);
+
+chatRouter.post(
+  "/messages/with-files",
+  authRole(["user"]),
+  chatController.sendMessageWithFiles.bind(chatController)
+);
+
+chatRouter.post(
+  "/messages/doctor/with-files",
+  authRole(["doctor"]),
+  chatController.sendDoctorMessageWithFiles.bind(chatController)
+);
+
 export default chatRouter; 
