@@ -36,6 +36,7 @@ const ChatPage: React.FC = () => {
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -496,7 +497,7 @@ const ChatPage: React.FC = () => {
                           }`}
                         >
                           {message.messageType === "image" && message.attachments && message.attachments[0] ? (
-                            <img src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1" />
+                            <img onClick={() => setPreviewImage(`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`)} src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1 cursor-zoom-in" />
                           ) : message.messageType === "file" && message.attachments && message.attachments[0] ? (
                             <a href={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Download File</a>
                           ) : (
@@ -647,8 +648,17 @@ const ChatPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setPreviewImage(null)}>
+          <img src={previewImage} alt="preview" className="max-w-[90vw] max-h-[90vh] rounded shadow-lg" />
+        </div>
+      )}
     </div>
   );
 };
 
 export default ChatPage;
+
+// Image preview modal
+// Place after component to avoid indentation noise
+// Rendered within component return using state

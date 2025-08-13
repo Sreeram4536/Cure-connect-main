@@ -41,6 +41,7 @@ const DocChatPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
   const [pendingType, setPendingType] = useState<"image" | "file" | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // File upload handler
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -444,7 +445,7 @@ const DocChatPage: React.FC = () => {
                       {/* Render image/file or text */}
                       {message.messageType === "image" && message.attachments && message.attachments[0] ? (
                         <div className="relative">
-                          <img src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1" />
+                          <img onClick={() => setPreviewImage(`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`)} src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1 cursor-zoom-in" />
                           {message.senderType === "doctor" && (
                           <button
                             onClick={() => handleDeleteMessage(message.id)}
@@ -620,6 +621,11 @@ const DocChatPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setPreviewImage(null)}>
+          <img src={previewImage} alt="preview" className="max-w-[90vw] max-h-[90vh] rounded shadow-lg" />
+        </div>
+      )}
     </div>
   );
 };

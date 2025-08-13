@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { toast } from "react-toastify";
 import type { Doctor } from "../assets/user/assets";
@@ -64,6 +65,8 @@ interface AdminContextProviderProps {
 }
 
 const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
 const [aToken, setAToken] = useState(getAdminAccessToken() ?? "");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [users, setUsers] = useState<userData[]>([]);
@@ -305,6 +308,10 @@ const rejectDoctor = async (doctorId: string) => {
 
 
    useEffect(() => {
+      if (!isAdminRoute) {
+        setLoading(false);
+        return;
+      }
       const tryRefresh = async () => {
         try {
           const res = await refreshAdminAccessTokenAPI();
@@ -336,7 +343,7 @@ const rejectDoctor = async (doctorId: string) => {
         getDashData().finally(() => setLoading(false));
       }
 
-    }, []);
+    }, [isAdminRoute]);
 
 
   const value: AdminContextType = {

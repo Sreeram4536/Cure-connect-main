@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { getDoctorConversationsAPI } from "../../services/chatServices";
+import { getDoctorConversationsAPI, getDoctorConversationWithUserAPI } from "../../services/chatServices";
 import { DoctorContext } from "../../context/DoctorContext";
 import type { Conversation } from "../../types/chat";
 
@@ -10,6 +10,7 @@ const DoctorInbox: React.FC = () => {
   const { loading: contextLoading } = useContext(DoctorContext);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userInfoByConversation, setUserInfoByConversation] = useState<Record<string, { name: string; avatar: string }>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -26,6 +27,27 @@ const DoctorInbox: React.FC = () => {
         setConversations(response.data.conversations);
         setTotalPages(response.data.totalPages || 1);
         setTotalCount(response.data.totalCount || 0);
+
+        // Fetch user info for each conversation to display proper patient name and avatar
+        const infos = await Promise.all(
+          (response.data.conversations as Conversation[]).map(async (c) => {
+            try {
+              const res = await getDoctorConversationWithUserAPI(c.id);
+              if (res.data.success && res.data.user) {
+                return [c.id, { name: res.data.user.name, avatar: res.data.user.avatar }] as const;
+              }
+            } catch {}
+            return null;
+          })
+        );
+        const map: Record<string, { name: string; avatar: string }> = {};
+        infos.forEach((entry) => {
+          if (entry) {
+            const [id, info] = entry;
+            map[id] = info;
+          }
+        });
+        setUserInfoByConversation(map);
       }
     } catch (error: any) {
       console.error("Error loading conversations:", error);
@@ -100,8 +122,8 @@ const DoctorInbox: React.FC = () => {
                       <div className="flex items-center space-x-4">
                         <div className="relative">
                           <img
-                            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=60&h=60&fit=crop&crop=face"
-                            alt="Patient"
+                            src={userInfoByConversation[conversation.id]?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=60&h=60&fit=crop&crop=face"}
+                            alt={userInfoByConversation[conversation.id]?.name || "Patient"}
                             className="w-12 h-12 rounded-full object-cover"
                           />
                           {conversation.unreadCount > 0 && (
@@ -112,7 +134,7 @@ const DoctorInbox: React.FC = () => {
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            Patient {conversation.userId.slice(-4)}
+                            {userInfoByConversation[conversation.id]?.name || `Patient ${conversation.userId.slice(-4)}`}
                           </h3>
                           <p className="text-sm text-gray-600">
                             {conversation.lastMessage || "No messages yet"}
