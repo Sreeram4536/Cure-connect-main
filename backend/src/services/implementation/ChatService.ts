@@ -1,6 +1,6 @@
 import { IChatService } from "../interface/IChatService";
 import { IChatRepository } from "../../repositories/interface/IChatRepository";
-import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse } from "../../types/chat";
+import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO } from "../../types/chat";
 import { DoctorService } from "./DoctorService";
 import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
 import { UserService } from "./UserService";
@@ -8,6 +8,8 @@ import { UserRepository } from "../../repositories/implementation/UserRepository
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 import { SlotLockService } from "./SlotLockService";
 import { PaymentService } from "./PaymentService";
+import { ChatMessage } from "../../models/chatModel";
+import { getFileUrl, getFileType } from "../../middlewares/fileUpload";
 
 export class ChatService implements IChatService {
   private doctorService: DoctorService;
@@ -105,8 +107,8 @@ export class ChatService implements IChatService {
         id: user._id,
         name: user.name,
         avatar: user.image || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-        isOnline: true, 
-        lastSeen: "2 min ago" 
+        isOnline: true, // This should be implemented with real online status
+        lastSeen: "2 min ago" // This should be implemented with real last seen
       };
     } catch (error) {
       throw new Error("Failed to fetch user information");
@@ -144,27 +146,15 @@ export class ChatService implements IChatService {
     }
 
     // Determine sender type
-    // const senderType = conversation.userId === senderIdString ? "user" : "doctor";
-    // console.log("Determined sender type:", senderType);
+    const senderType = conversation.userId === senderIdString ? "user" : "doctor";
+    console.log("Determined sender type:", senderType);
 
-    // const messageToSend: ChatMessageDTO = {
-    //   ...messageData,
-    //   senderId,
-    //   senderType,
-    //   message: messageData.message.trim(),
-    // };
-    let senderType = messageData.senderType;
-if (!senderType) {
-  senderType = conversation.userId === senderIdString ? "user" : "doctor";
-}
-console.log("Determined sender type:", senderType);
-
-const messageToSend: ChatMessageDTO = {
-  ...messageData,
-  senderId,
-  senderType,
-  message: messageData.message.trim(),
-};
+    const messageToSend: ChatMessageDTO = {
+      ...messageData,
+      senderId,
+      senderType,
+      message: messageData.message.trim(),
+    };
     
     console.log("Message to send:", messageToSend);
 
@@ -231,5 +221,66 @@ const messageToSend: ChatMessageDTO = {
     }
 
     return await this.chatRepository.deleteMessage(messageId);
+  }
+
+  async softDeleteMessage(messageId: string, senderId: string): Promise<boolean> {
+    // Verify message exists and sender has permission to delete
+    const message = await this.chatRepository.getMessageById(messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    const senderIdString = senderId.toString();
+    if (message.senderId !== senderIdString) {
+      throw new Error("You can only delete your own messages");
+    }
+
+    return await this.chatRepository.softDeleteMessage(messageId);
+  }
+
+  // File send helper as required by IChatService
+  async sendMessageWithFiles(
+    conversationId: string,
+    senderId: string,
+    senderType: "user" | "doctor",
+    message: string,
+    files: Express.Multer.File[]
+  ): Promise<ChatMessageResponse> {
+    const attachments = await this.processUploadedFiles(files);
+    // Determine messageType based on first file
+    const firstType = attachments[0]?.fileType;
+    const messageType: "image" | "file" = firstType === "image" ? "image" : "file";
+
+    const messageData: ChatMessageDTO = {
+      conversationId,
+      senderId,
+      senderType,
+      message: message?.trim() || (messageType === "image" ? "[Image]" : "[File]"),
+      messageType,
+      attachments,
+    };
+
+    return await this.sendMessage(messageData, senderId);
+  }
+
+  async processUploadedFiles(files: Express.Multer.File[]): Promise<AttachmentDTO[]> {
+    return files.map((file) => ({
+      fileName: file.filename,
+      originalName: file.originalname,
+      fileType: getFileType(file.mimetype),
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      filePath: getFileUrl(file.path),
+      uploadedAt: new Date(),
+    }));
+  }
+
+  async deleteUploadedFiles(attachments: AttachmentDTO[]): Promise<void> {
+    // No-op for now (files can be cleaned via a scheduled job if needed)
+    return;
+  }
+
+  getFileUrl(filePath: string): string {
+    return getFileUrl(filePath);
   }
 } 

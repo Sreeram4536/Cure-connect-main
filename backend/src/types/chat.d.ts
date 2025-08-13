@@ -1,10 +1,20 @@
+export interface AttachmentDTO {
+  fileName: string;
+  originalName: string;
+  fileType: "image" | "document";
+  mimeType: string;
+  fileSize: number;
+  filePath: string;
+  uploadedAt?: Date;
+}
+
 export interface ChatMessageDTO {
   conversationId: string;
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
-  attachments?: string[];
+  messageType: "text" | "image" | "file" | "mixed";
+  attachments: AttachmentDTO[];
 }
 
 export interface ConversationDTO {
@@ -22,10 +32,13 @@ export interface ChatMessageResponse {
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
+  messageType: "text" | "image" | "file" | "mixed";
   timestamp: Date;
   isRead: boolean;
-  attachments?: string[];
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
+  attachments: AttachmentDTO[];
 }
 
 export interface ConversationResponse {
@@ -53,4 +66,17 @@ export interface MessageListResponse {
   page: number;
   limit: number;
   conversationId: string;
+
+}
+
+export interface FileUploadRequest {
+  conversationId: string;
+  message?: string;
+  files: Express.Multer.File[];
+}
+
+export interface DeleteMessageRequest {
+  messageId: string;
+  userId: string;
+
 } 

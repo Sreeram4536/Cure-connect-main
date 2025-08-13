@@ -1,4 +1,4 @@
-import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse } from "../../types/chat";
+import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO } from "../../types/chat";
 
 export interface IChatService {
   // Conversation methods
@@ -13,8 +13,18 @@ export interface IChatService {
 
   // Message methods
   sendMessage(messageData: ChatMessageDTO, senderId: string): Promise<ChatMessageResponse>;
+  sendMessageWithFiles(
+    conversationId: string, 
+    senderId: string, 
+    senderType: "user" | "doctor",
+    message: string,
+    files: Express.Multer.File[]
+  ): Promise<ChatMessageResponse>;
   getMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse>;
   markConversationAsRead(conversationId: string, userId: string): Promise<boolean>;
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
   deleteMessage(messageId: string, senderId: string): Promise<boolean>;
+  softDeleteMessage(messageId: string, senderId: string): Promise<boolean>;
+  // Minimal file utility used by upload-only endpoints
+  processUploadedFiles(files: Express.Multer.File[]): Promise<AttachmentDTO[]>;
 } 

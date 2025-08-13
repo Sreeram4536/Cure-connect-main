@@ -1,6 +1,7 @@
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { ChatMessage, Conversation } from "../models/chatModel";
+import { AttachmentDTO } from "../types/chat";
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -10,12 +11,18 @@ interface AuthenticatedSocket extends Socket {
 interface MessageData {
   conversationId: string;
   message: string;
-  messageType?: "text" | "image" | "file";
-  attachments?: string[];
+  messageType?: "text" | "image" | "file" | "mixed";
+  attachments?: AttachmentDTO[] | string[];
 }
 
 interface JoinConversationData {
   conversationId: string;
+}
+
+interface MessageActionData {
+  messageId: string;
+  conversationId: string;
+  action: "delete" | "restore" | "permanent_delete";
 }
 
 export const setupSocketHandlers = (io: Server) => {
@@ -105,23 +112,27 @@ export const setupSocketHandlers = (io: Server) => {
         console.log(`Processing message from ${socket.userType} ${socket.userId} to conversation ${conversationId}`);
 
         // Create new message in database
+        const attachmentUrls = (attachments as any[]).map((a) => (typeof a === "string" ? a : a?.filePath)).filter(Boolean);
+
         const newMessage = new ChatMessage({
           conversationId,
           senderId: socket.userId,
           senderType: socket.userType,
           message,
           messageType,
-          attachments,
+          attachments: attachmentUrls,
           timestamp: new Date(),
           isRead: false,
+          isDeleted: false,
         });
 
         await newMessage.save();
         console.log("Message saved to database:", newMessage._id);
 
         // Update conversation's last message
+        const lastMessagePreview = message || `${attachments.length} file(s)`;
         await Conversation.findByIdAndUpdate(conversationId, {
-          lastMessage: message,
+          lastMessage: lastMessagePreview,
           lastMessageTime: new Date(),
           $inc: { unreadCount: 1 },
         });
@@ -131,15 +142,42 @@ export const setupSocketHandlers = (io: Server) => {
           messageId: newMessage._id,
           senderId: newMessage.senderId,
           senderType: newMessage.senderType,
-          message: newMessage.message
+          message: newMessage.message,
+          
         });
         
         const roomName = `conversation_${conversationId}`;
         console.log(`Emitting to room: ${roomName}`);
         console.log(`Users in room:`, io.sockets.adapter.rooms.get(roomName)?.size || 0);
         
+        const mappedAttachments = (newMessage.attachments ?? []).map((url: string) => {
+          const fileName = url.split('/').pop() || 'file';
+          const lower = url.toLowerCase();
+          const isImage = [".png", ".jpg", ".jpeg", ".gif", ".webp"].some((ext) => lower.endsWith(ext));
+          return {
+            fileName,
+            originalName: fileName,
+            fileType: isImage ? "image" : "document",
+            mimeType: isImage ? "image/jpeg" : "application/octet-stream",
+            fileSize: 0,
+            filePath: url,
+            uploadedAt: newMessage.timestamp,
+          };
+        });
+
         io.to(roomName).emit("new_message", {
-          message: newMessage,
+          message: {
+            id: newMessage._id.toString(),
+            conversationId: newMessage.conversationId,
+            senderId: newMessage.senderId,
+            senderType: newMessage.senderType,
+            message: newMessage.message,
+            messageType: newMessage.messageType,
+            timestamp: newMessage.timestamp,
+            isRead: newMessage.isRead,
+            isDeleted: newMessage.isDeleted,
+            attachments: mappedAttachments,
+          },
           conversationId,
         });
 
@@ -152,6 +190,102 @@ export const setupSocketHandlers = (io: Server) => {
       } catch (error) {
         console.error("Error sending message:", error);
         socket.emit("message_error", { error: "Failed to send message" });
+      }
+    });
+
+    // Handle message actions (delete, restore, permanent delete)
+    socket.on("message_action", async (data: MessageActionData) => {
+      try {
+        console.log("Received message_action event:", data);
+        const { messageId, conversationId, action } = data;
+
+        // Verify the message belongs to the user
+        const message = await ChatMessage.findById(messageId);
+        if (!message || message.senderId !== socket.userId) {
+          socket.emit("message_error", { error: "Unauthorized action" });
+          return;
+        }
+
+        let updatedMessage;
+        switch (action) {
+          case "delete":
+            updatedMessage = await ChatMessage.findByIdAndUpdate(
+              messageId,
+              { 
+                isDeleted: true,
+                deletedAt: new Date(),
+                deletedBy: socket.userId
+              },
+              { new: true }
+            );
+            break;
+          
+          case "restore":
+            updatedMessage = await ChatMessage.findByIdAndUpdate(
+              messageId,
+              { 
+                isDeleted: false,
+                $unset: { deletedAt: 1, deletedBy: 1 }
+              },
+              { new: true }
+            );
+            break;
+          
+          case "permanent_delete":
+            await ChatMessage.findByIdAndDelete(messageId);
+            updatedMessage = null;
+            break;
+        }
+
+        const roomName = `conversation_${conversationId}`;
+        
+        if (action === "permanent_delete") {
+          // Emit permanent deletion event
+          io.to(roomName).emit("message_permanently_deleted", {
+            messageId,
+            conversationId,
+            deletedBy: socket.userId,
+          });
+        } else if (updatedMessage) {
+          // Emit message update event
+          const mappedAttachments2 = (updatedMessage.attachments ?? []).map((url: string) => {
+            const fileName = url.split('/').pop() || 'file';
+            const lower = url.toLowerCase();
+            const isImage = [".png", ".jpg", ".jpeg", ".gif", ".webp"].some((ext) => lower.endsWith(ext));
+            return {
+              fileName,
+              originalName: fileName,
+              fileType: isImage ? "image" : "document",
+              mimeType: isImage ? "image/jpeg" : "application/octet-stream",
+              fileSize: 0,
+              filePath: url,
+              uploadedAt: updatedMessage.timestamp,
+            };
+          });
+
+          io.to(roomName).emit("message_updated", {
+            message: {
+              id: updatedMessage._id.toString(),
+              conversationId: updatedMessage.conversationId,
+              senderId: updatedMessage.senderId,
+              senderType: updatedMessage.senderType,
+              message: updatedMessage.message,
+              messageType: updatedMessage.messageType,
+              timestamp: updatedMessage.timestamp,
+              isRead: updatedMessage.isRead,
+              isDeleted: updatedMessage.isDeleted,
+              deletedAt: updatedMessage.deletedAt,
+              deletedBy: updatedMessage.deletedBy,
+              attachments: mappedAttachments2,
+            },
+            action,
+            conversationId,
+          });
+        }
+
+      } catch (error) {
+        console.error("Error handling message action:", error);
+        socket.emit("message_error", { error: "Failed to perform action" });
       }
     });
 
@@ -175,9 +309,12 @@ export const setupSocketHandlers = (io: Server) => {
       try {
         const { conversationId, messageIds } = data;
 
-        // Mark messages as read in database
+        // Mark messages as read in database (only non-deleted messages)
         await ChatMessage.updateMany(
-          { _id: { $in: messageIds } },
+          { 
+            _id: { $in: messageIds },
+            isDeleted: false
+          },
           { isRead: true }
         );
 
@@ -190,11 +327,22 @@ export const setupSocketHandlers = (io: Server) => {
         socket.to(`conversation_${conversationId}`).emit("messages_read", {
           messageIds,
           conversationId,
+          readBy: socket.userId,
         });
 
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
+    });
+
+    // Handle file upload progress (for real-time progress updates)
+    socket.on("file_upload_progress", (data: { conversationId: string, progress: number, fileName: string }) => {
+      const roomName = `conversation_${data.conversationId}`;
+      socket.to(roomName).emit("file_upload_progress", {
+        ...data,
+        uploaderId: socket.userId,
+        uploaderType: socket.userType,
+      });
     });
 
     // Handle online status

@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
+import path from "path";
+import fs from "fs";
 import { IChatController } from "../interface/IChatController.interface";
 import { IChatService } from "../../services/interface/IChatService";
 import { HttpStatus } from "../../constants/status.constants";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { ChatMessageDTO } from "../../types/chat";
-
-
 
 export class ChatController implements IChatController {
   constructor(private chatService: IChatService) {}
@@ -185,6 +185,24 @@ export class ChatController implements IChatController {
     }
   }
 
+  async sendMessageWithFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { conversationId, message } = req.body;
+      const files = (req as any).files as Express.Multer.File[];
+
+      if (!conversationId || !files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "Conversation ID and files are required" });
+        return;
+      }
+
+      const sent = await this.chatService.sendMessageWithFiles(conversationId, userId, "user", message, files);
+      res.status(HttpStatus.OK).json({ success: true, message: sent });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+
   async sendDoctorMessage(req: Request, res: Response): Promise<void> {
     try {
       const doctorId = (req as any).docId;
@@ -221,6 +239,52 @@ export class ChatController implements IChatController {
         success: false,
         message: (error as Error).message,
       });
+    }
+  }
+
+  // Upload-only endpoints to return URLs for Socket-based sending
+  async uploadFilesForUser(req: Request, res: Response): Promise<void> {
+    try {
+      const files = (req as any).files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "No files uploaded" });
+        return;
+      }
+      const [attachment] = await this.chatService.processUploadedFiles(files);
+      res.status(HttpStatus.OK).json({ success: true, url: attachment.filePath });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+
+  async uploadFilesForDoctor(req: Request, res: Response): Promise<void> {
+    try {
+      const files = (req as any).files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "No files uploaded" });
+        return;
+      }
+      const [attachment] = await this.chatService.processUploadedFiles(files);
+      res.status(HttpStatus.OK).json({ success: true, url: attachment.filePath });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+   async sendDoctorMessageWithFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = (req as any).docId;
+      const { conversationId, message } = req.body;
+      const files = (req as any).files as Express.Multer.File[];
+
+      if (!conversationId || !files || files.length === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "Conversation ID and files are required" });
+        return;
+      }
+
+      const sent = await this.chatService.sendMessageWithFiles(conversationId, doctorId, "doctor", message, files);
+      res.status(HttpStatus.OK).json({ success: true, message: sent });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
     }
   }
 
@@ -418,6 +482,49 @@ export class ChatController implements IChatController {
         success: false,
         message: (error as Error).message,
       });
+    }
+  }
+
+  async softDeleteMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).docId;
+      const { messageId } = req.params;
+
+      if (!messageId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Message ID is required",
+        });
+        return;
+      }
+
+      const deleted = await this.chatService.softDeleteMessage(messageId, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: deleted ? "Message deleted successfully" : "Message not found",
+      });
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  // Removed restore/permanent/delete-list endpoints as per simplified requirements
+
+  async serveFile(req: Request, res: Response): Promise<void> {
+    try {
+      const fileName = path.basename(req.params.fileName);
+      const absolute = path.join(process.cwd(), 'uploads', 'chat', fileName);
+      if (!fs.existsSync(absolute)) {
+        res.status(404).json({ success: false, message: 'File not found' });
+        return;
+      }
+      res.sendFile(absolute);
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to serve file' });
     }
   }
 } 

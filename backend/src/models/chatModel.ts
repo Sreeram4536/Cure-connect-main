@@ -9,6 +9,9 @@ export interface IChatMessage extends Document {
   messageType: "text" | "image" | "file";
   timestamp: Date;
   isRead: boolean;
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
   attachments?: string[];
 }
 
@@ -55,6 +58,16 @@ const chatMessageSchema = new Schema<IChatMessage>({
   isRead: {
     type: Boolean,
     default: false,
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+  },
+  deletedBy: {
+    type: String,
   },
   attachments: [{
     type: String,

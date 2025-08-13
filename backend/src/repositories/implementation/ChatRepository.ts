@@ -1,5 +1,5 @@
 import { IChatRepository } from "../interface/IChatRepository";
-import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse } from "../../types/chat";
+import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO } from "../../types/chat";
 import { ChatMessage, Conversation, IChatMessage, IConversation } from "../../models/chatModel";
 import mongoose from "mongoose";
 
@@ -109,7 +109,22 @@ export class ChatRepository implements IChatRepository {
         throw new Error("Missing required fields: conversationId, senderId, or message");
       }
       
-      const message = new ChatMessage(messageData);
+      // Normalize attachments to stored string[] (URLs)
+      const attachmentUrls = Array.isArray(messageData.attachments)
+        ? (messageData.attachments as any[]).map((a) => (typeof a === "string" ? a : a?.filePath)).filter(Boolean)
+        : [];
+
+      const message = new ChatMessage({
+        conversationId: messageData.conversationId,
+        senderId: messageData.senderId,
+        senderType: messageData.senderType,
+        message: messageData.message,
+        messageType: messageData.messageType as any,
+        attachments: attachmentUrls,
+        timestamp: new Date(),
+        isRead: false,
+        isDeleted: false,
+      });
       console.log("Created message object:", message);
       
       const savedMessage = await message.save();
@@ -140,12 +155,12 @@ export class ChatRepository implements IChatRepository {
 
   async getMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse> {
     const skip = (page - 1) * limit;
-    const messages = await ChatMessage.find({ conversationId })
+    const messages = await ChatMessage.find({ conversationId, isDeleted: false })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit);
     
-    const totalCount = await ChatMessage.countDocuments({ conversationId });
+    const totalCount = await ChatMessage.countDocuments({ conversationId, isDeleted: false });
     
     return {
       messages: messages.map(this.mapMessageToResponse),
@@ -225,12 +240,22 @@ export class ChatRepository implements IChatRepository {
       conversationId,
       senderId: { $ne: userId },
       isRead: false,
+      isDeleted: false,
     });
     return count;
   }
 
   async deleteMessage(messageId: string): Promise<boolean> {
     const result = await ChatMessage.findByIdAndDelete(messageId);
+    return !!result;
+  }
+
+  async softDeleteMessage(messageId: string): Promise<boolean> {
+    const result = await ChatMessage.findByIdAndUpdate(
+      messageId,
+      { isDeleted: true, deletedAt: new Date() },
+      { new: true }
+    );
     return !!result;
   }
 
@@ -250,6 +275,21 @@ export class ChatRepository implements IChatRepository {
   }
 
   private mapMessageToResponse(message: IChatMessage): ChatMessageResponse {
+    const attachmentDtos: AttachmentDTO[] = (message.attachments ?? []).map((url) => {
+      const fileName = typeof url === "string" ? url.split("/").pop() || "file" : "file";
+      const lower = typeof url === "string" ? url.toLowerCase() : "";
+      const isImage = [".png", ".jpg", ".jpeg", ".gif", ".webp"].some((ext) => lower.endsWith(ext));
+      return {
+        fileName,
+        originalName: fileName,
+        fileType: isImage ? "image" as const : "document" as const,
+        mimeType: isImage ? "image/jpeg" : "application/octet-stream",
+        fileSize: 0,
+        filePath: typeof url === "string" ? url : "",
+        uploadedAt: message.timestamp,
+      };
+    });
+
     return {
       id: message._id.toString(),
       conversationId: message.conversationId,
@@ -259,7 +299,8 @@ export class ChatRepository implements IChatRepository {
       messageType: message.messageType,
       timestamp: message.timestamp,
       isRead: message.isRead,
-      attachments: message.attachments,
+      isDeleted: message.isDeleted,
+      attachments: attachmentDtos,
     };
   }
 } 

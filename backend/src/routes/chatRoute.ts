@@ -3,6 +3,7 @@ import { ChatController } from "../controllers/implementation/ChatController";
 import { ChatService } from "../services/implementation/ChatService";
 import { ChatRepository } from "../repositories/implementation/ChatRepository";
 import authRole from "../middlewares/authRole";
+import { uploadChatFiles, handleUploadError } from "../middlewares/fileUpload";
 
 const chatRepository = new ChatRepository();
 const chatService = new ChatService(chatRepository);
@@ -54,10 +55,27 @@ chatRouter.post(
   chatController.sendMessage.bind(chatController)
 );
 
+// New file upload routes
+chatRouter.post(
+  "/messages/upload",
+  authRole(["user"]),
+  uploadChatFiles,
+  handleUploadError,
+  chatController.sendMessageWithFiles.bind(chatController)
+);
+
 chatRouter.post(
   "/messages/doctor",
   authRole(["doctor"]),
   chatController.sendDoctorMessage.bind(chatController)
+);
+
+chatRouter.post(
+  "/messages/doctor/upload",
+  authRole(["doctor"]),
+  uploadChatFiles,
+  handleUploadError,
+  chatController.uploadFilesForDoctor.bind(chatController)
 );
 
 chatRouter.get(
@@ -73,6 +91,7 @@ chatRouter.get(
   chatController.getMessagesByDoctor.bind(chatController)
 );
 
+// Enhanced message management routes
 chatRouter.patch(
   "/conversations/:conversationId/read",
   authRole(["user", "doctor"]),
@@ -85,10 +104,35 @@ chatRouter.get(
   chatController.getUnreadCount.bind(chatController)
 );
 
+// Soft delete message (keeps in database but marks as deleted)
+chatRouter.patch(
+  "/messages/:messageId/soft-delete",
+  authRole(["user", "doctor"]),
+  chatController.softDeleteMessage.bind(chatController)
+);
+
+// Removed restore/permanent/deleted listing routes per simplified requirements
+
+// Legacy delete route (now does soft delete)
 chatRouter.delete(
   "/messages/:messageId",
   authRole(["user", "doctor"]),
-  chatController.deleteMessage.bind(chatController)
+  chatController.softDeleteMessage.bind(chatController)
+);
+
+// File serving route
+chatRouter.get(
+  "/files/:fileName",
+  chatController.serveFile.bind(chatController)
+);
+
+// Simple upload-only endpoint for users (alias for legacy frontend)
+chatRouter.post(
+  "/upload",
+  authRole(["user"]),
+  uploadChatFiles,
+  handleUploadError,
+  chatController.uploadFilesForUser.bind(chatController)
 );
 
 export default chatRouter; 

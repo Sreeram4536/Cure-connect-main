@@ -7,6 +7,7 @@ import {
   sendDoctorMessageAPI,
   markConversationAsReadAPI,
   getDoctorConversationWithUserAPI,
+  doctorDeleteMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -19,7 +20,7 @@ interface User {
   lastSeen?: string;
 }
 
-import axios from "axios";
+import { doctorApi } from "../../axios/doctorAxiosInstance";
 
 const DocChatPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -38,6 +39,8 @@ const DocChatPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
+  const [pendingType, setPendingType] = useState<"image" | "file" | null>(null);
 
   // File upload handler
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,14 +52,16 @@ const DocChatPage: React.FC = () => {
     try {
       
       const formData = new FormData();
-      formData.append("file", file);
-      const res = await axios.post("/api/chat/upload", formData, {
+      formData.append("files", file);
+      const res = await doctorApi.post("/api/chat/messages/doctor/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const url = res.data.url;
-      // Determine messageType
+      // Determine messageType and stage for send
       let messageType: "image" | "file" = file.type.startsWith("image/") ? "image" : "file";
-      await handleSendFileMessage(url, messageType);
+      setPendingAttachments([url]);
+      setPendingType(messageType);
+      setNewMessage(messageType === "image" ? "[Image]" : "[File]");
       setSelectedFile(null);
     } catch (err: any) {
       setUploadError("Failed to upload file");
@@ -66,35 +71,7 @@ const DocChatPage: React.FC = () => {
   };
 
   // Send file/image message
-  const handleSendFileMessage = async (url: string, messageType: "image" | "file") => {
-    if (!conversationId) return;
-    setIsSending(true);
-    try {
-      // Add temporary message
-      const tempMsg: ChatMessage = {
-        id: `temp-${Date.now()}`,
-        conversationId: conversationId,
-        senderId: "doctor",
-        senderType: "doctor",
-        message: messageType === "image" ? "[Image]" : "[File]",
-        messageType,
-        timestamp: new Date(),
-        isRead: false,
-        attachments: [url],
-      };
-      setMessages((prev) => [...prev, tempMsg]);
-      // Send via socket or REST
-      if (isConnected) {
-        sendMessage(conversationId, tempMsg.message, messageType, [url]);
-      } else {
-        await sendDoctorMessageAPI(conversationId, tempMsg.message, messageType, [url]);
-      }
-    } catch (err) {
-      toast.error("Failed to send file message");
-    } finally {
-      setIsSending(false);
-    }
-  };
+  // Removed immediate send; will include staged attachments on send
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -257,7 +234,8 @@ const DocChatPage: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !conversationId) return;
+    if (!conversationId) return;
+    if (newMessage.trim() === "" && pendingAttachments.length === 0) return;
 
     setIsSending(true);
     try {
@@ -271,30 +249,44 @@ const DocChatPage: React.FC = () => {
           conversationId: conversationId,
           senderId: "doctor",
           senderType: "doctor" as const,
-          message: newMessage.trim(),
-          messageType: "text",
+          message: newMessage.trim() || (pendingType === "image" ? "[Image]" : "[File]"),
+          messageType: pendingType ?? "text",
           timestamp: new Date(),
           isRead: false,
-          attachments: []
+          attachments: pendingAttachments.map((url) => ({
+            fileName: url.split('/').pop() || 'file',
+            originalName: url.split('/').pop() || 'file',
+            fileType: (pendingType === 'image' ? 'image' : 'document'),
+            mimeType: pendingType === 'image' ? 'image/jpeg' : 'application/octet-stream',
+            fileSize: 0,
+            filePath: url,
+            uploadedAt: new Date(),
+          })) as any,
+          isDeleted: false
         };
         setMessages(prev => [...prev, tempMsg]);
         setTempMessage(newMessage.trim());
         
-        sendMessage(conversationId, newMessage.trim(), "text");
+        sendMessage(conversationId, tempMsg.message, tempMsg.messageType, pendingAttachments);
         setNewMessage("");
+        setPendingAttachments([]);
+        setPendingType(null);
         setIsSending(false);
       } else {
         // Fallback to REST API if socket is not connected
         const response = await sendDoctorMessageAPI(
           conversationId,
-          newMessage.trim(),
-          "text"
+          newMessage.trim() || (pendingType === "image" ? "[Image]" : "[File]"),
+          pendingType ?? "text",
+          pendingAttachments
         );
         console.log("Doctor send message response:", response.data);
 
         if (response.data.success) {
           setMessages((prev) => [...prev, response.data.message]);
           setNewMessage("");
+          setPendingAttachments([]);
+          setPendingType(null);
         }
         setIsSending(false);
       }
@@ -302,6 +294,18 @@ const DocChatPage: React.FC = () => {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await doctorDeleteMessageAPI(messageId);
+      // Remove the message from the state
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      toast.success("Message deleted successfully");
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast.error("Failed to delete message");
     }
   };
 
@@ -437,14 +441,50 @@ const DocChatPage: React.FC = () => {
                             : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
                         }`}
                       >
-                        {/* Render image/file or text */}
-                        {message.messageType === "image" && message.attachments && message.attachments[0] ? (
-                          <img src={message.attachments[0]} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1" />
-                        ) : message.messageType === "file" && message.attachments && message.attachments[0] ? (
-                          <a href={message.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-blue-200 underline">Download File</a>
-                        ) : (
+                      {/* Render image/file or text */}
+                      {message.messageType === "image" && message.attachments && message.attachments[0] ? (
+                        <div className="relative">
+                          <img src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1" />
+                          {message.senderType === "doctor" && (
+                          <button
+                            onClick={() => handleDeleteMessage(message.id)}
+                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                          )}
+                        </div>
+                      ) : message.messageType === "file" && message.attachments && message.attachments[0] ? (
+                        <div className="relative">
+                          <a href={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-200 underline">Download File</a>
+                          {message.senderType === "doctor" && (
+                          <button
+                            onClick={() => handleDeleteMessage(message.id)}
+                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="relative">
                           <p className="text-sm">{message.message}</p>
-                        )}
+                          {message.senderType === "doctor" && (
+                          <button
+                            onClick={() => handleDeleteMessage(message.id)}
+                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                          )}
+                        </div>
+                      )}
                         <p
                           className={`text-xs mt-1 ${
                             message.senderType === "doctor"
