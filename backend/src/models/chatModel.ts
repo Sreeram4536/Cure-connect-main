@@ -10,6 +10,9 @@ export interface IChatMessage extends Document {
   timestamp: Date;
   isRead: boolean;
   attachments?: string[];
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
 }
 
 export interface IConversation extends Document {
@@ -59,6 +62,16 @@ const chatMessageSchema = new Schema<IChatMessage>({
   attachments: [{
     type: String,
   }],
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+  },
+  deletedBy: {
+    type: String,
+  },
 }, {
   timestamps: false, // Disable timestamps for messages
 });

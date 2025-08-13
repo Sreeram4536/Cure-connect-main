@@ -78,4 +78,8 @@ export const sendDoctorMessageAPI = (conversationId: string, message: string, me
     messageType,
     attachments,
   });
+};
+
+export const deleteDoctorMessageAPI = (messageId: string) => {
+  return doctorApi.delete(`${CHAT_API.MESSAGES}/${messageId}`);
 }; 

@@ -8,6 +8,9 @@ export interface ChatMessage {
   timestamp: Date;
   isRead: boolean;
   attachments?: string[];
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
 }
 
 export interface Conversation {

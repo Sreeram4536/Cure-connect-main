@@ -140,12 +140,18 @@ export class ChatRepository implements IChatRepository {
 
   async getMessages(conversationId: string, page: number, limit: number): Promise<MessageListResponse> {
     const skip = (page - 1) * limit;
-    const messages = await ChatMessage.find({ conversationId })
+    const messages = await ChatMessage.find({ 
+      conversationId, 
+      isDeleted: { $ne: true } // Filter out deleted messages
+    })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit);
     
-    const totalCount = await ChatMessage.countDocuments({ conversationId });
+    const totalCount = await ChatMessage.countDocuments({ 
+      conversationId, 
+      isDeleted: { $ne: true } // Count only non-deleted messages
+    });
     
     return {
       messages: messages.map(this.mapMessageToResponse),
@@ -157,7 +163,10 @@ export class ChatRepository implements IChatRepository {
   }
 
   async getMessageById(messageId: string): Promise<ChatMessageResponse | null> {
-    const message = await ChatMessage.findById(messageId);
+    const message = await ChatMessage.findOne({ 
+      _id: messageId, 
+      isDeleted: { $ne: true } // Filter out deleted messages
+    });
     return message ? this.mapMessageToResponse(message) : null;
   }
 
@@ -229,8 +238,16 @@ export class ChatRepository implements IChatRepository {
     return count;
   }
 
-  async deleteMessage(messageId: string): Promise<boolean> {
-    const result = await ChatMessage.findByIdAndDelete(messageId);
+  async deleteMessage(messageId: string, deletedBy: string): Promise<boolean> {
+    const result = await ChatMessage.findByIdAndUpdate(
+      messageId,
+      { 
+        isDeleted: true, 
+        deletedAt: new Date(), 
+        deletedBy 
+      },
+      { new: true }
+    );
     return !!result;
   }
 
@@ -260,6 +277,9 @@ export class ChatRepository implements IChatRepository {
       timestamp: message.timestamp,
       isRead: message.isRead,
       attachments: message.attachments,
+      isDeleted: message.isDeleted,
+      deletedAt: message.deletedAt,
+      deletedBy: message.deletedBy,
     };
   }
 } 

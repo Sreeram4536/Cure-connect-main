@@ -214,10 +214,11 @@ export class ChatService implements IChatService {
       throw new Error("Message not found");
     }
 
+    // Only allow deletion of own messages
     if (message.senderId !== senderId) {
       throw new Error("You can only delete your own messages");
     }
 
-    return await this.chatRepository.deleteMessage(messageId);
+    return await this.chatRepository.deleteMessage(messageId, senderId);
   }
 } 

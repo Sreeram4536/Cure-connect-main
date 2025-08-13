@@ -17,5 +17,5 @@ export interface IChatRepository {
   markMessageAsRead(messageId: string): Promise<boolean>;
   markConversationAsRead(conversationId: string, userId: string): Promise<boolean>;
   getUnreadCount(conversationId: string, userId: string): Promise<number>;
-  deleteMessage(messageId: string): Promise<boolean>;
+  deleteMessage(messageId: string, deletedBy: string): Promise<boolean>;
 } 

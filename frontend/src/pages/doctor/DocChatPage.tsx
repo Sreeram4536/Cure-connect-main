@@ -7,6 +7,7 @@ import {
   sendDoctorMessageAPI,
   markConversationAsReadAPI,
   getDoctorConversationWithUserAPI,
+  deleteDoctorMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -30,8 +31,12 @@ const DocChatPage: React.FC = () => {
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSending, setIsSending] = useState<boolean>(false);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [typingTimeout, setTypingTimeout] = useState<number | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -95,11 +100,23 @@ const DocChatPage: React.FC = () => {
       }
     });
 
+    // Listen for message deletion
+    socket.on('message_deleted', (data: { messageId: string; conversationId: string }) => {
+      if (conversationId && data.conversationId === conversationId) {
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === data.messageId ? { ...msg, isDeleted: true } : msg
+          )
+        );
+      }
+    });
+
     return () => {
       socket.off('new_message');
       socket.off('typing_start');
       socket.off('typing_stopped');
       socket.off('messages_read');
+      socket.off('message_deleted');
     };
   }, [socket, conversationId]);
 
@@ -213,7 +230,10 @@ const DocChatPage: React.FC = () => {
           messageType: "text",
           timestamp: new Date(),
           isRead: false,
-          attachments: []
+          attachments: [],
+          isDeleted: false,
+          deletedAt: undefined,
+          deletedBy: undefined
         };
         setMessages(prev => [...prev, tempMsg]);
         setTempMessage(newMessage.trim());
@@ -240,6 +260,115 @@ const DocChatPage: React.FC = () => {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    setMessageToDelete(messageId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!messageToDelete) return;
+
+    setDeletingMessageId(messageToDelete);
+    try {
+      const response = await deleteDoctorMessageAPI(messageToDelete);
+      if (response.data.success) {
+        // Remove the message from the local state
+        setMessages(prev => prev.filter(msg => msg.id !== messageToDelete));
+        toast.success("Message deleted successfully");
+      } else {
+        toast.error(response.data.message || "Failed to delete message");
+      }
+    } catch (error: any) {
+      console.error("Error deleting message:", error);
+      
+      // Handle different types of errors
+      if (error.response?.status === 403) {
+        toast.error("You don't have permission to delete this message");
+      } else if (error.response?.status === 404) {
+        toast.error("Message not found or already deleted");
+      } else if (error.response?.status === 500) {
+        toast.error("Server error. Please try again later");
+      } else {
+        toast.error("Failed to delete message. Please try again");
+      }
+    } finally {
+      setDeletingMessageId(null);
+      setShowDeleteConfirm(false);
+      setMessageToDelete(null);
+    }
+  };
+
+  const cancelDeleteMessage = () => {
+    setShowDeleteConfirm(false);
+    setMessageToDelete(null);
+  };
+
+  const handleFileUpload = async (files: FileList) => {
+    if (!conversationId) return;
+
+    for (const file of files) {
+      const fileId = `${file.name}-${Date.now()}`;
+      setUploadingFiles(prev => new Set(prev).add(fileId));
+      
+      try {
+        // For now, we'll simulate file upload by creating a temporary URL
+        // In a real implementation, you'd upload to a cloud service like AWS S3
+        const fileUrl = URL.createObjectURL(file);
+        const messageType = file.type.startsWith('image/') ? 'image' : 'file';
+        
+        // Create temporary message
+        const tempMsg: ChatMessage = {
+          id: `temp-${Date.now()}-${Math.random()}`,
+          conversationId: conversationId,
+          senderId: "doctor",
+          senderType: "doctor" as const,
+          message: `Sent ${file.name}`,
+          messageType: messageType as "text" | "image" | "file",
+          timestamp: new Date(),
+          isRead: false,
+          attachments: [fileUrl],
+          isDeleted: false,
+          deletedAt: undefined,
+          deletedBy: undefined
+        };
+
+        setMessages(prev => [...prev, tempMsg]);
+
+        // Send message via API
+        const response = await sendDoctorMessageAPI(
+          conversationId,
+          `Sent ${file.name}`,
+          messageType,
+          [fileUrl]
+        );
+
+        if (response.data.success) {
+          // Replace temporary message with real message
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === tempMsg.id ? response.data.message : msg
+            )
+          );
+          toast.success(`${file.name} sent successfully`);
+        }
+      } catch (error: any) {
+        console.error("Error uploading file:", error);
+        toast.error(`Failed to upload ${file.name}`);
+        
+        // Remove temporary message on error
+        setMessages(prev => 
+          prev.filter(msg => !msg.id.startsWith('temp-'))
+        );
+      } finally {
+        setUploadingFiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(fileId);
+          return newSet;
+        });
+      }
     }
   };
 
@@ -384,22 +513,123 @@ const DocChatPage: React.FC = () => {
                         />
                       )}
                       <div
-                        className={`px-4 py-2 rounded-2xl ${
+                        className={`px-4 py-2 rounded-2xl relative group transition-all duration-200 ${
                           message.senderType === "doctor"
-                            ? "bg-blue-500 text-white rounded-br-sm"
-                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
+                            ? "bg-blue-500 text-white rounded-br-sm hover:bg-blue-600"
+                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm hover:bg-gray-50"
+                        } ${message.isDeleted ? "opacity-60" : ""} ${
+                          deletingMessageId === message.id ? "opacity-50" : ""
                         }`}
                       >
-                        <p className="text-sm">{message.message}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            message.senderType === "doctor"
-                              ? "text-blue-100"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {formatTime(message.timestamp)}
-                        </p>
+                        {deletingMessageId === message.id ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                            <span className="text-sm">Deleting...</span>
+                          </div>
+                        ) : message.isDeleted ? (
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span className="text-sm italic">Message deleted</span>
+                          </div>
+                        ) : (
+                          <>
+                            {message.message && (
+                              <p className="text-sm mb-2">{message.message}</p>
+                            )}
+                            
+                            {/* Render attachments */}
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="space-y-2 mb-2">
+                                {message.attachments.map((attachment, index) => (
+                                  <div key={index} className="relative group/attachment">
+                                    {message.messageType === "image" ? (
+                                      <img
+                                        src={attachment}
+                                        alt="Attachment"
+                                        className="max-w-full h-auto rounded-lg max-h-48 object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span className="text-sm text-gray-700 truncate">
+                                          {attachment.split('/').pop() || 'File'}
+                                        </span>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Delete attachment button for doctor's own messages */}
+                                    {message.senderType === "doctor" && (
+                                      <button
+                                        onClick={() => handleDeleteMessage(message.id)}
+                                        disabled={deletingMessageId === message.id}
+                                        className={`absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover/attachment:opacity-100 transition-opacity ${
+                                          deletingMessageId === message.id
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : "hover:bg-red-600"
+                                        }`}
+                                        title="Delete attachment"
+                                      >
+                                        {deletingMessageId === message.id ? (
+                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                        ) : (
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        <div className="flex items-center justify-between mt-1">
+                          <p
+                            className={`text-xs ${
+                              message.senderType === "doctor"
+                                ? "text-blue-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {formatTime(message.timestamp)}
+                          </p>
+                          {message.senderType === "doctor" && !message.isDeleted && (
+                            <button
+                              onClick={() => handleDeleteMessage(message.id)}
+                              disabled={deletingMessageId === message.id}
+                              className={`ml-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 ${
+                                deletingMessageId === message.id
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:bg-blue-600 hover:scale-110"
+                              }`}
+                              title="Delete message"
+                            >
+                              {deletingMessageId === message.id ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                              ) : (
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -438,10 +668,20 @@ const DocChatPage: React.FC = () => {
             {/* Message Input */}
             <div className="bg-white border-t border-gray-200 px-6 py-4">
               <div className="flex items-center space-x-3">
-                <button
-                  type="button"
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                >
+                <label className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer group relative">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        // Handle file uploads
+                        handleFileUpload(files);
+                      }
+                    }}
+                  />
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -455,7 +695,13 @@ const DocChatPage: React.FC = () => {
                       d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                     />
                   </svg>
-                </button>
+                  
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                    Attach files
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </label>
 
                 <div className="flex-1 relative">
                   <input
@@ -516,10 +762,74 @@ const DocChatPage: React.FC = () => {
                   )}
                 </button>
               </div>
+              
+              {/* File Upload Progress */}
+              {uploadingFiles.size > 0 && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm text-blue-700 font-medium">
+                      Uploading {uploadingFiles.size} file{uploadingFiles.size > 1 ? 's' : ''}...
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {Array.from(uploadingFiles).map((fileId) => (
+                      <div key={fileId} className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-blue-600">
+                          {fileId.split('-')[0]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Message</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelDeleteMessage}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteMessage}
+                disabled={deletingMessageId === messageToDelete}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingMessageId === messageToDelete ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deleting...
+                  </div>
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
