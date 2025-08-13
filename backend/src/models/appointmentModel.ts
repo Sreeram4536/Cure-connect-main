@@ -77,9 +77,26 @@ const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
   },
 
   razorpayOrderId: {
-  type: String,
-  default: null,
-},
+    type: String,
+    default: null,
+  },
+
+  // New fields for cancellation tracking
+  cancelledBy: {
+    type: String,
+    enum: ["user", "doctor", "admin"],
+    default: null,
+  },
+
+  cancelledAt: {
+    type: Date,
+    default: null,
+  },
+
+  cancellationReason: {
+    type: String,
+    default: null,
+  },
 });
 
 const appointmentModel: Model<AppointmentDocument> =

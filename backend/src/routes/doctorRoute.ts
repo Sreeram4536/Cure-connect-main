@@ -132,6 +132,19 @@ doctorRouter.patch(
   asyncHandler(slotRuleController.cancelCustomSlot.bind(slotRuleController))
 );
 
+// New leave management routes
+doctorRouter.post(
+  "/leave/set",
+  authRole(["doctor"]),
+  asyncHandler(slotRuleController.setDayAsLeave.bind(slotRuleController))
+);
+
+doctorRouter.delete(
+  "/leave/remove/:date",
+  authRole(["doctor"]),
+  asyncHandler(slotRuleController.removeDayLeave.bind(slotRuleController))
+);
+
 doctorRouter.post(
   "/slot/lock",
   authRole(["doctor", "user"]),

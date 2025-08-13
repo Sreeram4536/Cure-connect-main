@@ -24,6 +24,11 @@ export interface AppointmentTypes {
   razorpayOrderId?: string;
   paymentMethod?: 'razorpay' | 'wallet';
   walletTransactionId?: string;
+  
+  // New fields for cancellation tracking
+  cancelledBy?: "user" | "doctor" | "admin";
+  cancelledAt?: Date;
+  cancellationReason?: string;
 }
 
 export interface WalletPaymentData {

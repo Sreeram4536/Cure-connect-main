@@ -10,6 +10,8 @@ import {
   getDoctorSlotsForDateAPI,
   updateDoctorCustomSlotAPI,
   cancelDoctorCustomSlotAPI,
+  setDoctorLeaveAPI,
+  removeDoctorLeaveAPI,
 } from "../../services/doctorServices";
 import { DoctorContext } from "../../context/DoctorContext";
 
@@ -66,21 +68,25 @@ const DoctorSlotManager = () => {
   const [editSlot, setEditSlot] = useState<any | null>(null);
   const [editTime, setEditTime] = useState("");
   const [editDuration, setEditDuration] = useState<number>(30);
+  const [markingLeave, setMarkingLeave] = useState(false);
+  const [leaveType, setLeaveType] = useState<'full' | 'break' | 'custom'>('full');
 
   // Fetch existing rule on mount
   useEffect(() => {
-    (async () => {
-      try {
-        // const { data } = await axios.get("/api/doctor/slot-rule");
-        const { data } = await getDoctorSlotRuleAPI();
-        if (data.rule) setRule(data.rule);
-      } catch {
-        // No rule set yet
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchRule();
   }, []);
+
+  // Fetch rule data
+  const fetchRule = async () => {
+    try {
+      const { data } = await getDoctorSlotRuleAPI();
+      if (data.rule) setRule(data.rule);
+    } catch {
+      // No rule set yet
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Save rule
   const saveRule = async () => {
@@ -172,6 +178,78 @@ const DoctorSlotManager = () => {
       breaks.splice(idx, 1);
       return { ...prev, breaks };
     });
+  };
+
+  // Handle marking a day as leave
+  const handleMarkAsLeave = async () => {
+    if (!selectedDay) return;
+    
+    setMarkingLeave(true);
+    try {
+      const response = await setDoctorLeaveAPI(selectedDay, leaveType);
+      
+      if (response.data.success) {
+        toast.success(response.data.message || "Day marked as leave successfully!");
+        
+        // Show leave management result if available
+        if (response.data.data?.leaveManagementResult) {
+          const result = response.data.data.leaveManagementResult;
+          if (result.cancelledAppointments > 0) {
+            toast.info(`${result.cancelledAppointments} appointments cancelled and ₹${result.refundedAmount} refunded`);
+          } else {
+            toast.info("No appointments were cancelled for this date");
+          }
+        }
+        
+        // Refresh the rule data and preview slots to show the updated calendar
+        await fetchRule();
+        fetchPreviewSlots();
+        setSelectedDay(null);
+      } else {
+        toast.error(response.data.message || "Failed to mark day as leave");
+      }
+    } catch (error: any) {
+      console.error("Error marking day as leave:", error);
+      toast.error(error.response?.data?.message || "Failed to mark day as leave");
+    } finally {
+      setMarkingLeave(false);
+    }
+  };
+
+  // Handle removing leave for a day
+  const handleRemoveLeave = async () => {
+    if (!selectedDay) return;
+    
+    setMarkingLeave(true);
+    try {
+      const response = await removeDoctorLeaveAPI(selectedDay);
+      
+      if (response.data.success) {
+        toast.success("Leave removed successfully!");
+        await fetchRule();
+        fetchPreviewSlots();
+        setSelectedDay(null);
+      } else {
+        toast.error(response.data.message || "Failed to remove leave");
+      }
+    } catch (error: any) {
+      console.error("Error removing leave:", error);
+      toast.error(error.response?.data?.message || "Failed to remove leave");
+    } finally {
+      setMarkingLeave(false);
+    }
+  };
+
+  // Check if the selected day is already marked as leave
+  const isDayMarkedAsLeave = () => {
+    if (!selectedDay) return false;
+    return rule.customDays?.some((cd: any) => cd.date === selectedDay);
+  };
+
+  const getLeaveTypeForDay = () => {
+    if (!selectedDay) return null;
+    const customDay = rule.customDays?.find((cd: any) => cd.date === selectedDay);
+    return customDay?.leaveType || null;
   };
 
   if (contextLoading) {
@@ -535,11 +613,15 @@ const DoctorSlotManager = () => {
               <div className="flex gap-6 mb-6">
                 <span className="flex items-center gap-2 text-sm">
                   <span className="w-4 h-4 rounded-full bg-red-400"></span>
-                  Leave Day
+                  Full Leave Day
                 </span>
                 <span className="flex items-center gap-2 text-sm">
                   <span className="w-4 h-4 rounded-full bg-yellow-300"></span>
                   Partial Leave Day
+                </span>
+                <span className="flex items-center gap-2 text-sm">
+                  <span className="w-4 h-4 rounded-full bg-orange-400"></span>
+                  Custom Leave Day
                 </span>
               </div>
 
@@ -596,6 +678,8 @@ const DoctorSlotManager = () => {
                           dayBg = "bg-red-100";
                         } else if (customDay.leaveType === "break") {
                           dayBg = "bg-yellow-100";
+                        } else if (customDay.leaveType === "custom") {
+                          dayBg = "bg-orange-100";
                         }
                       }
                       
@@ -608,10 +692,23 @@ const DoctorSlotManager = () => {
                             fetchSlotsForDate(dateStr);
                           }}
                         >
-                          <div className="font-bold text-sm text-gray-700 mb-1">
-                            {d}
+                          <div className="font-bold text-sm text-gray-700 mb-1 flex items-center justify-between">
+                            <span>{d}</span>
+                            {customDay && (
+                              <span className={`w-2 h-2 rounded-full ${
+                                customDay.leaveType === "full" ? "bg-red-500" :
+                                customDay.leaveType === "break" ? "bg-yellow-500" :
+                                "bg-orange-500"
+                              }`}></span>
+                            )}
                           </div>
-                          {slots.length === 0 ? (
+                          {customDay ? (
+                            <span className="text-xs font-medium text-red-600">
+                              {customDay.leaveType === "full" ? "Full Leave" :
+                               customDay.leaveType === "break" ? "Partial Leave" :
+                               "Custom Leave"}
+                            </span>
+                          ) : slots.length === 0 ? (
                             <span className="text-xs text-gray-400">No slots</span>
                           ) : (
                             <span className="text-xs text-blue-600 font-medium">
@@ -645,6 +742,84 @@ const DoctorSlotManager = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-4">
               Slots for {selectedDay}
             </h3>
+
+            {/* Leave Management Section */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                Leave Management
+              </h4>
+              
+              {isDayMarkedAsLeave() ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    This day is marked as <span className="font-semibold">{getLeaveTypeForDay()} leave</span>
+                  </div>
+                  <button
+                    onClick={handleRemoveLeave}
+                    disabled={markingLeave}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {markingLeave ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Removing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Remove Leave
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-600 mb-3">
+                    Mark this day as leave to automatically cancel all appointments and process refunds.
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Leave Type:</label>
+                    <select
+                      value={leaveType}
+                      onChange={(e) => setLeaveType(e.target.value as 'full' | 'break' | 'custom')}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    >
+                      <option value="full">Full Day Leave</option>
+                      <option value="break">Partial Leave (Break)</option>
+                      <option value="custom">Custom Leave</option>
+                    </select>
+                  </div>
+                  
+                  <button
+                    onClick={handleMarkAsLeave}
+                    disabled={markingLeave}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-2 px-4 rounded-lg font-medium hover:from-orange-600 hover:to-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {markingLeave ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Marking as Leave...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        Mark as Leave
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-col gap-3 max-h-80 overflow-y-auto mb-4">
               {previewSlots.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">

@@ -144,3 +144,11 @@ export const cancelDoctorCustomSlotAPI = (date: string, start: string) => {
   return api.patch(DOCTOR_API.CANCEL_CUSTOM_SLOT, { date, start });
 };
 
+export const removeDoctorLeaveAPI = (date: string) => {
+  return api.delete(`/api/doctor/leave/remove/${date}`);
+};
+
+export const setDoctorLeaveAPI = (date: string, leaveType: 'full' | 'break' | 'custom', slots?: any[]) => {
+  return api.post('/api/doctor/leave/set', { date, leaveType, slots });
+};
+

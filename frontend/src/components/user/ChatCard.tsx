@@ -3,6 +3,7 @@ import { assets } from "../../assets/user/assets";
 import { useNavigate } from "react-router-dom";
 import { createConversationAPI } from "../../services/chatServices";
 import { toast } from "react-toastify";
+import { api } from "../../axios/axiosInstance";
 
 type ChatCardProps = {
   doctorId?: string;
@@ -11,15 +12,52 @@ type ChatCardProps = {
   doctorImage?: string;
 };
 
+interface DoctorInfo {
+  name: string;
+  speciality: string;
+  image: string;
+}
+
 const ChatCard: React.FC<ChatCardProps> = ({ 
   doctorId, 
-  doctorName = "Dr. Sarah Johnson",
-  doctorSpecialization = "Cardiologist",
-  doctorImage 
+  doctorName: propDoctorName,
+  doctorSpecialization: propDoctorSpecialization,
+  doctorImage: propDoctorImage
 }) => {
   console.log("ChatCard received doctorId:", doctorId);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
+  const [loadingDoctor, setLoadingDoctor] = useState(false);
+
+  // Fetch doctor information when doctorId changes
+  useEffect(() => {
+    const fetchDoctorInfo = async () => {
+      if (!doctorId) return;
+      
+      setLoadingDoctor(true);
+      try {
+        const response = await api.get(`/api/user/doctor/${doctorId}`);
+        if (response.data.success) {
+          setDoctorInfo(response.data.doctor);
+        }
+      } catch (error) {
+        console.error("Error fetching doctor info:", error);
+        // Fallback to props if API fails
+        if (propDoctorName && propDoctorSpecialization) {
+          setDoctorInfo({
+            name: propDoctorName,
+            speciality: propDoctorSpecialization,
+            image: propDoctorImage || assets.contact_image
+          });
+        }
+      } finally {
+        setLoadingDoctor(false);
+      }
+    };
+
+    fetchDoctorInfo();
+  }, [doctorId, propDoctorName, propDoctorSpecialization, propDoctorImage]);
 
   const handleStartChat = async () => {
     if (!doctorId) {
@@ -42,12 +80,17 @@ const ChatCard: React.FC<ChatCardProps> = ({
     }
   };
 
+  // Use fetched doctor info or fallback to props
+  const displayName = doctorInfo?.name || propDoctorName || "Dr. Sarah Johnson";
+  const displaySpecialization = doctorInfo?.speciality || propDoctorSpecialization || "Cardiologist";
+  const displayImage = doctorInfo?.image || propDoctorImage || assets.contact_image;
+
   return (
     <div className="w-96 bg-white rounded-lg shadow-lg overflow-hidden">
       {/* Card Header with Image */}
       <div className="h-96 overflow-hidden">
         <img
-          src={doctorImage || assets.contact_image}
+          src={displayImage}
           alt="card-image"
           className="h-full w-full object-cover"
         />
@@ -64,8 +107,13 @@ const ChatCard: React.FC<ChatCardProps> = ({
           </span>
         </div>
         <p className="text-gray-600 text-sm font-normal opacity-75 leading-relaxed">
-          Start a conversation with {doctorName} ({doctorSpecialization})
+          Start a conversation with {displayName} ({displaySpecialization})
         </p>
+        {loadingDoctor && (
+          <div className="mt-2 text-sm text-blue-600">
+            Loading doctor information...
+          </div>
+        )}
       </div>
 
       {/* Card Footer */}

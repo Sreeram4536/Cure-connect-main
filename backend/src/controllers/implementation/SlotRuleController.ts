@@ -63,5 +63,95 @@ export class SlotRuleController {
     const updated = await this.service.cancelCustomSlot(doctorId, date, start);
     res.json({ success: true, slot: updated });
   }
+
+  // New method to set a day as leave
+  async setDayAsLeave(req: Request, res: Response) {
+    try {
+      const doctorId = (req as any).docId;
+      const { date, leaveType, slots } = req.body;
+      
+      // Validate required fields
+      if (!date || !leaveType) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Date and leaveType are required' 
+        });
+      }
+
+      // Validate leaveType
+      if (!['full', 'break', 'custom'].includes(leaveType)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid leaveType. Must be one of: full, break, custom' 
+        });
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid date format. Use YYYY-MM-DD' 
+        });
+      }
+
+      // Check if date is in the past
+      const now = new Date();
+      const leaveDate = new Date(date);
+      if (leaveDate < now) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Cannot set leave for past dates' 
+        });
+      }
+
+      const result = await this.service.setDayAsLeave(doctorId, date, leaveType, slots);
+      
+      res.json({ 
+        success: true, 
+        message: 'Leave set successfully',
+        data: result
+      });
+      
+    } catch (error: any) {
+      console.error('Failed to set day as leave:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Failed to set leave' 
+      });
+    }
+  }
+
+  // New method to remove leave for a day
+  async removeDayLeave(req: Request, res: Response) {
+    try {
+      const doctorId = (req as any).docId;
+      const { date } = req.params;
+      
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid date format. Use YYYY-MM-DD' 
+        });
+      }
+
+      const result = await this.service.removeDayLeave(doctorId, date);
+      
+      res.json({ 
+        success: true, 
+        message: 'Leave removed successfully',
+        data: result
+      });
+      
+    } catch (error: any) {
+      console.error('Failed to remove leave:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Failed to remove leave' 
+      });
+    }
+  }
 }
 
