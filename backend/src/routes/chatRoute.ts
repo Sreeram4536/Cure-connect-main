@@ -3,6 +3,7 @@ import { ChatController } from "../controllers/implementation/ChatController";
 import { ChatService } from "../services/implementation/ChatService";
 import { ChatRepository } from "../repositories/implementation/ChatRepository";
 import authRole from "../middlewares/authRole";
+import { uploadChatFiles } from "../middlewares/multer";
 
 const chatRepository = new ChatRepository();
 const chatService = new ChatService(chatRepository);
@@ -112,12 +113,14 @@ chatRouter.delete(
 chatRouter.post(
   "/messages/with-files",
   authRole(["user"]),
+  uploadChatFiles,
   chatController.sendMessageWithFiles.bind(chatController)
 );
 
 chatRouter.post(
   "/messages/doctor/with-files",
   authRole(["doctor"]),
+  uploadChatFiles,
   chatController.sendDoctorMessageWithFiles.bind(chatController)
 );
 

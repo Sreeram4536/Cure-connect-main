@@ -78,4 +78,37 @@ export const sendDoctorMessageAPI = (conversationId: string, message: string, me
     messageType,
     attachments,
   });
+};
+
+// File upload API functions
+export const sendMessageWithFilesAPI = (conversationId: string, message: string, files: FileList) => {
+  const formData = new FormData();
+  formData.append('conversationId', conversationId);
+  formData.append('message', message);
+  
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+
+  return api.post(`${CHAT_API.MESSAGES}/with-files`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const sendDoctorMessageWithFilesAPI = (conversationId: string, message: string, files: FileList) => {
+  const formData = new FormData();
+  formData.append('conversationId', conversationId);
+  formData.append('message', message);
+  
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+
+  return doctorApi.post(`${CHAT_API.MESSAGES}/doctor/with-files`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 }; 

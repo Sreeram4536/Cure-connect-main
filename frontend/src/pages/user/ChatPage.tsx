@@ -8,6 +8,7 @@ import {
   markConversationAsReadAPI,
   createConversationAPI,
   deleteMessageAPI,
+  sendMessageWithFilesAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -34,7 +35,10 @@ const ChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [showFilePreview, setShowFilePreview] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -299,6 +303,64 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      setSelectedFiles(files);
+      setShowFilePreview(true);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    if (selectedFiles) {
+      const dt = new DataTransfer();
+      for (let i = 0; i < selectedFiles.length; i++) {
+        if (i !== index) {
+          dt.items.add(selectedFiles[i]);
+        }
+      }
+      setSelectedFiles(dt.files);
+      if (dt.files.length === 0) {
+        setShowFilePreview(false);
+      }
+    }
+  };
+
+  const handleSendWithFiles = async (e: React.FormEvent | React.MouseEvent) => {
+    e.preventDefault();
+    if (!conversation || (!newMessage.trim() && !selectedFiles)) return;
+
+    setIsSending(true);
+    try {
+      if (selectedFiles && selectedFiles.length > 0) {
+        // Send message with files
+        const response = await sendMessageWithFilesAPI(
+          conversation.id,
+          newMessage.trim(),
+          selectedFiles
+        );
+        
+        if (response.data.success) {
+          setMessages((prev) => [...prev, response.data.data]);
+          setNewMessage("");
+          setSelectedFiles(null);
+          setShowFilePreview(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }
+      } else {
+        // Send regular text message
+        await handleSendMessage(e);
+      }
+    } catch (error: any) {
+      console.error("Error sending message with files:", error);
+      toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const formatTime = (date: Date): string => {
     return new Date(date).toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -448,6 +510,46 @@ const ChatPage: React.FC = () => {
                           }`}
                         >
                           <p className="text-sm">{message.message}</p>
+                          
+                          {/* File Attachments */}
+                          {message.attachments && message.attachments.length > 0 && (
+                            <div className="mt-2 space-y-2">
+                              {message.attachments.map((attachment, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  {attachment.fileType.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                    // Image preview
+                                    <img
+                                      src={attachment.url}
+                                      alt={attachment.originalName}
+                                      className="max-w-xs max-h-48 rounded-lg cursor-pointer"
+                                      onClick={() => window.open(attachment.url, '_blank')}
+                                    />
+                                  ) : (
+                                    // File link
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`flex items-center space-x-2 p-2 rounded ${
+                                        message.senderType === "user"
+                                          ? "bg-blue-400 hover:bg-blue-300"
+                                          : "bg-gray-100 hover:bg-gray-200"
+                                      }`}
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <div className="text-xs">
+                                        <p className="font-medium">{attachment.originalName}</p>
+                                        <p className="opacity-75">{(attachment.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                                      </div>
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           <p
                             className={`text-xs mt-1 ${
                               message.senderType === "user"
@@ -506,10 +608,68 @@ const ChatPage: React.FC = () => {
 
             {/* Message Input */}
             <div className="bg-white border-t border-gray-200 px-6 py-4">
+              {/* File Preview */}
+              {showFilePreview && selectedFiles && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Selected Files ({selectedFiles.length})
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedFiles(null);
+                        setShowFilePreview(false);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {Array.from(selectedFiles).map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                            <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveFile(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  multiple
+                  className="hidden"
+                  accept="image/*,application/pdf,.doc,.docx,.txt,audio/*,video/*"
+                />
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current?.click()}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Attach files"
                 >
                   <svg
                     className="w-5 h-5"
@@ -552,7 +712,7 @@ const ChatPage: React.FC = () => {
                       }
                     }}
                     onKeyPress={(e) =>
-                      e.key === "Enter" && handleSendMessage(e)
+                      e.key === "Enter" && handleSendWithFiles(e)
                     }
                     placeholder="Type a message..."
                     disabled={isSending}
@@ -562,8 +722,8 @@ const ChatPage: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={handleSendMessage}
-                  disabled={newMessage.trim() === "" || isSending}
+                  onClick={handleSendWithFiles}
+                  disabled={(newMessage.trim() === "" && !selectedFiles) || isSending}
                   className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSending ? (

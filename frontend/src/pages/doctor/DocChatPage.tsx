@@ -7,6 +7,7 @@ import {
   sendDoctorMessageAPI,
   markConversationAsReadAPI,
   getDoctorConversationWithUserAPI,
+  sendDoctorMessageWithFilesAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -32,7 +33,10 @@ const DocChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [showFilePreview, setShowFilePreview] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -239,6 +243,64 @@ const DocChatPage: React.FC = () => {
     } catch (error: any) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
+      setIsSending(false);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      setSelectedFiles(files);
+      setShowFilePreview(true);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    if (selectedFiles) {
+      const dt = new DataTransfer();
+      for (let i = 0; i < selectedFiles.length; i++) {
+        if (i !== index) {
+          dt.items.add(selectedFiles[i]);
+        }
+      }
+      setSelectedFiles(dt.files);
+      if (dt.files.length === 0) {
+        setShowFilePreview(false);
+      }
+    }
+  };
+
+  const handleSendWithFiles = async (e: React.FormEvent | React.MouseEvent) => {
+    e.preventDefault();
+    if (!conversationId || (!newMessage.trim() && !selectedFiles)) return;
+
+    setIsSending(true);
+    try {
+      if (selectedFiles && selectedFiles.length > 0) {
+        // Send message with files
+        const response = await sendDoctorMessageWithFilesAPI(
+          conversationId,
+          newMessage.trim(),
+          selectedFiles
+        );
+        
+        if (response.data.success) {
+          setMessages((prev) => [...prev, response.data.data]);
+          setNewMessage("");
+          setSelectedFiles(null);
+          setShowFilePreview(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }
+      } else {
+        // Send regular text message
+        await handleSendMessage(e);
+      }
+    } catch (error: any) {
+      console.error("Error sending message with files:", error);
+      toast.error("Failed to send message");
+    } finally {
       setIsSending(false);
     }
   };

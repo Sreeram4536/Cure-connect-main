@@ -1,10 +1,18 @@
+export interface FileAttachment {
+  url: string;
+  publicId: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+}
+
 export interface ChatMessageDTO {
   conversationId: string;
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
-  attachments?: string[];
+  messageType: "text" | "image" | "file" | "mixed";
+  attachments?: FileAttachment[];
 }
 
 export interface ConversationDTO {
@@ -22,10 +30,10 @@ export interface ChatMessageResponse {
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
+  messageType: "text" | "image" | "file" | "mixed";
   timestamp: Date;
   isRead: boolean;
-  attachments?: string[];
+  attachments?: FileAttachment[];
 }
 
 export interface ConversationResponse {

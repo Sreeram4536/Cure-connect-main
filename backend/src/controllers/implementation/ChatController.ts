@@ -4,6 +4,7 @@ import { IChatService } from "../../services/interface/IChatService";
 import { HttpStatus } from "../../constants/status.constants";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { ChatMessageDTO } from "../../types/chat";
+import { FileUploadService } from "../../services/implementation/FileUploadService";
 
 export class ChatController implements IChatController {
   constructor(private chatService: IChatService) {}
@@ -448,12 +449,62 @@ export class ChatController implements IChatController {
 
   async sendMessageWithFiles(req: Request, res: Response): Promise<void> {
     try {
-      // TODO: Implement file upload functionality for messages
-      res.status(HttpStatus.NOT_IMPLEMENTED).json({
-        success: false,
-        message: "File upload functionality not yet implemented",
+      const userId = (req as any).userId;
+      const { conversationId, message } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      console.log("sendMessageWithFiles called with:", { conversationId, message, filesCount: files?.length || 0 });
+
+      if (!conversationId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID is required",
+        });
+        return;
+      }
+
+      // Upload files to Cloudinary if any
+      let attachments = [];
+      if (files && files.length > 0) {
+        try {
+          attachments = await FileUploadService.uploadMultipleFiles(files);
+        } catch (uploadError) {
+          res.status(HttpStatus.BAD_REQUEST).json({
+            success: false,
+            message: `File upload failed: ${(uploadError as Error).message}`,
+          });
+          return;
+        }
+      }
+
+      // Determine message type based on content
+      let messageType: "text" | "image" | "file" | "mixed" = "text";
+      if (attachments.length > 0 && message && message.trim()) {
+        messageType = "mixed";
+      } else if (attachments.length > 0) {
+        // Determine if it's primarily images or other files
+        const hasImages = attachments.some(att => ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(att.fileType));
+        messageType = hasImages ? "image" : "file";
+      }
+
+      const messageData: ChatMessageDTO = {
+        conversationId,
+        senderId: userId,
+        senderType: "user",
+        message: message || (attachments.length > 0 ? `Sent ${attachments.length} file(s)` : ""),
+        messageType,
+        attachments,
+      };
+
+      const newMessage = await this.chatService.sendMessage(messageData, userId);
+
+      res.status(HttpStatus.CREATED).json({
+        success: true,
+        message: "Message sent successfully",
+        data: newMessage,
       });
     } catch (error) {
+      console.error("Error in sendMessageWithFiles:", error);
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: (error as Error).message,
@@ -463,12 +514,62 @@ export class ChatController implements IChatController {
 
   async sendDoctorMessageWithFiles(req: Request, res: Response): Promise<void> {
     try {
-      // TODO: Implement file upload functionality for doctor messages
-      res.status(HttpStatus.NOT_IMPLEMENTED).json({
-        success: false,
-        message: "File upload functionality not yet implemented",
+      const doctorId = (req as any).docId;
+      const { conversationId, message } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      console.log("sendDoctorMessageWithFiles called with:", { conversationId, message, filesCount: files?.length || 0 });
+
+      if (!conversationId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID is required",
+        });
+        return;
+      }
+
+      // Upload files to Cloudinary if any
+      let attachments = [];
+      if (files && files.length > 0) {
+        try {
+          attachments = await FileUploadService.uploadMultipleFiles(files);
+        } catch (uploadError) {
+          res.status(HttpStatus.BAD_REQUEST).json({
+            success: false,
+            message: `File upload failed: ${(uploadError as Error).message}`,
+          });
+          return;
+        }
+      }
+
+      // Determine message type based on content
+      let messageType: "text" | "image" | "file" | "mixed" = "text";
+      if (attachments.length > 0 && message && message.trim()) {
+        messageType = "mixed";
+      } else if (attachments.length > 0) {
+        // Determine if it's primarily images or other files
+        const hasImages = attachments.some(att => ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(att.fileType));
+        messageType = hasImages ? "image" : "file";
+      }
+
+      const messageData: ChatMessageDTO = {
+        conversationId,
+        senderId: doctorId,
+        senderType: "doctor",
+        message: message || (attachments.length > 0 ? `Sent ${attachments.length} file(s)` : ""),
+        messageType,
+        attachments,
+      };
+
+      const newMessage = await this.chatService.sendMessage(messageData, doctorId);
+
+      res.status(HttpStatus.CREATED).json({
+        success: true,
+        message: "Message sent successfully",
+        data: newMessage,
       });
     } catch (error) {
+      console.error("Error in sendDoctorMessageWithFiles:", error);
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: (error as Error).message,

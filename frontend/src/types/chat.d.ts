@@ -1,13 +1,21 @@
+export interface FileAttachment {
+  url: string;
+  publicId: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
+  messageType: "text" | "image" | "file" | "mixed";
   timestamp: Date;
   isRead: boolean;
-  attachments?: string[];
+  attachments?: FileAttachment[];
 }
 
 export interface Conversation {
@@ -40,6 +48,12 @@ export interface MessageListResponse {
 export interface SendMessageRequest {
   conversationId: string;
   message: string;
-  messageType?: "text" | "image" | "file";
-  attachments?: string[];
+  messageType?: "text" | "image" | "file" | "mixed";
+  attachments?: FileAttachment[];
+}
+
+export interface SendMessageWithFilesRequest {
+  conversationId: string;
+  message?: string;
+  files?: FileList;
 } 

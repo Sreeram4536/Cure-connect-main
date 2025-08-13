@@ -1,16 +1,24 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export interface FileAttachment {
+  url: string;
+  publicId: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+}
+
 export interface IChatMessage extends Document {
   _id: string;
   conversationId: string;
   senderId: string;
   senderType: "user" | "doctor";
   message: string;
-  messageType: "text" | "image" | "file";
+  messageType: "text" | "image" | "file" | "mixed";
   timestamp: Date;
   isRead: boolean;
   isDeleted: boolean;
-  attachments?: string[];
+  attachments?: FileAttachment[];
 }
 
 export interface IConversation extends Document {
@@ -46,7 +54,7 @@ const chatMessageSchema = new Schema<IChatMessage>({
   },
   messageType: {
     type: String,
-    enum: ["text", "image", "file"],
+    enum: ["text", "image", "file", "mixed"],
     default: "text",
   },
   timestamp: {
@@ -62,7 +70,26 @@ const chatMessageSchema = new Schema<IChatMessage>({
     default: false,
   },
   attachments: [{
-    type: String,
+    url: {
+      type: String,
+      required: true,
+    },
+    publicId: {
+      type: String,
+      required: true,
+    },
+    originalName: {
+      type: String,
+      required: true,
+    },
+    fileType: {
+      type: String,
+      required: true,
+    },
+    fileSize: {
+      type: Number,
+      required: true,
+    },
   }],
 }, {
   timestamps: false, // Disable timestamps for messages
