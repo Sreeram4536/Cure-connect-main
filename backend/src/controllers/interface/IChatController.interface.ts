@@ -11,6 +11,7 @@ export interface IChatController {
   // Message methods
   sendMessage(req: Request, res: Response): Promise<void>;
   sendDoctorMessage(req: Request, res: Response): Promise<void>;
+  sendMessageWithFile(req: Request, res: Response): Promise<void>;
   getMessages(req: Request, res: Response): Promise<void>;
   getMessagesByDoctor(req: Request, res: Response): Promise<void>;
   markConversationAsRead(req: Request, res: Response): Promise<void>;

@@ -15,6 +15,7 @@ interface SocketContextType {
   startTyping: (conversationId: string) => void;
   stopTyping: (conversationId: string) => void;
   markAsRead: (conversationId: string, messageIds: string[]) => void;
+  deleteMessage: (messageId: string, conversationId: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -158,6 +159,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
   };
 
+  const deleteMessage = (messageId: string, conversationId: string) => {
+    if (socket && isConnected) {
+      socket.emit('delete_message', { messageId, conversationId });
+    }
+  };
+
   useEffect(() => {
     // Auto-connect when component mounts with a small delay
     const timer = setTimeout(() => {
@@ -182,6 +189,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     startTyping,
     stopTyping,
     markAsRead,
+    deleteMessage,
   };
 
   return (

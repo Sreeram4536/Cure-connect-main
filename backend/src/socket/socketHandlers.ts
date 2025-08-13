@@ -198,6 +198,45 @@ export const setupSocketHandlers = (io: Server) => {
       }
     });
 
+    // Handle message deletion
+    socket.on("delete_message", async (data: { messageId: string, conversationId: string }) => {
+      try {
+        const { messageId, conversationId } = data;
+
+        console.log(`User ${socket.userId} (${socket.userType}) attempting to delete message ${messageId}`);
+
+        // Verify the message exists and user owns it
+        const message = await ChatMessage.findById(messageId);
+        if (!message) {
+          socket.emit("delete_message_error", { error: "Message not found" });
+          return;
+        }
+
+        if (message.senderId !== socket.userId) {
+          socket.emit("delete_message_error", { error: "You can only delete your own messages" });
+          return;
+        }
+
+        // Delete the message
+        await ChatMessage.findByIdAndDelete(messageId);
+        console.log(`Message ${messageId} deleted successfully`);
+
+        // Notify all users in the conversation
+        const roomName = `conversation_${conversationId}`;
+        io.to(roomName).emit("message_deleted", {
+          messageId,
+          conversationId,
+          deletedBy: socket.userId,
+        });
+
+        console.log(`Notified room ${roomName} about message deletion`);
+
+      } catch (error) {
+        console.error("Error deleting message:", error);
+        socket.emit("delete_message_error", { error: "Failed to delete message" });
+      }
+    });
+
     // Handle online status
     socket.on("set_online_status", (data: { isOnline: boolean }) => {
       if (socket.userId) {

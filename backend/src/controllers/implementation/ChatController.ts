@@ -418,4 +418,49 @@ export class ChatController implements IChatController {
       });
     }
   }
+
+  async sendMessageWithFile(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId || (req as any).docId;
+      const userType = (req as any).userId ? "user" : "doctor";
+      const { conversationId, message = "" } = req.body;
+      const file = req.file;
+
+      console.log("sendMessageWithFile called with:", { conversationId, message, userId, file: file?.filename });
+
+      if (!conversationId || !file) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Conversation ID and file are required",
+        });
+        return;
+      }
+
+      // Determine message type based on file
+      const messageType = file.mimetype.startsWith('image/') ? 'image' : 'file';
+      const attachmentUrl = `/uploads/${file.filename}`;
+
+      const messageData: ChatMessageDTO = {
+        conversationId,
+        senderId: userId,
+        senderType: userType as "user" | "doctor",
+        message: message || `Shared ${messageType === 'image' ? 'an image' : 'a file'}: ${file.originalname}`,
+        messageType,
+        attachments: [attachmentUrl],
+      };
+
+      const sentMessage = await this.chatService.sendMessage(messageData, userId);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: sentMessage,
+      });
+    } catch (error) {
+      console.error("Error in sendMessageWithFile:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: (error as Error).message,
+      });
+    }
+  }
 } 

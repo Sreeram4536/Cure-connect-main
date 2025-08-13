@@ -15,6 +15,8 @@ import passport from "passport";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { setupSocketHandlers } from "./socket/socketHandlers";
+import path from "path";
+import fs from "fs";
 dotenv.config();
 
 // app config
@@ -28,6 +30,12 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 4000;
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, "../uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 connectDB();
 connectCloudinary();
@@ -44,6 +52,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // initialize passport
 app.use(passport.initialize());

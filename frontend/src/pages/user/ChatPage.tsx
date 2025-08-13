@@ -7,6 +7,8 @@ import {
   sendMessageAPI,
   markConversationAsReadAPI,
   createConversationAPI,
+  uploadFileAPI,
+  deleteMessageAPI,
 } from "../../services/chatServices";
 import { useSocket } from "../../context/SocketContext";
 import type { ChatMessage, Conversation } from "../../types/chat";
@@ -23,7 +25,7 @@ interface Doctor {
 
 const ChatPage: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
-  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
+  const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead, deleteMessage } = useSocket();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
@@ -33,7 +35,10 @@ const ChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [tempMessage, setTempMessage] = useState<string>("");
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,6 +77,21 @@ const ChatPage: React.FC = () => {
       }
     });
 
+    // Listen for message deletion
+    socket.on('message_deleted', (data: { messageId: string; conversationId: string; deletedBy: string }) => {
+      console.log('Message deleted:', data);
+      if (conversation && data.conversationId === conversation.id) {
+        setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+        toast.success('Message deleted');
+      }
+    });
+
+    // Listen for message deletion errors
+    socket.on('delete_message_error', (data: { error: string }) => {
+      console.error('Delete message error:', data.error);
+      toast.error(data.error);
+    });
+
     // Listen for typing indicators
     socket.on('typing_start', (data: { userId: string; userType: string }) => {
       if (data.userType === 'doctor') {
@@ -98,6 +118,8 @@ const ChatPage: React.FC = () => {
 
     return () => {
       socket.off('new_message');
+      socket.off('message_deleted');
+      socket.off('delete_message_error');
       socket.off('typing_start');
       socket.off('typing_stopped');
       socket.off('messages_read');
@@ -285,6 +307,147 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File size must be less than 10MB");
+        return;
+      }
+      setSelectedFile(file);
+      handleFileUpload(file);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!conversation) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('conversationId', conversation.id);
+
+      const response = await uploadFileAPI(formData);
+      console.log("File upload response:", response.data);
+
+      if (response.data.success) {
+        // The message is already created by the backend, just refresh messages or let socket handle it
+        toast.success("File uploaded successfully");
+      }
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      toast.error("Failed to upload file");
+    } finally {
+      setIsUploading(false);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!conversation) return;
+
+    try {
+      if (isConnected) {
+        // Use socket for real-time deletion
+        deleteMessage(messageId, conversation.id);
+      } else {
+        // Fallback to REST API
+        const response = await deleteMessageAPI(messageId);
+        if (response.data.success) {
+          setMessages(prev => prev.filter(msg => msg.id !== messageId));
+          toast.success("Message deleted");
+        }
+      }
+    } catch (error: any) {
+      console.error("Error deleting message:", error);
+      toast.error("Failed to delete message");
+    }
+  };
+
+  const renderMessage = (message: ChatMessage) => {
+    const isImage = message.messageType === 'image';
+    const isFile = message.messageType === 'file';
+    const isOwnMessage = message.senderType === "user";
+
+    return (
+      <div
+        key={message.id}
+        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+      >
+        <div
+          className={`flex max-w-xs lg:max-w-md ${
+            isOwnMessage ? "flex-row-reverse" : "flex-row"
+          } items-end space-x-2 group`}
+        >
+          {!isOwnMessage && (
+            <img
+              src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face"}
+              alt="Doctor Avatar"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          )}
+          <div className="relative">
+            <div
+              className={`px-4 py-2 rounded-2xl ${
+                isOwnMessage
+                  ? "bg-blue-500 text-white rounded-br-sm"
+                  : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
+              }`}
+            >
+              {isImage && message.attachments && message.attachments.length > 0 && (
+                <img
+                  src={`http://localhost:4000${message.attachments[0]}`}
+                  alt="Shared image"
+                  className="max-w-full h-auto rounded-lg mb-2"
+                  style={{ maxWidth: '200px' }}
+                />
+              )}
+              {isFile && message.attachments && message.attachments.length > 0 && (
+                <div className="flex items-center space-x-2 mb-2">
+                  <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <a
+                    href={`http://localhost:4000${message.attachments[0]}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline"
+                  >
+                    Download File
+                  </a>
+                </div>
+              )}
+              <p className="text-sm">{message.message}</p>
+              <p
+                className={`text-xs mt-1 ${
+                  isOwnMessage ? "text-blue-100" : "text-gray-500"
+                }`}
+              >
+                {formatTime(message.timestamp)}
+              </p>
+            </div>
+            {isOwnMessage && (
+              <button
+                onClick={() => handleDeleteMessage(message.id)}
+                className="absolute -top-2 -left-8 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                title="Delete message"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const formatTime = (date: Date): string => {
     return new Date(date).toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -404,48 +567,7 @@ const ChatPage: React.FC = () => {
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.senderType === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`flex max-w-xs lg:max-w-md ${
-                        message.senderType === "user"
-                          ? "flex-row-reverse"
-                          : "flex-row"
-                      } items-end space-x-2`}
-                    >
-                      {message.senderType === "doctor" && (
-                        <img
-                          src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face"}
-                          alt="Doctor Avatar"
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      )}
-                      <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          message.senderType === "user"
-                            ? "bg-blue-500 text-white rounded-br-sm"
-                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
-                        }`}
-                      >
-                        <p className="text-sm">{message.message}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            message.senderType === "user"
-                              ? "text-blue-100"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {formatTime(message.timestamp)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                messages.map(renderMessage)
               )}
 
               {/* Typing Indicator */}
@@ -480,23 +602,37 @@ const ChatPage: React.FC = () => {
             {/* Message Input */}
             <div className="bg-white border-t border-gray-200 px-6 py-4">
               <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx"
+                  style={{ display: 'none' }}
+                />
                 <button
                   type="button"
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+                  title="Upload file"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    />
-                  </svg>
+                  {isUploading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
+                  ) : (
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                      />
+                    </svg>
+                  )}
                 </button>
 
                 <div className="flex-1 relative">

@@ -78,4 +78,21 @@ export const sendDoctorMessageAPI = (conversationId: string, message: string, me
     messageType,
     attachments,
   });
+};
+
+// File upload services
+export const uploadFileAPI = (formData: FormData) => {
+  return api.post(`${CHAT_API.MESSAGES}/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const uploadFileDoctorAPI = (formData: FormData) => {
+  return doctorApi.post(`${CHAT_API.MESSAGES}/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 }; 
