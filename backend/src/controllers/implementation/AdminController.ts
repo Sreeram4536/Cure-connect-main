@@ -15,10 +15,10 @@ export class AdminController implements IAdminController {
   // For Admin login
    async loginAdmin(req: Request, res: Response): Promise<void> {
     try {
-      console.log('🔍 Admin login request received');
+      console.log('Admin login request received');
       const { email, password } = req.body;
       if (!email || !password) {
-        console.log('❌ Missing email or password');
+        console.log('Missing email or password');
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
           message: HttpResponse.ADMIN_FIELDS_REQUIRED,
@@ -26,10 +26,10 @@ export class AdminController implements IAdminController {
         return;
       }
 
-      console.log('🔍 Attempting admin login for email:', email);
+      console.log('Attempting admin login for email:', email);
       const { admin, accessToken, refreshToken } = await this._adminService.login(email, password);
 
-      console.log('🔍 Admin login successful, setting cookie');
+      console.log('Admin login successful, setting cookie');
       res
         .cookie("refreshToken_admin", refreshToken, {
           httpOnly: true,
@@ -44,9 +44,9 @@ export class AdminController implements IAdminController {
           token: accessToken,
           message: HttpResponse.LOGIN_SUCCESS,
         });
-      console.log('✅ Admin login response sent');
+      console.log('Admin login response sent');
     } catch (error: any) {
-      console.log('❌ Admin login error:', error.message);
+      console.log('Admin login error:', error.message);
       res.status(HttpStatus.UNAUTHORIZED).json({
         success: false,
         message: HttpResponse.UNAUTHORIZED,
@@ -62,7 +62,7 @@ export class AdminController implements IAdminController {
       
       const refreshToken = req.cookies?.refreshToken_admin;
       if (!refreshToken) {
-        console.log('❌ No refresh token found in cookies');
+        console.log('No refresh token found in cookies');
         res.status(HttpStatus.UNAUTHORIZED).json({
           success: false,
           message: HttpResponse.REFRESH_TOKEN_MISSING,
@@ -70,12 +70,12 @@ export class AdminController implements IAdminController {
         return;
       }
 
-      console.log('🔍 Refresh token found, verifying...');
+      console.log(' Refresh token found, verifying...');
       const decoded = verifyRefreshToken(refreshToken);
-      console.log('🔍 Decoded refresh token:', decoded);
+      console.log(' Decoded refresh token:', decoded);
 
       if (!decoded || typeof decoded !== "object" || !("id" in decoded)) {
-        console.log('❌ Invalid refresh token structure');
+        console.log(' Invalid refresh token structure');
         res.status(HttpStatus.UNAUTHORIZED).json({
           success: false,
           message: HttpResponse.REFRESH_TOKEN_INVALID,
@@ -86,15 +86,15 @@ export class AdminController implements IAdminController {
       console.log('🔍 Looking up admin with ID:', decoded.id);
       const admin = await this._adminService.getAdminById(decoded.id);
       if (!admin) {
-        console.log('❌ Admin not found with ID:', decoded.id);
+        console.log(' Admin not found with ID:', decoded.id);
         throw new Error("Admin not found");
       }
 
-      console.log('🔍 Admin found, generating new tokens');
+      console.log(' Admin found, generating new tokens');
       const newAccessToken = generateAccessToken(admin._id, admin.email, "admin");
       const newRefreshToken = generateRefreshToken(admin._id, "admin");
 
-      console.log('🔍 Setting new refresh token cookie');
+      console.log(' Setting new refresh token cookie');
       res.cookie("refreshToken_admin", newRefreshToken, {
         httpOnly: true,
         path: "/",
@@ -103,7 +103,7 @@ export class AdminController implements IAdminController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      console.log('✅ Admin refresh successful');
+      console.log(' Admin refresh successful');
       res.status(HttpStatus.OK).json({
         success: true,
         token: newAccessToken,
@@ -199,13 +199,14 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // To get paginated doctors
+  // To get paginated doctors (with search)
   async getDoctorsPaginated(req: Request, res: Response): Promise<void> {
     try {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search ? (req.query.search as string).trim() : "";
       if (page && limit) {
-        const result = await this._adminService.getDoctorsPaginated(page, limit);
+        const result = await this._adminService.getDoctorsPaginated(page, limit, search);
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
         const doctors = await this._adminService.getDoctors();
@@ -218,8 +219,9 @@ export class AdminController implements IAdminController {
 
   // To get all users
   async getAllUsers(req: Request, res: Response): Promise<void> {
+     const search = req.query.search ? (req.query.search as string).trim() : "";
     try {
-      const users = await this._adminService.getUsers();
+      const users = await this._adminService.getUsers(search);
       res.status(HttpStatus.OK).json({ success: true, users });
     } catch (error) {
       res
@@ -229,21 +231,40 @@ export class AdminController implements IAdminController {
   }
 
   // To get paginated users
-  async getUsersPaginated(req: Request, res: Response): Promise<void> {
-    try {
-      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-      if (page && limit) {
-        const result = await this._adminService.getUsersPaginated(page, limit);
-        res.status(HttpStatus.OK).json({ success: true, ...result });
-      } else {
-        const users = await this._adminService.getUsers();
-        res.status(HttpStatus.OK).json({ success: true, data: users });
-      }
-    } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+  // async getUsersPaginated(req: Request, res: Response): Promise<void> {
+  //   try {
+      
+  //     const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+  //     const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+  //     if (page && limit) {
+  //       const result = await this._adminService.getUsersPaginated(page, limit);
+  //       res.status(HttpStatus.OK).json({ success: true, ...result });
+  //     } else {
+  //       const users = await this._adminService.getUsers();
+  //       res.status(HttpStatus.OK).json({ success: true, data: users });
+  //     }
+  //   } catch (error) {
+  //     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+  //   }
+  // }
+  
+async getUsersPaginated(req: Request, res: Response): Promise<void> {
+  try {
+    const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+    const search = req.query.search ? (req.query.search as string).trim() : ""; // Extract search query
+    
+    if (page && limit) {
+      const result = await this._adminService.getUsersPaginated(page, limit, search); // Pass search parameter
+      res.status(HttpStatus.OK).json({ success: true, ...result });
+    } else {
+      const users = await this._adminService.getUsers(search); // Pass search to getUsers too
+      res.status(HttpStatus.OK).json({ success: true, data: users });
     }
+  } catch (error) {
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
   }
+}
 
   // To toggle the state of user
   async toggleUserBlock(req: Request, res: Response): Promise<void> {
@@ -308,13 +329,14 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // For getting paginated appointments
+  // For getting paginated appointments (with search)
   async appointmentsListPaginated(req: Request, res: Response): Promise<void> {
     try {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search ? (req.query.search as string).trim() : "";
       if (page && limit) {
-        const result = await this._adminService.listAppointmentsPaginated(page, limit);
+        const result = await this._adminService.listAppointmentsPaginated(page, limit, search);
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
         const appointments = await this._adminService.listAppointments();
@@ -343,9 +365,10 @@ export class AdminController implements IAdminController {
 
   // For admin dashboard
   async adminDashboard(req: Request, res: Response): Promise<void> {
+     const search = req.query.search ? (req.query.search as string).trim() : "";
     try {
       const doctors = await this._adminService.getDoctors();
-      const users = await this._adminService.getUsers();
+      const users = await this._adminService.getUsers(search);
       const appointments = await this._adminService.listAppointments();
 
       const dashData = {

@@ -1,14 +1,14 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/admin/assets";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 import SearchBar from "../../components/common/SearchBar";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
 import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck } from 'react-icons/fa';
-import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
+// import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
 
 const DoctorAppointments = () => {
   const context = useContext(DoctorContext);
@@ -16,10 +16,11 @@ const DoctorAppointments = () => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // default: newest first
@@ -46,13 +47,14 @@ const DoctorAppointments = () => {
     if (dToken) {
       fetchAppointments();
     }
-  }, [dToken, currentPage, sortOrder]);
+    // eslint-disable-next-line
+  }, [dToken, currentPage, sortOrder, searchQuery]);
 
   useEffect(() => {
     if (!dToken) {
       navigate("/doctor/login");
     }
-  });
+  }, [dToken, navigate]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -61,10 +63,10 @@ const DoctorAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const result = await getAppointmentsPaginated(currentPage, itemsPerPage);
+      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery);
       setAppointments(result.data);
       setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
+  // setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Failed to fetch appointments:", error);
     } finally {
@@ -87,11 +89,11 @@ const DoctorAppointments = () => {
       if (data && data.data) {
         setAppointments(data.data);
         setTotalPages(data.totalPages || 1);
-        setTotalCount(data.totalCount || 0);
+  // setTotalCount(data.totalCount || 0);
       } else if (data && data.appointments) {
         setAppointments(data.appointments);
         setTotalPages(1);
-        setTotalCount(data.appointments.length);
+  // setTotalCount(data.appointments.length);
       } else {
         fetchAppointments(); // fallback
       }
@@ -100,9 +102,7 @@ const DoctorAppointments = () => {
     }
   };
 
-  const filteredAppointments = appointments.filter((item) =>
-    item.userData.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
 
   const columns = [
     {
@@ -230,7 +230,15 @@ const DoctorAppointments = () => {
         <div className="max-w-sm w-full">
           <SearchBar
             placeholder="Search by patient name"
-            onSearch={(query) => setSearchQuery(query)}
+            onSearch={(query) => {
+              if (searchTimeout.current) clearTimeout(searchTimeout.current);
+              searchTimeout.current = setTimeout(() => {
+                if (query !== searchQuery) {
+                  setSearchQuery(query);
+                  setCurrentPage(1);
+                }
+              }, 400);
+            }}
           />
         </div>
         {/* Modern Sort Dropdown */}
@@ -274,10 +282,10 @@ const DoctorAppointments = () => {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-      ) : filteredAppointments.length > 0 ? (
+      ) : appointments.length > 0 ? (
         <>
           <DataTable
-            data={filteredAppointments}
+            data={appointments}
             columns={columns}
             emptyMessage="No matching appointments found."
             gridCols="grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr]"

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import EmojiPicker from 'emoji-picker-react';
 import {
   getDoctorConversationsAPI,
-  getMessagesAPI,
+  getDoctorMessagesAPI,
   sendDoctorMessageAPI,
   markConversationAsReadAPI,
   getDoctorConversationWithUserAPI,
@@ -20,10 +21,12 @@ interface User {
   lastSeen?: string;
 }
 
-import { doctorApi } from "../../axios/doctorAxiosInstance";
+import { getApi } from "../../axios/axiosInstance";
+const doctorApi = getApi("doctor");
 
 const DocChatPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
+  const navigate = useNavigate();
   const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -42,6 +45,16 @@ const DocChatPage: React.FC = () => {
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
   const [pendingType, setPendingType] = useState<"image" | "file" | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // New state for emoji picker and reply
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
+  const [showReplyPreview, setShowReplyPreview] = useState(false);
+
+  // Determine if a message is from the doctor (robust against backend inconsistencies)
+  const isDoctorMessage = (message: ChatMessage) => {
+    return message.senderType === "doctor" || message.senderId === conversation?.doctorId;
+  };
 
   // File upload handler
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,7 +214,7 @@ const DocChatPage: React.FC = () => {
         try {
           await markConversationAsReadAPI(conversationId);
           // Mark messages as read via socket
-          const unreadMessages = messages.filter(msg => !msg.isRead && msg.senderType === 'user');
+          const unreadMessages = messages.filter(msg => !msg.isRead && !isDoctorMessage(msg));
           if (unreadMessages.length > 0) {
             markAsRead(conversationId, unreadMessages.map(msg => msg.id));
           }
@@ -222,7 +235,7 @@ const DocChatPage: React.FC = () => {
 
     try {
       console.log("Loading messages for conversationId:", conversationId);
-      const response = await getMessagesAPI(conversationId, 1, 50);
+      const response = await getDoctorMessagesAPI(conversationId, 1, 50);
       console.log("Doctor messages response:", response.data);
       if (response.data.success) {
         setMessages(response.data.messages.reverse()); // Reverse to show oldest first
@@ -241,6 +254,14 @@ const DocChatPage: React.FC = () => {
     setIsSending(true);
     try {
       console.log("Doctor sending message:", newMessage.trim(), "to conversation:", conversationId);
+      
+      // Prepare reply data if replying
+      const replyData = replyToMessage ? {
+        messageId: replyToMessage.id,
+        message: replyToMessage.message,
+        senderType: replyToMessage.senderType,
+        messageType: replyToMessage.messageType,
+      } : undefined;
       
       // Send message via Socket.IO for real-time delivery
       if (isConnected) {
@@ -263,7 +284,8 @@ const DocChatPage: React.FC = () => {
             filePath: url,
             uploadedAt: new Date(),
           })) as any,
-          isDeleted: false
+          isDeleted: false,
+          replyTo: replyData
         };
         setMessages(prev => [...prev, tempMsg]);
         setTempMessage(newMessage.trim());
@@ -272,6 +294,8 @@ const DocChatPage: React.FC = () => {
         setNewMessage("");
         setPendingAttachments([]);
         setPendingType(null);
+        setReplyToMessage(null);
+        setShowReplyPreview(false);
         setIsSending(false);
       } else {
         // Fallback to REST API if socket is not connected
@@ -279,7 +303,8 @@ const DocChatPage: React.FC = () => {
           conversationId,
           newMessage.trim() || (pendingType === "image" ? "[Image]" : "[File]"),
           pendingType ?? "text",
-          pendingAttachments
+          pendingAttachments,
+          replyData
         );
         console.log("Doctor send message response:", response.data);
 
@@ -288,6 +313,8 @@ const DocChatPage: React.FC = () => {
           setNewMessage("");
           setPendingAttachments([]);
           setPendingType(null);
+          setReplyToMessage(null);
+          setShowReplyPreview(false);
         }
         setIsSending(false);
       }
@@ -300,14 +327,45 @@ const DocChatPage: React.FC = () => {
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
+      const target = messages.find(m => m.id === messageId);
+      if (!target) {
+        toast.error("Message not found");
+        return;
+      }
+      if (!isDoctorMessage(target)) {
+        toast.error("You can only delete your own messages");
+        return;
+      }
       await doctorDeleteMessageAPI(messageId);
       // Remove the message from the state
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
       toast.success("Message deleted successfully");
     } catch (error) {
       console.error("Error deleting message:", error);
-      toast.error("Failed to delete message");
+      const msg = (error as any)?.response?.data?.message || "Failed to delete message";
+      toast.error(msg);
     }
+  };
+
+  // Handle emoji selection
+  const handleEmojiClick = (emojiObject: any) => {
+    setNewMessage(prev => prev + emojiObject.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Handle reply to message
+  const handleReplyToMessage = (message: ChatMessage) => {
+    setReplyToMessage(message);
+    setShowReplyPreview(true);
+    // Focus on input
+    const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+    if (input) input.focus();
+  };
+
+  // Cancel reply
+  const cancelReply = () => {
+    setReplyToMessage(null);
+    setShowReplyPreview(false);
   };
 
   const formatTime = (date: Date): string => {
@@ -316,6 +374,11 @@ const DocChatPage: React.FC = () => {
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  // Handle back navigation
+  const handleBackToConsultation = () => {
+    navigate(`/consultation/${conversationId}`);
   };
 
   if (isLoading) {
@@ -363,6 +426,17 @@ const DocChatPage: React.FC = () => {
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-3">
+                {/* Back Button */}
+                <button
+                  onClick={handleBackToConsultation}
+                  className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors mr-2"
+                  title="Back to Consultation"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                
                 <div className="relative">
                   <img
                     src={user.avatar}
@@ -404,6 +478,32 @@ const DocChatPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Reply Preview */}
+            {showReplyPreview && replyToMessage && (
+              <div className="bg-gray-100 border-l-4 border-blue-500 p-3 mb-3 mx-6 rounded-r-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-1">
+                      Replying to {replyToMessage.senderType === 'doctor' ? 'You' : 'Patient'}
+                    </div>
+                    <div className="text-sm text-gray-700 truncate">
+                      {replyToMessage.messageType === 'image' ? '[Image]' : 
+                       replyToMessage.messageType === 'file' ? '[File]' : 
+                       replyToMessage.message}
+                    </div>
+                  </div>
+                  <button
+                    onClick={cancelReply}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Messages Container */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {messages.length === 0 ? (
@@ -426,7 +526,7 @@ const DocChatPage: React.FC = () => {
                         message.senderType === "doctor"
                           ? "flex-row-reverse"
                           : "flex-row"
-                      } items-end space-x-2`}
+                      } items-end space-x-2 group`}
                     >
                       {message.senderType === "user" && (
                         <img
@@ -435,66 +535,85 @@ const DocChatPage: React.FC = () => {
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       )}
-                      <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          message.senderType === "doctor"
-                            ? "bg-blue-500 text-white rounded-br-sm"
-                            : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
-                        }`}
-                      >
-                      {/* Render image/file or text */}
-                      {message.messageType === "image" && message.attachments && message.attachments[0] ? (
-                        <div className="relative">
-                          <img onClick={() => setPreviewImage(`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`)} src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} alt="sent-img" className="max-w-[200px] max-h-[200px] rounded mb-1 cursor-zoom-in" />
-                          {message.senderType === "doctor" && (
-                          <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                          )}
-                        </div>
-                      ) : message.messageType === "file" && message.attachments && message.attachments[0] ? (
-                        <div className="relative">
-                          <a href={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-200 underline">Download File</a>
-                          {message.senderType === "doctor" && (
-                          <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <p className="text-sm">{message.message}</p>
-                          {message.senderType === "doctor" && (
-                          <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                          )}
-                        </div>
-                      )}
-                        <p
-                          className={`text-xs mt-1 ${
+                      <div className="relative">
+                        {/* Reply Preview in Message */}
+                        {message.replyTo && (
+                          <div className="mb-2 p-2 bg-gray-100 rounded-lg border-l-2 border-blue-400">
+                            <div className="text-xs text-gray-500 mb-1">
+                              {message.replyTo.senderType === 'doctor' ? 'You' : 'Patient'}
+                            </div>
+                            <div className="text-xs text-gray-700 truncate">
+                              {message.replyTo.messageType === 'image' ? '[Image]' : 
+                               message.replyTo.messageType === 'file' ? '[File]' : 
+                               message.replyTo.message}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div
+                          className={`px-4 py-2 rounded-2xl ${
                             message.senderType === "doctor"
-                              ? "text-blue-100"
-                              : "text-gray-500"
+                              ? "bg-blue-500 text-white rounded-br-sm"
+                              : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
                           }`}
                         >
-                          {formatTime(message.timestamp)}
-                        </p>
+                          {/* Render image/file or text */}
+                          {message.messageType === "image" && message.attachments && message.attachments[0] ? (
+                            <img 
+                              onClick={() => setPreviewImage(`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`)} 
+                              src={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} 
+                              alt="sent-img" 
+                              className="max-w-[200px] max-h-[200px] rounded mb-1 cursor-zoom-in" 
+                            />
+                          ) : message.messageType === "file" && message.attachments && message.attachments[0] ? (
+                            <a 
+                              href={`${import.meta.env.VITE_BACKEND_URL}${message.attachments[0].filePath}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-blue-200 underline"
+                            >
+                              Download File
+                            </a>
+                          ) : (
+                            <p className="text-sm">{message.message}</p>
+                          )}
+                          <p
+                            className={`text-xs mt-1 ${
+                              message.senderType === "doctor"
+                                ? "text-blue-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {formatTime(message.timestamp)}
+                          </p>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                          {/* Reply Button */}
+                          {/* <button
+                            onClick={() => handleReplyToMessage(message)}
+                            className="w-6 h-6 bg-blue-500 text-white rounded-full hover:bg-blue-600 flex items-center justify-center"
+                            title="Reply to message"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                            </svg>
+                          </button> */}
+                          
+                          {/* Delete Button */}
+                          {message.senderType === "doctor" && !message.id.startsWith('temp-') && (
+                            <button
+                              onClick={() => handleDeleteMessage(message.id)}
+                              className="w-6 h-6 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center"
+                              title="Delete message"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -558,6 +677,24 @@ const DocChatPage: React.FC = () => {
                 {uploading && <span className="text-xs text-blue-500">Uploading...</span>}
                 {uploadError && <span className="text-xs text-red-500">{uploadError}</span>}
 
+                {/* Emoji Button */}
+                <button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Add emoji"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-20 left-6 z-50">
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                  </div>
+                )}
+
                 <div className="flex-1 relative">
                   <input
                     type="text"
@@ -588,7 +725,7 @@ const DocChatPage: React.FC = () => {
                     }
                     placeholder="Type a message..."
                     disabled={isSending}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
 

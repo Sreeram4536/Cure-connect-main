@@ -1,4 +1,5 @@
-import { api } from "../axios/axiosInstance";
+import { getApi } from "../axios/axiosInstance";
+const api = getApi("user");
 import { PAYMENT_API } from "../constants/apiRoutes";
 import type { RazorpayPaymentResponse } from "../types/razorpay";
 

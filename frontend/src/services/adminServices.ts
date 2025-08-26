@@ -1,5 +1,7 @@
-import { adminApi as api } from "../axios/adminAxiosInstance";
+import { getApi } from "../axios/axiosInstance";
 import { ADMIN_API } from "../constants/apiRoutes";
+
+const api = getApi("admin");
 
 export const adminLoginAPI = async (email: string, password: string) => {
   return await api.post(ADMIN_API.LOGIN, { email, password });
@@ -47,8 +49,15 @@ export const getAllDoctorsAPI = async (token: string) => {
   });
 };
 
-export const getDoctorsPaginatedAPI = async (page: number, limit: number, token: string) => {
-  return await api.get(`${ADMIN_API.DOCTORS}?page=${page}&limit=${limit}`, {
+export const getDoctorsPaginatedAPI = async (page: number, limit: number, token: string, searchQuery: string = "") => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  if (searchQuery.trim()) {
+    params.append('search', searchQuery.trim());
+  }
+  return await api.get(`${ADMIN_API.DOCTORS}?${params.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -75,8 +84,23 @@ export const getAllUsersAPI = async (token: string) => {
   });
 };
 
-export const getUsersPaginatedAPI = async (page: number, limit: number, token: string) => {
-  return await api.get(`${ADMIN_API.USERS}?page=${page}&limit=${limit}`, {
+export const getUsersPaginatedAPI = async (page: number, limit: number, token: string,searchQuery: string = "") => {
+  // return await api.get(`${ADMIN_API.USERS}?page=${page}&limit=${limit}`, {
+  //   headers: {
+  //     Authorization: `Bearer ${token}`,
+  //   },
+  // });
+   const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+
+  // Add search query if provided
+  if (searchQuery.trim()) {
+    params.append('search', searchQuery.trim());
+  }
+
+  return await api.get(`${ADMIN_API.USERS}?${params.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -103,8 +127,15 @@ export const getAllAppointmentsAPI = async (token: string) => {
   });
 };
 
-export const getAppointmentsPaginatedAPI = async (page: number, limit: number, token: string) => {
-  return await api.get(`${ADMIN_API.APPOINTMENTS}?page=${page}&limit=${limit}`, {
+export const getAppointmentsPaginatedAPI = async (page: number, limit: number, token: string, searchQuery: string = "") => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  if (searchQuery.trim()) {
+    params.append('search', searchQuery.trim());
+  }
+  return await api.get(`${ADMIN_API.APPOINTMENTS}?${params.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

@@ -1,5 +1,5 @@
-import { AppointmentTypes } from "../../types/appointment";
-import { DoctorData } from "../../types/doctor";
+import { AppointmentDTO, AppointmentTypes } from "../../types/appointment";
+import { DoctorData, DoctorProfileDTO } from "../../types/doctor";
 import { PaginationResult } from "../../repositories/interface/IDoctorRepository";
 
 export interface IDoctorService {
@@ -11,11 +11,11 @@ export interface IDoctorService {
     email: string,
     password: string
   ): Promise<{ token: string; refreshToken: string }>;
-  getDoctorAppointments(docId: string): Promise<AppointmentTypes[]>;
-  getDoctorAppointmentsPaginated(docId: string, page: number, limit: number): Promise<PaginationResult<AppointmentTypes>>;
+  getDoctorAppointments(docId: string): Promise<AppointmentDTO[]>;
+  getDoctorAppointmentsPaginated(docId: string, page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentDTO>>;
   confirmAppointment(docId: string, appointmentId: string): Promise<void>;
   cancelAppointment(docId: string, appointmentId: string): Promise<void>;
-  getDoctorProfile(docId: string): Promise<DoctorData | null>;
+  getDoctorProfile(docId: string): Promise<DoctorProfileDTO | null>;
   updateDoctorProfile(data: {
     doctId: string;
     name: string;

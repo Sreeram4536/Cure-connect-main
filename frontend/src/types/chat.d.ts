@@ -21,6 +21,14 @@ export interface ChatMessage {
   deletedAt?: Date;
   deletedBy?: string;
   attachments: Attachment[];
+  
+  // New reply fields
+  replyTo?: {
+    messageId: string;
+    message: string;
+    senderType: "user" | "doctor";
+    messageType: "text" | "image" | "file" | "mixed";
+  };
 }
 
 export interface Conversation {
@@ -55,6 +63,12 @@ export interface SendMessageRequest {
   message: string;
   messageType?: "text" | "image" | "file" | "mixed";
   attachments?: Attachment[];
+  replyTo?: {
+    messageId: string;
+    message: string;
+    senderType: "user" | "doctor";
+    messageType: "text" | "image" | "file" | "mixed";
+  };
 }
 
 export interface SendMessageWithFilesRequest {

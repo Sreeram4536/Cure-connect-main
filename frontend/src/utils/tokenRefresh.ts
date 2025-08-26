@@ -101,11 +101,22 @@ export const refreshToken = async (): Promise<string | null> => {
 
     if (response.ok) {
       const data = await response.json();
-      if (data.success && data.token) {
-        // Store new access token using role-specific storage
-        updateRoleSpecificToken(data.token);
+      // Handle role-specific token fields
+      const refreshedToken = (() => {
+        switch (role) {
+          case 'doctor':
+            return data.accessToken || data.token || null;
+          case 'admin':
+          case 'user':
+          default:
+            return data.token || null;
+        }
+      })();
+
+      if (refreshedToken) {
+        updateRoleSpecificToken(refreshedToken);
         console.log(`Token refreshed successfully for ${role}`);
-        return data.token;
+        return refreshedToken;
       }
     }
     

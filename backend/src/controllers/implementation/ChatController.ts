@@ -512,7 +512,6 @@ export class ChatController implements IChatController {
     }
   }
 
-  // Removed restore/permanent/delete-list endpoints as per simplified requirements
 
   async serveFile(req: Request, res: Response): Promise<void> {
     try {

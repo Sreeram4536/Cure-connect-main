@@ -69,6 +69,24 @@ export interface MessageListResponse {
 
 }
 
+// Lightweight info objects returned alongside conversations
+export interface DoctorInfoDTO {
+  id: string;
+  name: string;
+  avatar: string;
+  isOnline: boolean;
+  specialization: string;
+  lastSeen: string;
+}
+
+export interface UserInfoDTO {
+  id: string;
+  name: string;
+  avatar: string;
+  isOnline: boolean;
+  lastSeen: string;
+}
+
 export interface FileUploadRequest {
   conversationId: string;
   message?: string;

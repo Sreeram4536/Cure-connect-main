@@ -1,10 +1,10 @@
 import { IUserService } from "../interface/IUserService";
 import { IUserRepository, PaginationResult } from "../../repositories/interface/IUserRepository";
-import { userData } from "../../types/user";
+import { userData, UserAuthDTO, UserProfileDTO } from "../../types/user";
 import bcrypt from "bcrypt";
 import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
-import { AppointmentTypes, WalletPaymentData, WalletPaymentResponse } from "../../types/appointment";
+import { AppointmentTypes, WalletPaymentData, WalletPaymentResponse, AppointmentDTO } from "../../types/appointment";
 import { isValidDateOfBirth, isValidPhone } from "../../utils/validator";
 import { DoctorData } from "../../types/doctor";
 import { PaymentService } from "./PaymentService";
@@ -37,6 +37,26 @@ export class UserService implements IUserService {
     this._walletPaymentService = new WalletPaymentService();
   }
 
+  private toAppointmentDTO(a: any): AppointmentDTO {
+    return {
+      id: a._id?.toString?.() ?? String(a._id),
+      _id: a._id?.toString?.() ?? String(a._id),
+      userId: String(a.userId),
+      docId: String(a.docId),
+      slotDate: a.slotDate,
+      slotTime: a.slotTime,
+      amount: a.amount,
+      date: a.date,
+      cancelled: a.cancelled,
+      payment: a.payment,
+      status: a.status,
+      isConfirmed: a.isConfirmed,
+      isCompleted: a.isCompleted,
+      userData: a.userData,
+      docData: a.docData,
+    };
+  }
+
   async register(
     name: string,
     email: string,
@@ -62,10 +82,36 @@ export class UserService implements IUserService {
     return { token, refreshToken };
   }
 
+  private toUserAuthDTO(user: any): UserAuthDTO {
+    return {
+      id: user._id?.toString?.() ?? String(user._id),
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      isBlocked: !!user.isBlocked,
+    };
+  }
+
+  private toUserProfileDTO(user: any): UserProfileDTO {
+    return {
+      id: user._id?.toString?.() ?? String(user._id),
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      address: user.address,
+      gender: user.gender,
+      dob: user.dob,
+      phone: user.phone,
+      isBlocked: !!user.isBlocked,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
   async login(
     email: string,
     password: string
-  ): Promise<{ user: UserDocument, token: string; refreshToken: string }> {
+  ): Promise<{ user: UserAuthDTO, token: string; refreshToken: string }> {
     const user = await this._userRepository.findByEmail(email);
     if (!user) throw new Error("User not found");
     const isMatch = await bcrypt.compare(password, user.password);
@@ -79,11 +125,12 @@ export class UserService implements IUserService {
     const token = generateAccessToken(user._id, user.email, "user");
     const refreshToken = generateRefreshToken(user._id, "user");
 
-    return { user, token, refreshToken };
+    return { user: this.toUserAuthDTO(user), token, refreshToken };
   }
 
-  async getProfile(userId: string): Promise<userData | null> {
-    return await this._userRepository.findById(userId);
+  async getProfile(userId: string): Promise<UserProfileDTO | null> {
+    const user = await this._userRepository.findById(userId);
+    return user ? this.toUserProfileDTO(user) : null;
   }
 
   async updateProfile(
@@ -163,8 +210,9 @@ export class UserService implements IUserService {
     return doctor;
   }
 
-  async listUserAppointments(userId: string): Promise<AppointmentTypes[]> {
-    return await this._userRepository.getAppointmentsByUserId(userId);
+  async listUserAppointments(userId: string): Promise<AppointmentDTO[]> {
+    const list = await this._userRepository.getAppointmentsByUserId(userId);
+    return list.map(this.toAppointmentDTO);
   }
 
   async listUserAppointmentsPaginated(
@@ -176,8 +224,8 @@ export class UserService implements IUserService {
     status?: string,
     dateFrom?: string,
     dateTo?: string
-  ): Promise<PaginationResult<AppointmentTypes>> {
-    return await this._userRepository.getAppointmentsByUserIdPaginated(
+  ): Promise<PaginationResult<AppointmentDTO>> {
+    const res = await this._userRepository.getAppointmentsByUserIdPaginated(
       userId,
       page,
       limit,
@@ -187,6 +235,7 @@ export class UserService implements IUserService {
       dateFrom,
       dateTo
     );
+    return { ...res, data: res.data.map(this.toAppointmentDTO) } as PaginationResult<AppointmentDTO>;
   }
 
   async cancelAppointment(

@@ -1,7 +1,6 @@
 import { Types } from "mongoose";
 
 export interface WalletTransaction {
-  _id: Types.ObjectId;
   userId: string;
   type: 'credit' | 'debit';
   amount: number;
@@ -38,3 +37,19 @@ export interface WalletBalanceUpdate {
   amount: number;
   type: 'credit' | 'debit';
 } 
+
+// DTOs for exposure
+export interface WalletTransactionDTO {
+  id: string;
+  type: 'credit' | 'debit';
+  amount: number;
+  description: string;
+  appointmentId?: string;
+  createdAt: Date;
+}
+
+export interface WalletDTO {
+  userId: string;
+  balance: number;
+  transactions: WalletTransactionDTO[];
+}

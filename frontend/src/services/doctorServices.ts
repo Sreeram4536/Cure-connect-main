@@ -1,5 +1,7 @@
-import { doctorApi as api } from "../axios/doctorAxiosInstance";
+import { getApi } from "../axios/axiosInstance";
 import { DOCTOR_API } from "../constants/apiRoutes";
+
+const api = getApi("doctor");
 
 // Get all doctors
 export const getDoctorsAPI = () => {
@@ -42,8 +44,10 @@ export const getDoctorAppointmentsAPI = () => {
 };
 
 // Get paginated appointments for doctor
-export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number) => {
-  return api.get(`${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}`);
+export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number, search?: string) => {
+  let url = `${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  return api.get(url);
 };
 
 // Confirm appointment

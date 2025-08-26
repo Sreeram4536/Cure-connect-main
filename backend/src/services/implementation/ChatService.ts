@@ -1,6 +1,6 @@
 import { IChatService } from "../interface/IChatService";
 import { IChatRepository } from "../../repositories/interface/IChatRepository";
-import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO } from "../../types/chat";
+import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO, DoctorInfoDTO, UserInfoDTO } from "../../types/chat";
 import { DoctorService } from "./DoctorService";
 import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
 import { UserService } from "./UserService";
@@ -22,6 +22,37 @@ export class ChatService implements IChatService {
     this.userRepository = userRepository;
   }
 
+  private toConversationResponse(conversation: any): ConversationResponse {
+    return {
+      id: (conversation._id ?? conversation.id).toString(),
+      userId: String(conversation.userId),
+      doctorId: String(conversation.doctorId),
+      lastMessage: conversation.lastMessage ?? undefined,
+      lastMessageTime: conversation.lastMessageTime ?? undefined,
+      unreadCount: typeof conversation.unreadCount === 'number' ? conversation.unreadCount : 0,
+      isActive: Boolean(conversation.isActive),
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+    };
+  }
+
+  private toMessageResponse(message: any): ChatMessageResponse {
+    return {
+      id: (message._id ?? message.id).toString(),
+      conversationId: String(message.conversationId),
+      senderId: String(message.senderId),
+      senderType: message.senderType,
+      message: message.message,
+      messageType: message.messageType,
+      timestamp: message.timestamp,
+      isRead: Boolean(message.isRead),
+      isDeleted: Boolean(message.isDeleted),
+      deletedAt: message.deletedAt ?? undefined,
+      deletedBy: message.deletedBy ?? undefined,
+      attachments: Array.isArray(message.attachments) ? message.attachments : [],
+    };
+  }
+
   // Conversation methods
   async createConversation(userId: string, doctorId: string): Promise<ConversationResponse> {
     console.log("Creating conversation for userId:", userId, "doctorId:", doctorId);
@@ -30,7 +61,7 @@ export class ChatService implements IChatService {
     const existingConversation = await this.chatRepository.getConversation(userId, doctorId);
     if (existingConversation) {
       console.log("Found existing conversation:", existingConversation);
-      return existingConversation;
+      return this.toConversationResponse(existingConversation);
     }
 
     const conversationData: ConversationDTO = {
@@ -41,33 +72,44 @@ export class ChatService implements IChatService {
     };
 
     console.log("Creating new conversation with data:", conversationData);
-    return await this.chatRepository.createConversation(conversationData);
+    const created = await this.chatRepository.createConversation(conversationData);
+    return this.toConversationResponse(created);
   }
 
   async getConversation(userId: string, doctorId: string): Promise<ConversationResponse | null> {
-    return await this.chatRepository.getConversation(userId, doctorId);
+    const conv = await this.chatRepository.getConversation(userId, doctorId);
+    return conv ? this.toConversationResponse(conv) : null;
   }
 
   async getConversationById(conversationId: string): Promise<ConversationResponse | null> {
-    return await this.chatRepository.getConversationById(conversationId);
+    const conv = await this.chatRepository.getConversationById(conversationId);
+    return conv ? this.toConversationResponse(conv) : null;
   }
 
   async getUserConversations(userId: string, page: number, limit: number): Promise<ChatListResponse> {
     if (page < 1) page = 1;
     if (limit < 1 || limit > 50) limit = 20;
 
-    return await this.chatRepository.getUserConversations(userId, page, limit);
+    const list = await this.chatRepository.getUserConversations(userId, page, limit);
+    return {
+      ...list,
+      conversations: list.conversations.map(this.toConversationResponse),
+    };
   }
 
   async getDoctorConversations(doctorId: string, page: number, limit: number): Promise<ChatListResponse> {
     if (page < 1) page = 1;
     if (limit < 1 || limit > 50) limit = 20;
 
-    return await this.chatRepository.getDoctorConversations(doctorId, page, limit);
+    const list = await this.chatRepository.getDoctorConversations(doctorId, page, limit);
+    return {
+      ...list,
+      conversations: list.conversations.map(this.toConversationResponse),
+    };
   }
 
   async deleteConversation(conversationId: string, userId: string): Promise<boolean> {
-    // Verify conversation exists and user has access
+    
     const conversation = await this.chatRepository.getConversationById(conversationId);
     if (!conversation || (conversation.userId !== userId && conversation.doctorId !== userId)) {
       throw new Error("Conversation not found or access denied");
@@ -76,40 +118,42 @@ export class ChatService implements IChatService {
     return await this.chatRepository.deleteConversation(conversationId);
   }
 
-  async getDoctorInfo(doctorId: string): Promise<any> {
+  async getDoctorInfo(doctorId: string): Promise<DoctorInfoDTO> {
     try {
       const doctor = await this.doctorService.getDoctorProfile(doctorId);
       if (!doctor) {
         throw new Error("Doctor not found");
       }
       
-      return {
-        id: doctor._id,
+      const dto: DoctorInfoDTO = {
+        id: doctor.id?.toString?.() ?? String(doctor.id),
         name: doctor.name,
         avatar: doctor.image || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=100&h=100&fit=crop&crop=face",
-        isOnline: true, // This should be implemented with real online status
+        isOnline: true, 
         specialization: doctor.speciality,
-        lastSeen: "2 min ago" // This should be implemented with real last seen
+        lastSeen: "2 min ago" 
       };
+      return dto;
     } catch (error) {
       throw new Error("Failed to fetch doctor information");
     }
   }
 
-  async getUserInfo(userId: string): Promise<any> {
+  async getUserInfo(userId: string): Promise<UserInfoDTO> {
     try {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         throw new Error("User not found");
       }
       
-      return {
+      const dto: UserInfoDTO = {
         id: user._id,
         name: user.name,
         avatar: user.image || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-        isOnline: true, // This should be implemented with real online status
-        lastSeen: "2 min ago" // This should be implemented with real last seen
+        isOnline: true,
+        lastSeen: "2 min ago" 
       };
+      return dto;
     } catch (error) {
       throw new Error("Failed to fetch user information");
     }
@@ -119,7 +163,7 @@ export class ChatService implements IChatService {
   async sendMessage(messageData: ChatMessageDTO, senderId: string): Promise<ChatMessageResponse> {
     console.log("ChatService.sendMessage called with:", { messageData, senderId });
     
-    // Validate message data
+    // Validate message 
     if (!messageData.message || messageData.message.trim().length === 0) {
       throw new Error("Message cannot be empty");
     }
@@ -128,7 +172,7 @@ export class ChatService implements IChatService {
       throw new Error("Conversation ID is required");
     }
 
-    // Verify conversation exists and sender has access
+    
     const conversation = await this.chatRepository.getConversationById(messageData.conversationId);
     console.log("Found conversation for message:", conversation);
     
@@ -138,14 +182,14 @@ export class ChatService implements IChatService {
 
     console.log("Conversation userId:", conversation.userId, "doctorId:", conversation.doctorId, "senderId:", senderId);
     
-    // Convert ObjectId to string for comparison
+    
     const senderIdString = senderId.toString();
     
     if (conversation.userId !== senderIdString && conversation.doctorId !== senderIdString) {
       throw new Error("Access denied to this conversation");
     }
 
-    // Determine sender type
+    
     const senderType = conversation.userId === senderIdString ? "user" : "doctor";
     console.log("Determined sender type:", senderType);
 
@@ -165,19 +209,24 @@ export class ChatService implements IChatService {
     if (page < 1) page = 1;
     if (limit < 1 || limit > 100) limit = 50;
 
-    // Verify conversation exists
+   
     const conversation = await this.chatRepository.getConversationById(conversationId);
     if (!conversation) {
       throw new Error("Conversation not found");
     }
 
-    return await this.chatRepository.getMessages(conversationId, page, limit);
+    const res = await this.chatRepository.getMessages(conversationId, page, limit);
+    return {
+      ...res,
+      messages: res.messages.map(this.toMessageResponse),
+      conversationId,
+    };
   }
 
   async markConversationAsRead(conversationId: string, userId: string): Promise<boolean> {
     console.log("ChatService.markConversationAsRead called with:", { conversationId, userId });
     
-    // Verify conversation exists and user has access
+    
     const conversation = await this.chatRepository.getConversationById(conversationId);
     console.log("Found conversation:", conversation);
     
@@ -187,7 +236,7 @@ export class ChatService implements IChatService {
     
     console.log("Conversation userId:", conversation.userId, "doctorId:", conversation.doctorId, "requested userId:", userId);
     
-    // Convert ObjectId to string for comparison
+    
     const userIdString = userId.toString();
     
     if (conversation.userId !== userIdString && conversation.doctorId !== userIdString) {
@@ -200,7 +249,7 @@ export class ChatService implements IChatService {
   }
 
   async getUnreadCount(conversationId: string, userId: string): Promise<number> {
-    // Verify conversation exists and user has access
+    
     const conversation = await this.chatRepository.getConversationById(conversationId);
     if (!conversation || (conversation.userId !== userId.toString() && conversation.doctorId !== userId.toString())) {
       throw new Error("Conversation not found or access denied");
@@ -210,7 +259,7 @@ export class ChatService implements IChatService {
   }
 
   async deleteMessage(messageId: string, senderId: string): Promise<boolean> {
-    // Verify message exists and sender has permission to delete
+    
     const message = await this.chatRepository.getMessageById(messageId);
     if (!message) {
       throw new Error("Message not found");
@@ -224,7 +273,7 @@ export class ChatService implements IChatService {
   }
 
   async softDeleteMessage(messageId: string, senderId: string): Promise<boolean> {
-    // Verify message exists and sender has permission to delete
+    
     const message = await this.chatRepository.getMessageById(messageId);
     if (!message) {
       throw new Error("Message not found");
@@ -238,7 +287,7 @@ export class ChatService implements IChatService {
     return await this.chatRepository.softDeleteMessage(messageId);
   }
 
-  // File send helper as required by IChatService
+ 
   async sendMessageWithFiles(
     conversationId: string,
     senderId: string,
@@ -247,7 +296,7 @@ export class ChatService implements IChatService {
     files: Express.Multer.File[]
   ): Promise<ChatMessageResponse> {
     const attachments = await this.processUploadedFiles(files);
-    // Determine messageType based on first file
+    
     const firstType = attachments[0]?.fileType;
     const messageType: "image" | "file" = firstType === "image" ? "image" : "file";
 
@@ -276,7 +325,7 @@ export class ChatService implements IChatService {
   }
 
   async deleteUploadedFiles(attachments: AttachmentDTO[]): Promise<void> {
-    // No-op for now (files can be cleaned via a scheduled job if needed)
+   
     return;
   }
 

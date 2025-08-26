@@ -106,9 +106,9 @@ const ChatCard: React.FC<ChatCardProps> = ({
             <img className="h-10 w-10" src={assets.message_icon} alt="" />
           </span>
         </div>
-        <p className="text-gray-600 text-sm font-normal opacity-75 leading-relaxed">
+        {/* <p className="text-gray-600 text-sm font-normal opacity-75 leading-relaxed">
           Start a conversation with {displayName} ({displaySpecialization})
-        </p>
+        </p> */}
         {loadingDoctor && (
           <div className="mt-2 text-sm text-blue-600">
             Loading doctor information...

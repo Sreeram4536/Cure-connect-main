@@ -1,4 +1,5 @@
-import { api } from "../axios/axiosInstance";
+import { getApi } from "../axios/axiosInstance";
+const api = getApi("user");
 import { APPOINTMENT_API } from "../constants/apiRoutes";
 
 // Book an appointment

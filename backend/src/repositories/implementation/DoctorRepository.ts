@@ -128,19 +128,24 @@ export class DoctorRepository
   }
 
 
- async getAppointmentsPaginated(docId: string, page: number, limit: number): Promise<PaginationResult<AppointmentTypes>> {
+ async getAppointmentsPaginated(docId: string, page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>> {
     const skip = (page - 1) * limit;
-    const totalCount = await appointmentModel.countDocuments({ docId });
-    const data = await appointmentModel.find({ docId })
+    const query: any = { docId };
+    if (search) {
+      // Find user IDs matching the search
+      const userModel = (await import("../../models/userModel")).default;
+      const userIds = await userModel.find({ name: { $regex: search, $options: "i" } }).select("_id");
+      query.userId = { $in: userIds.map((u: any) => u._id) };
+    }
+    const totalCount = await appointmentModel.countDocuments(query);
+    const data = await appointmentModel.find(query)
       .populate({ path: 'userId', select: 'name email image dob', model: 'user' })
       .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
-    
     data.forEach((appt: any) => {
       if (appt.userId) {
-        
         if (!appt.userData) {
           appt.userData = {
             name: appt.userId.name,

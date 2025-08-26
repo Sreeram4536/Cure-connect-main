@@ -3,14 +3,15 @@ import { IAdminService } from "../interface/IAdminService";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
-import { DoctorData, DoctorDTO } from "../../types/doctor";
+import { DoctorData, DoctorDTO, DoctorListDTO } from "../../types/doctor";
 import { isValidEmail, isValidPassword } from "../../utils/validator";
 import dotenv from "dotenv";
-import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
+import { AppointmentDocument, AppointmentTypes, AppointmentDTO } from "../../types/appointment";
 import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
 import { adminData, AdminDocument } from "../../types/admin";
 import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.utils";
 import { PaginationResult } from "../../repositories/interface/IAdminRepository";
+import { UserProfileDTO } from "../../types/user";
 import { WalletService } from "./WalletService";
 import { UserRepository } from "../../repositories/implementation/UserRepository";
 import { SlotLockService } from "./SlotLockService";
@@ -149,20 +150,84 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return "Doctor rejected successfully";
   }
 
-  async getDoctors(): Promise<any[]> {
-    return await this._adminRepository.getAllDoctors();
+  private toDoctorListDTO(doc: any): DoctorListDTO {
+    return {
+      id: doc._id?.toString?.() ?? String(doc._id),
+      _id: doc._id?.toString?.() ?? String(doc._id),
+      name: doc.name,
+      image: doc.image,
+      speciality: doc.speciality,
+      degree: doc.degree,
+      experience: doc.experience,
+      fees: doc.fees,
+      available: doc.available,
+      isBlocked: doc.isBlocked,
+      status: doc.status,
+    };
   }
 
-  async getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<any>> {
-    return await this._adminRepository.getDoctorsPaginated(page, limit);
+  private toUserProfileDTO(u: any): UserProfileDTO {
+    return {
+      id: u._id?.toString?.() ?? String(u._id),
+      _id: u._id?.toString?.() ?? String(u._id),
+      name: u.name,
+      email: u.email,
+      image: u.image,
+      address: u.address,
+      gender: u.gender,
+      dob: u.dob,
+      phone: u.phone,
+      isBlocked: !!u.isBlocked,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    };
   }
 
-  async getUsers(): Promise<any[]> {
-    return await this._adminRepository.getAllUsers();
+  private toAppointmentDTO(a: any): AppointmentDTO {
+    return {
+      id: a._id?.toString?.() ?? String(a._id),
+      userId: String(a.userId),
+      docId: String(a.docId),
+      slotDate: a.slotDate,
+      slotTime: a.slotTime,
+      amount: a.amount,
+      date: a.date,
+      cancelled: a.cancelled,
+      payment: a.payment,
+      status: a.status,
+      isConfirmed: a.isConfirmed,
+      isCompleted: a.isCompleted,
+      userData: a.userData,
+      docData: a.docData,
+    };
   }
 
-  async getUsersPaginated(page: number, limit: number): Promise<PaginationResult<any>> {
-    return await this._adminRepository.getUsersPaginated(page, limit);
+  async getDoctors(): Promise<DoctorListDTO[]> {
+    const list = await this._adminRepository.getAllDoctors();
+    return list.map(this.toDoctorListDTO);
+  }
+
+  async getDoctorsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<any>> {
+    const res = await this._adminRepository.getDoctorsPaginated(page, limit, search);
+    return { ...res, data: res.data.map(this.toDoctorListDTO) } as PaginationResult<any>;
+  }
+
+  // async getUsers(): Promise<any[]> {
+  //   return await this._adminRepository.getAllUsers();
+  // }
+
+  // async getUsersPaginated(page: number, limit: number): Promise<PaginationResult<any>> {
+  //   return await this._adminRepository.getUsersPaginated(page, limit);
+  // }
+
+    async getUsers(search?: string): Promise<any[]> {
+    const users = await this._adminRepository.getAllUsers(search);
+    return users.map(this.toUserProfileDTO);
+  }
+
+  async getUsersPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<any>> {
+    const res = await this._adminRepository.getUsersPaginated(page, limit, search);
+    return { ...res, data: res.data.map(this.toUserProfileDTO) } as PaginationResult<any>;
   }
 
   async toggleUserBlock(userId: string, block: boolean): Promise<string> {
@@ -173,12 +238,14 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return await this._adminRepository.toggleDoctorBlock(doctorId, block);
   }
 
-  async listAppointments(): Promise<AppointmentDocument[]> {
-    return await this._adminRepository.getAllAppointments();
+  async listAppointments(): Promise<AppointmentDTO[]> {
+    const list = await this._adminRepository.getAllAppointments();
+    return list.map(this.toAppointmentDTO);
   }
 
-  async listAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>> {
-    return await this._adminRepository.getAppointmentsPaginated(page, limit);
+  async listAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<any>> {
+    const res = await this._adminRepository.getAppointmentsPaginated(page, limit, search);
+    return { ...res, data: res.data.map(this.toAppointmentDTO) } as PaginationResult<any>;
   }
 
   async cancelAppointment(appointmentId: string): Promise<void> {
@@ -210,7 +277,7 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
         console.log(`No refund needed for admin cancellation - payment: ${appointment.payment}, amount: ${appointment.amount}`);
       }
       
-      // Use SlotLockService to properly cancel appointment and release slot AFTER refund
+      
       const result = await this._slotLockService.cancelAppointment({ appointmentId });
       console.log(`Slot lock service result:`, result);
       

@@ -1,6 +1,6 @@
-import { AppointmentTypes } from "../../types/appointment";
+import { AppointmentDTO, AppointmentTypes } from "../../types/appointment";
 import { DoctorData } from "../../types/doctor";
-import { userData } from "../../types/user";
+import { userData, UserProfileDTO, UserAuthDTO } from "../../types/user";
 import { PaginationResult } from "../../repositories/interface/IUserRepository";
 import { WalletTransaction } from "../../types/wallet";
 import { WalletPaymentData, WalletPaymentResponse } from "../../types/appointment";
@@ -18,8 +18,8 @@ export interface IUserService {
   login(
     email: string,
     password: string
-  ): Promise<{ user: UserDocument, token: string; refreshToken: string }>;
-  getProfile(userId: string): Promise<userData | null>;
+  ): Promise<{ user: UserAuthDTO, token: string; refreshToken: string }>;
+  getProfile(userId: string): Promise<UserProfileDTO | null>;
   updateProfile(
     userId: string,
     data: Partial<userData>,
@@ -35,7 +35,7 @@ export interface IUserService {
   resetPassword(email: string, newHashedPassword: string): Promise<boolean>;
   getUserById(id: string): Promise<UserDocument>;
   getDoctorById(id: string): Promise<DoctorData>;
-  listUserAppointments(userId: string): Promise<AppointmentTypes[]>;
+  listUserAppointments(userId: string): Promise<AppointmentDTO[]>;
   listUserAppointmentsPaginated(
     userId: string,
     page: number,
@@ -45,7 +45,7 @@ export interface IUserService {
     status?: string,
     dateFrom?: string,
     dateTo?: string
-  ): Promise<PaginationResult<AppointmentTypes>>;
+  ): Promise<PaginationResult<AppointmentDTO>>;
   cancelAppointment(userId: string, appointmentId: string): Promise<void>;
   startPayment(userId: string, appointmentId: string): Promise<{ order: any }>;
   verifyPayment(

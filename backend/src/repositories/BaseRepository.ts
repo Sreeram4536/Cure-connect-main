@@ -4,15 +4,15 @@ export class BaseRepository<T extends Document> {
   constructor(protected model: Model<T>) {}
 
   async findById(id: string): Promise<T | null> {
-    return this.model.findById(id).exec();
+    return this.model.findById(id).lean() as any;
   }
 
   async findOne(filter: FilterQuery<T>): Promise<T | null> {
-    return this.model.findOne(filter).exec();
+    return this.model.findOne(filter).lean() as any;
   }
 
   async findAll(filter: FilterQuery<T> = {}): Promise<T[]> {
-    return this.model.find(filter).exec();
+    return this.model.find(filter).lean() as any;
   }
 
   async create(data: Partial<T>): Promise<T> {

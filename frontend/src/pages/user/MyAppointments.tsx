@@ -431,7 +431,7 @@ const MyAppointments = () => {
 
                             {!item.cancelled && (
                               <button
-                                onClick={() => cancelAppointment(item._id!)}
+                                onClick={() => cancelAppointment((item._id || (item as any).id) as string)}
                                 className="flex items-center gap-2 bg-white border-2 border-red-500 text-red-500 px-6 py-3 rounded-xl font-semibold hover:bg-red-500 hover:text-white transition-all duration-300"
                               >
                                 <X className="w-4 h-4" />

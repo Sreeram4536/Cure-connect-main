@@ -157,8 +157,8 @@ if (!doctor) {
   });
   return
 }
-const newAccessToken = generateAccessToken(doctor._id!, doctor.email, "doctor");
-const newRefreshToken = generateRefreshToken(doctor._id!, "doctor");
+const newAccessToken = generateAccessToken(doctor.id, doctor.email, "doctor");
+const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
 
       res.cookie("refreshToken_doctor", newRefreshToken, {
         httpOnly: true,
@@ -213,8 +213,9 @@ const newRefreshToken = generateRefreshToken(doctor._id!, "doctor");
       const docId = (req as any).docId;
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search as string | undefined;
       if (page && limit) {
-        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit);
+        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit, search);
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
         const appointments = await this._doctorService.getDoctorAppointments(docId);
@@ -254,8 +255,9 @@ const newRefreshToken = generateRefreshToken(doctor._id!, "doctor");
       // After cancellation, return updated appointments (paginated if page/limit provided)
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search as string | undefined;
       if (page && limit) {
-        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit);
+        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit,search);
         res.status(200).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, ...result });
       } else {
         const appointments = await this._doctorService.getDoctorAppointments(docId);

@@ -35,7 +35,7 @@ interface DoctorContextType {
   appointments: AppointmentTypes[];
   setAppointments: React.Dispatch<React.SetStateAction<AppointmentTypes[]>>;
   getAppointments: () => Promise<void>;
-  getAppointmentsPaginated: (page: number, limit: number) => Promise<PaginationData>;
+  getAppointmentsPaginated: (page: number, limit: number, searchQuery?: string) => Promise<PaginationData>;
   confirmAppointment: (appointmentId: string) => Promise<void>;
   cancelAppointment: (appointmentId: string, page?: number, limit?: number) => Promise<any>;
   profileData: DoctorProfileType | null;
@@ -104,9 +104,9 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
   };
 
   // If you have a getAppointmentsPaginated, ensure similar robustness:
-  const getAppointmentsPaginated = async (page: number, limit: number): Promise<PaginationData> => {
+  const getAppointmentsPaginated = async (page: number, limit: number, searchQuery?: string): Promise<PaginationData> => {
     try {
-      const { data } = await getDoctorAppointmentsPaginatedAPI(page, limit);
+      const { data } = await getDoctorAppointmentsPaginatedAPI(page, limit, searchQuery);
       if (data.success && Array.isArray(data.data)) {
         return {
           data: data.data,

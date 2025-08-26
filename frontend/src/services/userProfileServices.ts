@@ -1,4 +1,5 @@
-import { api } from "../axios/axiosInstance";
+import { getApi } from "../axios/axiosInstance";
+const api = getApi("user");
 import { showErrorToast } from "../utils/errorHandler";
 import { USER_PROFILE_API } from "../constants/apiRoutes";
 

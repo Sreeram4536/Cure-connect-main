@@ -1,5 +1,6 @@
-import { api } from "../axios/axiosInstance";
-import { doctorApi } from "../axios/doctorAxiosInstance";
+import { getApi } from "../axios/axiosInstance";
+const api = getApi("user");
+const doctorApi = getApi("doctor");
 
 // Chat API endpoints
 const CHAT_API = {
@@ -23,17 +24,36 @@ export const getUserConversationsAPI = (page: number = 1, limit: number = 20) =>
   });
 };
 
-export const sendMessageAPI = (conversationId: string, message: string, messageType: string = "text", attachments?: string[]) => {
+export const sendMessageAPI = (
+  conversationId: string, 
+  message: string, 
+  messageType: string = "text", 
+  attachments?: string[],
+  replyTo?: {
+    messageId: string;
+    message: string;
+    senderType: "user" | "doctor";
+    messageType: "text" | "image" | "file" | "mixed";
+  }
+) => {
   return api.post(CHAT_API.MESSAGES, {
     conversationId,
     message,
     messageType,
     attachments,
+    replyTo
   });
 };
 
 export const getMessagesAPI = (conversationId: string, page: number = 1, limit: number = 50) => {
   return api.get(`${CHAT_API.MESSAGES}/${conversationId}`, {
+    params: { page, limit },
+  });
+};
+
+// Doctor-scoped: fetch messages with doctor token
+export const getDoctorMessagesAPI = (conversationId: string, page: number = 1, limit: number = 50) => {
+  return doctorApi.get(`${CHAT_API.MESSAGES}/${conversationId}`, {
     params: { page, limit },
   });
 };
@@ -76,11 +96,23 @@ export const getDoctorConversationWithUserAPI = (conversationId: string) => {
   return doctorApi.get(`${CHAT_API.CONVERSATIONS}/${conversationId}/with-user`);
 };
 
-export const sendDoctorMessageAPI = (conversationId: string, message: string, messageType: string = "text", attachments?: string[]) => {
+export const sendDoctorMessageAPI = (
+  conversationId: string, 
+  message: string, 
+  messageType: string = "text", 
+  attachments?: string[],
+  replyTo?: {
+    messageId: string;
+    message: string;
+    senderType: "user" | "doctor";
+    messageType: "text" | "image" | "file" | "mixed";
+  }
+) => {
   return doctorApi.post(`${CHAT_API.MESSAGES}/doctor`, {
     conversationId,
     message,
     messageType,
     attachments,
+    replyTo
   });
 }; 

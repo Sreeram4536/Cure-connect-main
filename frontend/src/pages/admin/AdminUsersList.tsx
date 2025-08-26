@@ -1,4 +1,4 @@
-import { useEffect, useContext, useState } from "react";
+import { useEffect, useContext, useState, useRef } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -16,7 +16,7 @@ const AdminUsersList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [users, setUsers] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,12 +24,12 @@ const AdminUsersList = () => {
   const [targetUser, setTargetUser] = useState<any>(null);
   const [targetAction, setTargetAction] = useState<"block" | "unblock" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (aToken) {
       fetchUsers();
     }
-  }, [aToken, currentPage]);
+  }, [aToken, currentPage,searchQuery]);
 
   useEffect(() => {
     if (!aToken) {
@@ -44,10 +44,10 @@ const AdminUsersList = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const result = await getUsersPaginated(currentPage, itemsPerPage);
+      const result = await getUsersPaginated(currentPage, itemsPerPage,searchQuery);
       setUsers(result.data);
       setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
+  // setTotalCount(result.totalCount); // Removed unused state
     } catch (error) {
       console.error("Failed to fetch users:", error);
     } finally {
@@ -83,13 +83,33 @@ const AdminUsersList = () => {
     setTargetAction(null);
   };
 
-  const filteredUsers = users.filter((user) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      user.name?.toLowerCase().includes(q) ||
-      user.email?.toLowerCase().includes(q)
-    );
-  });
+  const handleSearch =(query:string)=>{
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearchQuery(query);
+      setCurrentPage(1);
+    },300);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
+  const filteredUsers = users;
+
+  // const filteredUsers = users.filter((user) => {
+  //   const q = searchQuery.toLowerCase();
+  //   return (
+  //     user.name?.toLowerCase().includes(q) ||
+  //     user.email?.toLowerCase().includes(q)
+  //   );
+  // });
 
   const columns = [
     {
@@ -178,9 +198,10 @@ const AdminUsersList = () => {
       <div className="mb-4">
         <SearchBar
           placeholder="Search by name or email"
-          onSearch={(query) => {
-            setSearchQuery(query);
-          }}
+          // onSearch={(query) => {
+          //   setSearchQuery(query);
+          // }}
+          onSearch={handleSearch}
         />
       </div>
 

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -19,7 +19,7 @@ const AdminDoctorList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // const [totalCount, setTotalCount] = useState(0); 
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,7 +32,7 @@ const AdminDoctorList = () => {
     if (aToken) {
       fetchDoctors();
     }
-  }, [aToken, currentPage]);
+  }, [aToken, currentPage, searchQuery]);
 
   useEffect(() => {
     if (!aToken) {
@@ -47,10 +47,9 @@ const AdminDoctorList = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const result = await getDoctorsPaginated(currentPage, itemsPerPage);
+      const result = await getDoctorsPaginated(currentPage, itemsPerPage, searchQuery);
       setDoctors(result.data);
       setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Failed to fetch doctors:", error);
     } finally {
@@ -96,12 +95,21 @@ const AdminDoctorList = () => {
     setTargetAction(null);
   };
 
-  const filteredDoctors = doctors
-    .filter((doctor) => doctor.status === "approved")
-    .filter((doctor) =>
-      doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.speciality?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+
+  // Only filter by status client-side (search is server-side)
+  const filteredDoctors = doctors.filter((doctor) => doctor.status === "approved");
+
+  // Debounce search
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const handleSearch = (query: string) => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearchQuery(query);
+      setCurrentPage(1);
+    }, 300);
+  };
 
   return (
     <div className="m-5 max-h-[90vh] overflow-y-scroll">
@@ -111,7 +119,7 @@ const AdminDoctorList = () => {
       <div className="mb-5 max-w-sm">
         <SearchBar
           placeholder="Search by name or speciality"
-          onSearch={(query) => setSearchQuery(query)}
+          onSearch={handleSearch}
         />
       </div>
 

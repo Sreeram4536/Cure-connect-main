@@ -52,3 +52,32 @@ export interface AppointmentDocument
   extends AppointmentTypes, Document {
   _id: Types.ObjectId;
 }
+
+// DTOs exposed externally (no internal mongoose fields)
+export interface AppointmentDTO {
+  id: string;
+  _id?: string; // backward-compat for frontend expecting _id
+  userId: string;
+  docId: string;
+  slotDate: string;
+  slotTime: string;
+  amount: number;
+  date: Date;
+  cancelled: boolean;
+  payment: boolean;
+  status: "pending" | "confirmed" | "cancelled";
+  isConfirmed: boolean;
+  isCompleted: boolean;
+  // lightweight embedded info
+  userData?: {
+    name: string;
+    email: string;
+    image?: string;
+    dob?: string;
+  };
+  docData?: {
+    name: string;
+    speciality: string;
+    image?: string;
+  };
+}

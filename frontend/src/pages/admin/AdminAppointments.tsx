@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminContext } from "../../context/AdminContext";
 import { AppContext } from "../../context/AppContext";
@@ -21,10 +21,11 @@ const AdminAppointments = () => {
   const { calculateAge, slotDateFormat, currencySymbol } = appContext;
 
   const [searchQuery, setSearchQuery] = useState("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // const [totalCount, setTotalCount] = useState(0); // Not used
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
 
@@ -32,7 +33,7 @@ const AdminAppointments = () => {
     if (aToken) {
       fetchAppointments();
     }
-  }, [aToken, currentPage]);
+  }, [aToken, currentPage, searchQuery]);
 
   useEffect(() => {
     if (!aToken) {
@@ -47,10 +48,9 @@ const AdminAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const result = await getAppointmentsPaginated(currentPage, itemsPerPage);
+      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery);
       setAppointments(result.data);
       setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Failed to fetch appointments:", error);
     } finally {
@@ -68,13 +68,16 @@ const AdminAppointments = () => {
     }
   };
 
-  const filteredAppointments = appointments.filter((item) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      item.userData?.name?.toLowerCase().includes(q) ||
-      item.docData?.name?.toLowerCase().includes(q)
-    );
-  });
+
+  const handleSearch = (query: string) => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearchQuery(query);
+      setCurrentPage(1);
+    }, 300);
+  };
 
   const columns = [
     {
@@ -179,15 +182,13 @@ const AdminAppointments = () => {
 
       <div className="mb-4">
         <SearchBar
-          placeholder="Search by name or email"
-          onSearch={(query) => {
-            setSearchQuery(query);
-          }}
+          placeholder="Search by patient or doctor name"
+          onSearch={handleSearch}
         />
       </div>
 
       <DataTable
-        data={filteredAppointments}
+        data={appointments}
         columns={columns}
         loading={loading}
         emptyMessage="No matching appointments found."

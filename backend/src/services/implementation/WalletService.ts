@@ -1,9 +1,27 @@
 import { IWalletService } from "../interface/IWalletService";
 import { WalletRepository } from "../../repositories/implementation/WalletRepository";
-import { WalletTransaction } from "../../types/wallet";
+import { WalletTransaction, WalletDTO, WalletTransactionDTO } from "../../types/wallet";
 import { PaginationResult } from "../../repositories/interface/IWalletRepository";
 
 export class WalletService implements IWalletService {
+  private toWalletTransactionDTO(tx: any): WalletTransactionDTO {
+    return {
+      id: tx._id?.toString?.() ?? String(tx._id ?? ''),
+      type: tx.type,
+      amount: tx.amount,
+      description: tx.description,
+      appointmentId: tx.appointmentId,
+      createdAt: tx.createdAt,
+    };
+  }
+
+  private toWalletDTO(wallet: any): WalletDTO {
+    return {
+      userId: wallet.userId,
+      balance: wallet.balance,
+      transactions: (wallet.transactions || []).map(this.toWalletTransactionDTO),
+    };
+  }
   private walletRepository: WalletRepository;
 
   constructor() {

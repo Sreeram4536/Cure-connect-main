@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import EmojiPicker from 'emoji-picker-react';
 import {
   getConversationAPI,
   getMessagesAPI,
@@ -25,6 +26,7 @@ interface Doctor {
 
 const ChatPage: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
+  const navigate = useNavigate();
   const { socket, isConnected, joinConversation, leaveConversation, sendMessage, startTyping, stopTyping, markAsRead } = useSocket();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -43,6 +45,11 @@ const ChatPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
   const [pendingType, setPendingType] = useState<"image" | "file" | null>(null);
+
+  // New state for emoji picker and reply
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
+  const [showReplyPreview, setShowReplyPreview] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -294,6 +301,14 @@ const ChatPage: React.FC = () => {
     try {
       console.log("Sending message:", newMessage.trim(), "to conversation:", conversation.id);
       
+      // Prepare reply data if replying
+      const replyData = replyToMessage ? {
+        messageId: replyToMessage.id,
+        message: replyToMessage.message,
+        senderType: replyToMessage.senderType,
+        messageType: replyToMessage.messageType,
+      } : undefined;
+      
       // Send message via Socket.IO for real-time delivery
       if (isConnected) {
         // Add temporary message to show it's being sent
@@ -315,7 +330,8 @@ const ChatPage: React.FC = () => {
             filePath: url,
             uploadedAt: new Date(),
           })) as any,
-          isDeleted: false
+          isDeleted: false,
+          replyTo: replyData
         };
         setMessages(prev => [...prev, tempMsg]);
         setTempMessage(newMessage.trim());
@@ -324,6 +340,8 @@ const ChatPage: React.FC = () => {
         setNewMessage("");
         setPendingAttachments([]);
         setPendingType(null);
+        setReplyToMessage(null);
+        setShowReplyPreview(false);
         setIsSending(false);
       } else {
         // Fallback to REST API if socket is not connected
@@ -331,7 +349,8 @@ const ChatPage: React.FC = () => {
           conversation.id,
           newMessage.trim() || (pendingType === "image" ? "[Image]" : "[File]"),
           pendingType ?? "text",
-          pendingAttachments
+          pendingAttachments,
+          replyData
         );
         console.log("Send message response:", response.data);
 
@@ -340,6 +359,8 @@ const ChatPage: React.FC = () => {
           setNewMessage("");
           setPendingAttachments([]);
           setPendingType(null);
+          setReplyToMessage(null);
+          setShowReplyPreview(false);
         }
         setIsSending(false);
       }
@@ -363,12 +384,38 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  // Handle emoji selection
+  const handleEmojiClick = (emojiObject: any) => {
+    setNewMessage(prev => prev + emojiObject.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Handle reply to message
+  const handleReplyToMessage = (message: ChatMessage) => {
+    setReplyToMessage(message);
+    setShowReplyPreview(true);
+    // Focus on input
+    const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+    if (input) input.focus();
+  };
+
+  // Cancel reply
+  const cancelReply = () => {
+    setReplyToMessage(null);
+    setShowReplyPreview(false);
+  };
+
   const formatTime = (date: Date): string => {
     return new Date(date).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  // Handle back navigation
+  const handleBackToConsultation = () => {
+    navigate(`/consultation/${doctorId}`);
   };
 
   if (isLoading) {
@@ -416,6 +463,17 @@ const ChatPage: React.FC = () => {
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-3">
+                {/* Back Button */}
+                <button
+                  onClick={handleBackToConsultation}
+                  className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors mr-2"
+                  title="Back to Consultation"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                
                 <div className="relative">
                   <img
                     src={doctor?.avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b77c?w=40&h=40&fit=crop&crop=face"}
@@ -457,6 +515,32 @@ const ChatPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Reply Preview */}
+            {showReplyPreview && replyToMessage && (
+              <div className="bg-gray-100 border-l-4 border-blue-500 p-3 mb-3 mx-6 rounded-r-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-1">
+                      Replying to {replyToMessage.senderType === 'doctor' ? 'Doctor' : 'You'}
+                    </div>
+                    <div className="text-sm text-gray-700 truncate">
+                      {replyToMessage.messageType === 'image' ? '[Image]' : 
+                       replyToMessage.messageType === 'file' ? '[File]' : 
+                       replyToMessage.message}
+                    </div>
+                  </div>
+                  <button
+                    onClick={cancelReply}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Messages Container */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {messages.length === 0 ? (
@@ -489,6 +573,20 @@ const ChatPage: React.FC = () => {
                         />
                       )}
                       <div className="relative">
+                        {/* Reply Preview in Message */}
+                        {message.replyTo && (
+                          <div className="mb-2 p-2 bg-gray-100 rounded-lg border-l-2 border-blue-400">
+                            <div className="text-xs text-gray-500 mb-1">
+                              {message.replyTo.senderType === 'doctor' ? 'Doctor' : 'You'}
+                            </div>
+                            <div className="text-xs text-gray-700 truncate">
+                              {message.replyTo.messageType === 'image' ? '[Image]' : 
+                               message.replyTo.messageType === 'file' ? '[File]' : 
+                               message.replyTo.message}
+                            </div>
+                          </div>
+                        )}
+                        
                         <div
                           className={`px-4 py-2 rounded-2xl ${
                             message.senderType === "user"
@@ -513,17 +611,35 @@ const ChatPage: React.FC = () => {
                             {formatTime(message.timestamp)}
                           </p>
                         </div>
-                        {message.senderType === "user" && !message.id.startsWith('temp-') && (
+                        
+                        {/* Action Buttons */}
+                        <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                          {/* Reply Button - hidden */}
+                          {/**
                           <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 flex items-center justify-center"
-                            title="Delete message"
+                            onClick={() => handleReplyToMessage(message)}
+                            className="w-6 h-6 bg-blue-500 text-white rounded-full hover:bg-blue-600 flex items-center justify-center"
+                            title="Reply to message"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                             </svg>
                           </button>
-                        )}
+                          */}
+                          
+                          {/* Delete Button */}
+                          {message.senderType === "user" && !message.id.startsWith('temp-') && (
+                            <button
+                              onClick={() => handleDeleteMessage(message.id)}
+                              className="w-6 h-6 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center"
+                              title="Delete message"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -585,6 +701,24 @@ const ChatPage: React.FC = () => {
                   />
                 </label>
 
+                {/* Emoji Button */}
+                <button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Add emoji"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-20 left-6 z-50">
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                  </div>
+                )}
+
                 <div className="flex-1 relative">
                   <input
                     type="text"
@@ -615,7 +749,7 @@ const ChatPage: React.FC = () => {
                     }
                     placeholder="Type a message..."
                     disabled={isSending}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
 
