@@ -6,18 +6,18 @@ import { DoctorRepository } from "../../repositories/implementation/DoctorReposi
 import { UserRepository } from "../../repositories/implementation/UserRepository";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { HttpStatus } from "../../constants/status.constants";
+import { IWalletService } from "../interface/IWalletService";
+import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
+import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
 
 export class WalletPaymentService implements IWalletPaymentService {
-  private walletService: WalletService;
-  private appointmentRepository: AppointmentRepository;
-  private doctorRepository: DoctorRepository;
-  private userRepository: UserRepository;
-
-  constructor() {
-    this.walletService = new WalletService();
-    this.appointmentRepository = new AppointmentRepository();
-    this.doctorRepository = new DoctorRepository();
-    this.userRepository = new UserRepository();
+  
+  constructor( 
+    private walletService: IWalletService,
+    private appointmentRepository: IAppointmentRepository,
+    ) {
+   
+    
   }
 
   async validateWalletBalance(userId: string, amount: number): Promise<boolean> {

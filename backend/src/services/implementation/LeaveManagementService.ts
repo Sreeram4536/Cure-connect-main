@@ -1,12 +1,15 @@
 import { ILeaveManagementService } from "../interface/ILeaveManagementService";
 import appointmentModel from "../../models/appointmentModel";
 import { WalletService } from "./WalletService";
+import { IWalletService } from "../interface/IWalletService";
 
 export class LeaveManagementService implements ILeaveManagementService {
-  private walletService: WalletService;
+  
 
-  constructor() {
-    this.walletService = new WalletService();
+  constructor(
+    private walletService: IWalletService
+  ) {
+    
   }
 
   async handleDoctorLeave(doctorId: string, date: string, leaveType: 'full' | 'break' | 'custom'): Promise<{

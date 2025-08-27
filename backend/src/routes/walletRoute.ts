@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { WalletController } from "../controllers/implementation/WalletController";
 import authUser from "../middlewares/authUser";
+import { WalletService } from "../services/implementation/WalletService";
+import { WalletRepository } from "../repositories/implementation/WalletRepository";
 
 const router = Router();
-const walletController = new WalletController();
+const walletRepository = new WalletRepository();
+const walletService = new WalletService(walletRepository);
+const walletController = new WalletController(walletService);
 
 // Get wallet balance
 router.get("/balance", authUser, walletController.getWalletBalance.bind(walletController));

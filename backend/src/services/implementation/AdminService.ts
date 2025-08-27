@@ -13,23 +13,26 @@ import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.utils
 import { PaginationResult } from "../../repositories/interface/IAdminRepository";
 import { UserProfileDTO } from "../../types/user";
 import { WalletService } from "./WalletService";
+import { IWalletService } from "../interface/IWalletService";
 import { UserRepository } from "../../repositories/implementation/UserRepository";
 import { SlotLockService } from "./SlotLockService";
 import { AppointmentRepository } from "../../repositories/implementation/AppointmentRepository";
 import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
+import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { ISlotLockService } from "../interface/ISlotLockService";
 dotenv.config();
 
 export class AdminService implements IAdminService {
   constructor(
     private readonly _adminRepository: IAdminRepository,
     private readonly _doctorRepository: IDoctorRepository,
-    private readonly _walletService = new WalletService(),
-    private readonly _userRepository = new UserRepository(),
-    private readonly _slotLockService = new SlotLockService(
-      new AppointmentRepository(),
-      new UserRepository(),
-      new DoctorRepository()
-    )
+    private readonly _walletService : IWalletService,
+    private readonly _userRepository :IUserRepository,
+    private readonly _slotLockService :ISlotLockService
+      // new AppointmentRepository(),
+      // new UserRepository(),
+      // new DoctorRepository()
+    
   ) {}
 
 async login(email: string, password: string): Promise<{ admin: AdminDocument, accessToken: string, refreshToken: string }> {

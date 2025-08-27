@@ -2,11 +2,29 @@ import express from "express";
 import { ChatController } from "../controllers/implementation/ChatController";
 import { ChatService } from "../services/implementation/ChatService";
 import { ChatRepository } from "../repositories/implementation/ChatRepository";
+import { DoctorService } from "../services/implementation/DoctorService";
+import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
+import { UserRepository } from "../repositories/implementation/UserRepository";
 import authRole from "../middlewares/authRole";
 import { uploadChatFiles, handleUploadError } from "../middlewares/fileUpload";
+import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
+import { WalletRepository } from "../repositories/implementation/WalletRepository";
+import { WalletService } from "../services/implementation/WalletService";
+import { SlotLockService } from "../services/implementation/SlotLockService";
 
 const chatRepository = new ChatRepository();
-const chatService = new ChatService(chatRepository);
+const userRepository = new UserRepository()
+const walletRepository = new WalletRepository()
+const appointmentRepository = new AppointmentRepository();
+const doctorRepository = new DoctorRepository();
+const walletService = new WalletService(walletRepository);
+const slotLockService = new SlotLockService(
+  appointmentRepository,
+  userRepository,
+  doctorRepository
+);
+const doctorService = new DoctorService(doctorRepository,walletService,slotLockService);
+const chatService = new ChatService(chatRepository, doctorService, userRepository);
 const chatController = new ChatController(chatService);
 
 const chatRouter = express.Router();

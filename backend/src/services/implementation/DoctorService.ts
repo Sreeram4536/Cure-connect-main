@@ -14,6 +14,8 @@ import { UserRepository } from "../../repositories/implementation/UserRepository
 import { SlotLockService } from "./SlotLockService";
 import { AppointmentRepository } from "../../repositories/implementation/AppointmentRepository";
 import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
+import { IWalletService } from "../interface/IWalletService";
+import { ISlotLockService } from "../interface/ISlotLockService";
 
 export interface DoctorDocument extends DoctorData {
   _id: string;
@@ -22,13 +24,8 @@ export interface DoctorDocument extends DoctorData {
 export class DoctorService implements IDoctorService {
   constructor(
     private _doctorRepository: IDoctorRepository,
-    private readonly _walletService = new WalletService(),
-    private readonly _userRepository = new UserRepository(),
-    private readonly _slotLockService = new SlotLockService(
-      new AppointmentRepository(),
-      new UserRepository(),
-      new DoctorRepository()
-    )
+    private readonly _walletService :IWalletService,
+    private readonly _slotLockService:ISlotLockService
   ) {}
 
   private toAppointmentDTO(a: any): AppointmentDTO {
@@ -314,11 +311,11 @@ export class DoctorService implements IDoctorService {
     try {
       console.log(`Getting dashboard data for doctor: ${docId}`);
       
-      // Get doctor's appointments
+      
       const appointments = await this._doctorRepository.findAppointmentsByDoctorId(docId);
       console.log(`Found ${appointments.length} appointments for doctor ${docId}`);
       
-      // Calculate dashboard metrics
+      
       const totalAppointments = appointments.length;
       const confirmedAppointments = appointments.filter(apt => apt.isConfirmed && !apt.cancelled).length;
       const pendingAppointments = appointments.filter(apt => !apt.isConfirmed && !apt.cancelled).length;

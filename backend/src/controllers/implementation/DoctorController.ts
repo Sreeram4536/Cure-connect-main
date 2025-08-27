@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
-import { DoctorService } from "../../services/implementation/DoctorService";
+// import { DoctorService } from "../../services/implementation/DoctorService";
+import { IDoctorService } from "../../services/interface/IDoctorService";
+import { ISlotService } from "../../services/interface/ISlotService";
 import { IDoctorController } from "../interface/IdoctorController.interface";
 import { HttpStatus } from "../../constants/status.constants";
 import { HttpResponse } from "../../constants/responseMessage.constants";
@@ -12,11 +14,12 @@ import {
 import { DoctorSlotService } from "../../services/implementation/SlotService";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
+import { AuthRequest, JwtPayloadExt } from "../../types/customRequest";
 
 export class DoctorController implements IDoctorController {
   constructor(
-    private _doctorService: DoctorService,
-    private _slotService: DoctorSlotService
+    private _doctorService: IDoctorService,
+    private _slotService: ISlotService
   ) {}
 
   async registerDoctor(req: Request, res: Response): Promise<void> {
@@ -72,7 +75,7 @@ export class DoctorController implements IDoctorController {
 
   async changeAvailability(req: Request, res: Response): Promise<void> {
     try {
-      const docId = (req as any).docId || req.params.doctorId || req.params.id;
+      const docId = (req as AuthRequest).docId || req.params.doctorId || req.params.id;
       await this._doctorService.toggleAvailability(docId);
       res.status(HttpStatus.OK).json({
         success: true,
@@ -186,7 +189,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
       try {
-        const decoded: any = jwt.decode(token);
+        const decoded = jwt.decode(token) as JwtPayloadExt | null;
         if (decoded && decoded.exp) {
           const expiresAt = new Date(decoded.exp * 1000);
           await addTokenToBlacklist(token, expiresAt);
@@ -210,7 +213,11 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
   
   async appointmentsDoctorPaginated(req: Request, res: Response): Promise<void> {
     try {
-      const docId = (req as any).docId;
+      const docId = (req as AuthRequest).docId;
+      if (!docId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+        return;
+      }
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const search = req.query.search as string | undefined;
@@ -229,7 +236,11 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
   
   async appointmentConfirm(req: Request, res: Response): Promise<void> {
     try {
-      const docId = (req as any).docId;
+      const docId = (req as AuthRequest).docId;
+      if (!docId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+        return;
+      }
       const { appointmentId } = req.params;
 
       await this._doctorService.confirmAppointment(docId, appointmentId);
@@ -247,7 +258,11 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
   
   async appointmentCancel(req: Request, res: Response): Promise<void> {
     try {
-      const docId = (req as any).docId;
+      const docId = (req as AuthRequest).docId;
+      if (!docId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+        return;
+      }
       const { appointmentId } = req.params;
 
       await this._doctorService.cancelAppointment(docId, appointmentId);
@@ -270,7 +285,11 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
 
   async doctorProfile(req: Request, res: Response): Promise<void> {
     try {
-      const doctId = (req as any).docId;
+      const doctId = (req as AuthRequest).docId;
+      if (!doctId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+        return;
+      }
       const profileData = await this._doctorService.getDoctorProfile(doctId);
       res.json({ success: true, profileData });
     } catch (error) {
@@ -332,7 +351,11 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
 
   async getMonthlySlots(req: Request, res: Response): Promise<void> {
   try {
-    const doctorId = (req as any).docId;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+      return;
+    }
     const { year, month } = req.query;
     const data = await this._slotService.getMonthlySlots(doctorId, +year!, +month!);
     res.json({ success: true, slots:data });
@@ -343,7 +366,11 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
 
 async getSlotsForDate(req: Request, res: Response): Promise<void> {
   try {
-    const doctorId = (req as any).docId;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+      return;
+    }
     const { date } = req.query;
     
     if (!date) {
@@ -367,7 +394,11 @@ async getSlotsForDate(req: Request, res: Response): Promise<void> {
 
 async updateDaySlot(req: Request, res: Response): Promise<void> {
   try {
-    const doctorId = (req as any).docId;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+      return;
+    }
     const { date, slots, isCancelled } = req.body;
     const data = await this._slotService.updateDaySlot(doctorId, date, slots, isCancelled);
     res.json({ success: true, slots:data });
@@ -391,7 +422,11 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
 
   async doctorDashboard(req: Request, res: Response): Promise<void> {
     try {
-      const docId = (req as any).docId;
+      const docId = (req as AuthRequest).docId;
+      if (!docId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+        return;
+      }
       console.log(`Getting dashboard data for doctor: ${docId}`);
       console.log(`Request headers:`, req.headers);
       console.log(`Request cookies:`, req.cookies);

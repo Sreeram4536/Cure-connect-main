@@ -1,45 +1,60 @@
 import { Request, Response } from "express";
 import { SlotRuleService } from "../../services/implementation/SlotRuleService";
+import { ISlotRuleService } from "../../services/interface/ISlotRuleService";
+import { CustomDayInput, DaySlot } from "../../types/slotRule";
+import { AuthRequest } from "../../types/customRequest";
 
 export class SlotRuleController {
-  constructor(private service = new SlotRuleService()) {}
+  constructor(private service:ISlotRuleService) {}
 
   async getRule(req: Request, res: Response) {
-    const doctorId = (req as any).docId;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      res.status(401).json({ success: false, message: "Doctor ID not found" });
+      return;
+    }
     const rule = await this.service.getRule(doctorId);
     res.json({ success: true, rule });
   }
 
   async setRule(req: Request, res: Response) {
-    const doctorId = (req as any).docId;
-    let rule = req.body;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      res.status(401).json({ success: false, message: "Doctor ID not found" });
+      return;
+    }
+    let rule = req.body as { customDays?: CustomDayInput[] };
    
     if (Array.isArray(rule.customDays)) {
-      rule.customDays = rule.customDays.map((cd: any) => ({
+      rule.customDays = rule.customDays.map((cd: CustomDayInput) => ({
         date: cd.date,
         leaveType: cd.leaveType,
         breaks: Array.isArray(cd.breaks) ? cd.breaks : [],
         reason: cd.reason || "",
         slots: Array.isArray(cd.slots)
           ? cd.slots.filter(
-              (s: any) => s.start && typeof s.duration === 'number' && typeof s.cancelled === 'boolean'
-            )
+              (s: DaySlot) => !!s.start && typeof s.duration === 'number' && typeof s.cancelled === 'boolean'
+            ) as DaySlot[]
           : []
-      })).filter((cd: any) => cd.date && cd.leaveType && ["full","break","custom"].includes(cd.leaveType));
+      })).filter((cd: CustomDayInput) => !!cd.date && !!cd.leaveType && ["full","break","custom"].includes(cd.leaveType));
     } else {
       rule.customDays = [];
     }
     try {
       const saved = await this.service.setRule(doctorId, rule);
       res.json({ success: true, rule: saved });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save rule';
       console.error('Failed to save slot rule:', err);
-      res.status(400).json({ success: false, message: err.message || 'Failed to save rule' });
+      res.status(400).json({ success: false, message });
     }
   }
 
   async updateCustomSlot(req: Request, res: Response) {
-    const doctorId = (req as any).docId;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      return res.status(401).json({ success: false, message: 'Doctor ID not found' });
+    }
     const { date, start, duration } = req.body;
     
     const now = new Date();
@@ -52,7 +67,10 @@ export class SlotRuleController {
   }
 
   async cancelCustomSlot(req: Request, res: Response) {
-    const doctorId = (req as any).docId;
+    const doctorId = (req as AuthRequest).docId;
+    if (!doctorId) {
+      return res.status(401).json({ success: false, message: 'Doctor ID not found' });
+    }
     const { date, start } = req.body;
     
     const now = new Date();

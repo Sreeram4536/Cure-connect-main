@@ -1,17 +1,19 @@
 import { Request, Response } from "express";
 import { IWalletController } from "../interface/IWalletController.interface";
 import { WalletService } from "../../services/implementation/WalletService";
+import { IWalletService } from "../../services/interface/IWalletService";
+import { AuthRequest } from "../../types/customRequest";
 
 export class WalletController implements IWalletController {
-  private walletService: WalletService;
+  private walletService: IWalletService;
 
-  constructor() {
-    this.walletService = new WalletService();
+  constructor(walletService: IWalletService) {
+    this.walletService =  walletService;
   }
 
   async getWalletBalance(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
       if (!userId) {
         res.status(401).json({ success: false, message: "User not authenticated" });
         return;
@@ -35,7 +37,7 @@ export class WalletController implements IWalletController {
 
   async getWalletTransactions(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
       if (!userId) {
         res.status(401).json({ success: false, message: "User not authenticated" });
         return;
@@ -70,7 +72,7 @@ export class WalletController implements IWalletController {
 
   async getWalletDetails(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
       if (!userId) {
         res.status(401).json({ success: false, message: "User not authenticated" });
         return;

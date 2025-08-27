@@ -22,7 +22,7 @@ const refreshEndpointByRole: Record<ApiRole, string> = {
   doctor: "/api/doctor/refresh-token",
 };
 
-// Extract token from refresh response per role
+
 const extractTokenFromRefreshResponse = (role: ApiRole, data: any): string | null => {
   if (!data) return null;
   switch (role) {
@@ -90,6 +90,6 @@ export const getApi = (role: ApiRole) => {
   return instance;
 };
 
-// Backward-compatible default user API instance
+
 export const api = getApi("user");
 

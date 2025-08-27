@@ -1,26 +1,17 @@
 import { IChatService } from "../interface/IChatService";
 import { IChatRepository } from "../../repositories/interface/IChatRepository";
 import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO, DoctorInfoDTO, UserInfoDTO } from "../../types/chat";
-import { DoctorService } from "./DoctorService";
-import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
-import { UserService } from "./UserService";
-import { UserRepository } from "../../repositories/implementation/UserRepository";
-import { SlotRepository } from "../../repositories/implementation/SlotRepository";
-import { SlotLockService } from "./SlotLockService";
-import { PaymentService } from "./PaymentService";
+import { IDoctorService } from "../interface/IDoctorService";
+import { IUserRepository } from "../../repositories/interface/IUserRepository";
 import { ChatMessage } from "../../models/chatModel";
 import { getFileUrl, getFileType } from "../../middlewares/fileUpload";
 
 export class ChatService implements IChatService {
-  private doctorService: DoctorService;
-  private userRepository: UserRepository;
-
-  constructor(private chatRepository: IChatRepository) {
-    const doctorRepository = new DoctorRepository();
-    const userRepository = new UserRepository();
-    this.doctorService = new DoctorService(doctorRepository);
-    this.userRepository = userRepository;
-  }
+  constructor(
+    private chatRepository: IChatRepository,
+    private doctorService: IDoctorService,
+    private userRepository: IUserRepository
+  ) {}
 
   private toConversationResponse(conversation: any): ConversationResponse {
     return {

@@ -1,4 +1,4 @@
-import { SlotRuleType } from "../types/slotRule";
+import { SlotRule, SlotRuleType, CustomDayInput } from "../types/slotRule";
 import moment from "moment";
 import { DoctorData } from "../types/doctor";
 import { DoctorDocument } from "../types/doctor";
@@ -6,7 +6,7 @@ import { DoctorDocument } from "../types/doctor";
 export function generateSlotsForDate(rule: SlotRuleType, slotDate: string) {
   const date = moment(slotDate, "YYYY-MM-DD");
   // Check for custom day (leave/partial leave)
-  const customDay = (rule.customDays || []).find((cd) => cd.date === slotDate);
+  const customDay = (rule.customDays || []).find((cd: { date: string; leaveType: string; breaks?: { start: string; end: string }[] }) => cd.date === slotDate);
   if (customDay) {
     if (customDay.leaveType === "full") return [];
     // Partial leave: use custom breaks for this day
@@ -24,7 +24,7 @@ export function generateSlotsForDate(rule: SlotRuleType, slotDate: string) {
     });
     const slots = [];
     while (current < end) {
-      const inBreak = (customDay.breaks || []).some((b) => {
+      const inBreak = (customDay.breaks || []).some((b: { start: string; end: string }) => {
         const breakStart = moment(date).set({
           hour: parseInt(b.start.split(":")[0]),
           minute: parseInt(b.start.split(":")[1]),
@@ -62,7 +62,7 @@ export function generateSlotsForDate(rule: SlotRuleType, slotDate: string) {
   const slots = [];
   while (current < end) {
     // Check if in break
-    const inBreak = (rule.breaks || []).some((b) => {
+    const inBreak = (rule.breaks || []).some((b: { start: string; end: string }) => {
       const breakStart = moment(date).set({
         hour: parseInt(b.start.split(":")[0]),
         minute: parseInt(b.start.split(":")[1]),

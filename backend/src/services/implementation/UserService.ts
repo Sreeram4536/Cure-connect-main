@@ -20,22 +20,37 @@ import { WalletService } from "./WalletService";
 import { WalletTransaction } from "../../types/wallet";
 import { WalletPaymentService } from "./WalletPaymentService";
 import { HttpResponse } from "../../constants/responseMessage.constants";
+import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
+import { IWalletPaymentService } from "../interface/IWalletPaymentService";
+import { IPaymentService } from "../interface/IPaymentService";
+import { IWalletService } from "../interface/IWalletService";
+import { WalletRepository } from "../../repositories/implementation/WalletRepository";
+import { LeaveManagementService } from "./LeaveManagementService";
 
 export interface UserDocument extends userData {
   _id: string;
 }
 
-export class UserService implements IUserService {
-  private _walletPaymentService: WalletPaymentService;
+const slotRepository = new SlotRepository();
+const walletRepository = new WalletRepository();
+const walletService = new WalletService(walletRepository);
+const leaveManagementService = new LeaveManagementService(walletService)
+const slotRuleRepository = new SlotRuleRepository(leaveManagementService)
+const slotService = new DoctorSlotService(slotRepository,slotRuleRepository);
 
+export class UserService implements IUserService {
+  
   constructor(
+    private _walletPaymentService: IWalletPaymentService,
     private _userRepository: IUserRepository,
-    private _paymentService = new PaymentService(),
+    private _paymentService :IPaymentService,
     private _slotLockService: ISlotLockService,
-    private _walletService = new WalletService()
+    private _walletService : IWalletService
   ) {
-    this._walletPaymentService = new WalletPaymentService();
+    
   }
+
+   
 
   private toAppointmentDTO(a: any): AppointmentDTO {
     return {
@@ -323,14 +338,11 @@ export class UserService implements IUserService {
   }
 
   async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]> {
-    const slotRepository = new SlotRepository();
-    const slotService = new DoctorSlotService(slotRepository);
+   
     return slotService.getMonthlySlots(doctorId, year, month);
   }
 
   async getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<any[]> {
-    const slotRepository = new SlotRepository();
-    const slotService = new DoctorSlotService(slotRepository);
     return slotService.getSlotsForDate(doctorId, dateStr);
   }
 

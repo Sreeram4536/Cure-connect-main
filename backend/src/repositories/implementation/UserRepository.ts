@@ -7,7 +7,7 @@ import { DoctorData } from "../../types/doctor";
 import { BaseRepository } from "../BaseRepository";
 import { UserDocument } from "../../types/user";
 import { generateSlotsForDate } from "../../utils/slot.util";
-import { SlotRuleType } from "../../types/slotRule";
+import { SlotRule } from "../../types/slotRule";
 import slotRuleModel from "../../models/slotRuleModel";
 import { releaseSlotLock } from "../../utils/slot.util";
 import mongoose from "mongoose";

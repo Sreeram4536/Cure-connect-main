@@ -6,6 +6,7 @@ import { IChatService } from "../../services/interface/IChatService";
 import { HttpStatus } from "../../constants/status.constants";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { ChatMessageDTO } from "../../types/chat";
+import { AuthRequest } from "../../types/customRequest";
 
 export class ChatController implements IChatController {
   constructor(private chatService: IChatService) {}
@@ -13,7 +14,14 @@ export class ChatController implements IChatController {
   // Conversation methods
   async createConversation(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: "User ID not found",
+        });
+        return;
+      }
       const { doctorId } = req.body;
 
       console.log("createConversation called with:", { userId, doctorId });
@@ -44,7 +52,11 @@ export class ChatController implements IChatController {
 
   async getConversation(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User ID not found" });
+        return;
+      }
       const { doctorId } = req.params;
 
       console.log("getConversation called with:", { userId, doctorId });
@@ -80,7 +92,11 @@ export class ChatController implements IChatController {
 
   async getUserConversations(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User ID not found" });
+        return;
+      }
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
@@ -100,7 +116,11 @@ export class ChatController implements IChatController {
 
   async getDoctorConversations(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = (req as any).docId;
+      const doctorId = (req as AuthRequest).docId;
+      if (!doctorId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor ID not found" });
+        return;
+      }
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
@@ -120,7 +140,11 @@ export class ChatController implements IChatController {
 
   async deleteConversation(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId || (req as any).docId;
+      const userId = (req as AuthRequest).userId || (req as AuthRequest).docId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User ID not found" });
+        return;
+      }
       const { conversationId } = req.params;
 
       if (!conversationId) {
@@ -148,10 +172,22 @@ export class ChatController implements IChatController {
   // Message methods
   async sendMessage(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId || (req as any).docId;
+      let senderId: string | undefined;
+      let senderType: "user" | "doctor" | undefined;
+      if ((req as AuthRequest).userId) {
+        senderId = (req as AuthRequest).userId;
+        senderType = "user";
+      } else if ((req as AuthRequest).docId) {
+        senderId = (req as AuthRequest).docId;
+        senderType = "doctor";
+      }
+      if (!senderId || !senderType) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Sender not authenticated" });
+        return;
+      }
       const { conversationId, message, messageType = "text", attachments } = req.body;
 
-      console.log("sendMessage called with:", { conversationId, message, userId });
+      console.log("sendMessage called with:", { conversationId, message, senderId, senderType });
 
       if (!conversationId || !message) {
         res.status(HttpStatus.BAD_REQUEST).json({
@@ -163,15 +199,14 @@ export class ChatController implements IChatController {
 
       const messageData: ChatMessageDTO = {
         conversationId,
-        senderId: userId,
-        senderType: "user", // Will be determined by service
+        senderId,
+        senderType,
         message,
         messageType,
         attachments,
       };
 
-      const sentMessage = await this.chatService.sendMessage(messageData, userId);
-      
+      const sentMessage = await this.chatService.sendMessage(messageData, senderId);
       res.status(HttpStatus.OK).json({
         success: true,
         message: sentMessage,
@@ -322,7 +357,7 @@ export class ChatController implements IChatController {
 
   async getConversationWithUserInfo(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = (req as any).docId;
+      const doctorId = (req as AuthRequest).docId;
       const { conversationId } = req.params;
 
       console.log("getConversationWithUserInfo called with:", { conversationId, doctorId });

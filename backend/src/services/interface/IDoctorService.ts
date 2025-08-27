@@ -1,12 +1,14 @@
 import { AppointmentDTO, AppointmentTypes } from "../../types/appointment";
-import { DoctorData, DoctorProfileDTO } from "../../types/doctor";
+import { DoctorData, DoctorListDTO, DoctorProfileDTO } from "../../types/doctor";
 import { PaginationResult } from "../../repositories/interface/IDoctorRepository";
 
 export interface IDoctorService {
+  getDoctorsByStatusAndLimit(status: string, limit: number): Promise<DoctorListDTO[]>;
+  getDoctorDashboard(docId: string): Promise<any>;
   registerDoctor(data: DoctorData): Promise<void>;
   toggleAvailability(docId: string): Promise<void>;
   getAllDoctors(): Promise<any[]>;
-  getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<any>>;
+  getDoctorsPaginated(page: number, limit: number,speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<any>>;
   loginDoctor(
     email: string,
     password: string

@@ -8,12 +8,13 @@ import { HttpResponse } from "../../constants/responseMessage.constants";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt.utils";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
+import { JwtPayloadExt } from "../../types/customRequest";
 
 export class AdminController implements IAdminController {
-  constructor(private _adminService: IAdminService) {}
+  constructor(private _adminService: IAdminService) { }
 
-  // For Admin login
-   async loginAdmin(req: Request, res: Response): Promise<void> {
+
+  async loginAdmin(req: Request, res: Response): Promise<void> {
     try {
       console.log('Admin login request received');
       const { email, password } = req.body;
@@ -45,8 +46,9 @@ export class AdminController implements IAdminController {
           message: HttpResponse.LOGIN_SUCCESS,
         });
       console.log('Admin login response sent');
-    } catch (error: any) {
-      console.log('Admin login error:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unexpected error";
+      console.log('Admin login error:', message);
       res.status(HttpStatus.UNAUTHORIZED).json({
         success: false,
         message: HttpResponse.UNAUTHORIZED,
@@ -59,7 +61,7 @@ export class AdminController implements IAdminController {
     try {
       console.log('🔍 Admin refresh token request received');
       console.log('🔍 Cookies:', req.cookies);
-      
+
       const refreshToken = req.cookies?.refreshToken_admin;
       if (!refreshToken) {
         console.log('No refresh token found in cookies');
@@ -83,7 +85,7 @@ export class AdminController implements IAdminController {
         return;
       }
 
-      console.log('🔍 Looking up admin with ID:', decoded.id);
+      console.log('Looking up admin with ID:', decoded.id);
       const admin = await this._adminService.getAdminById(decoded.id);
       if (!admin) {
         console.log(' Admin not found with ID:', decoded.id);
@@ -108,8 +110,9 @@ export class AdminController implements IAdminController {
         success: true,
         token: newAccessToken,
       });
-    } catch (error: any) {
-      console.log('❌ Admin refresh error:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unexpected error";
+      console.log('Admin refresh error:', message);
       res.status(HttpStatus.UNAUTHORIZED).json({
         success: false,
         message: HttpResponse.REFRESH_TOKEN_FAILED,
@@ -124,14 +127,14 @@ export class AdminController implements IAdminController {
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
       try {
-        const decoded: any = jwt.decode(token);
-        
+        const decoded = jwt.decode(token) as JwtPayloadExt | null;
+
         if (decoded && decoded.exp) {
           const expiresAt = new Date(decoded.exp * 1000);
           await addTokenToBlacklist(token, expiresAt);
         }
       } catch (e) {
-        
+
       }
     }
     res.clearCookie("refreshToken_admin", {
@@ -219,7 +222,7 @@ export class AdminController implements IAdminController {
 
   // To get all users
   async getAllUsers(req: Request, res: Response): Promise<void> {
-     const search = req.query.search ? (req.query.search as string).trim() : "";
+    const search = req.query.search ? (req.query.search as string).trim() : "";
     try {
       const users = await this._adminService.getUsers(search);
       res.status(HttpStatus.OK).json({ success: true, users });
@@ -230,51 +233,34 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // To get paginated users
-  // async getUsersPaginated(req: Request, res: Response): Promise<void> {
-  //   try {
-      
-  //     const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-  //     const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-  //     if (page && limit) {
-  //       const result = await this._adminService.getUsersPaginated(page, limit);
-  //       res.status(HttpStatus.OK).json({ success: true, ...result });
-  //     } else {
-  //       const users = await this._adminService.getUsers();
-  //       res.status(HttpStatus.OK).json({ success: true, data: users });
-  //     }
-  //   } catch (error) {
-  //     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
-  //   }
-  // }
   
-async getUsersPaginated(req: Request, res: Response): Promise<void> {
-  try {
-    const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-    const search = req.query.search ? (req.query.search as string).trim() : ""; // Extract search query
-    
-    if (page && limit) {
-      const result = await this._adminService.getUsersPaginated(page, limit, search); // Pass search parameter
-      res.status(HttpStatus.OK).json({ success: true, ...result });
-    } else {
-      const users = await this._adminService.getUsers(search); // Pass search to getUsers too
-      res.status(HttpStatus.OK).json({ success: true, data: users });
-    }
-  } catch (error) {
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
-  }
-}
-
-  // To toggle the state of user
-  async toggleUserBlock(req: Request, res: Response): Promise<void> {
-      console.log("🔔 toggleUserBlock hit");
+  async getUsersPaginated(req: Request, res: Response): Promise<void> {
     try {
-    const { userId } = req.params; // ✅ This is correct now
-    const { block } = req.body as { block?: boolean };
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search ? (req.query.search as string).trim() : ""; 
 
-    console.log("PARAM userId:", userId);
-    console.log("BODY block:", block);
+      if (page && limit) {
+        const result = await this._adminService.getUsersPaginated(page, limit, search); 
+        res.status(HttpStatus.OK).json({ success: true, ...result });
+      } else {
+        const users = await this._adminService.getUsers(search); 
+        res.status(HttpStatus.OK).json({ success: true, data: users });
+      }
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+    }
+  }
+
+ 
+  async toggleUserBlock(req: Request, res: Response): Promise<void> {
+    console.log("toggleUserBlock hit");
+    try {
+      const { userId } = req.params;
+      const { block } = req.body as { block?: boolean };
+
+      console.log("PARAM userId:", userId);
+      console.log("BODY block:", block);
 
       if (typeof block !== "boolean") {
         res.status(HttpStatus.BAD_REQUEST).json({
@@ -317,7 +303,7 @@ async getUsersPaginated(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // For getting all the appointments
+
   async appointmentsList(req: Request, res: Response): Promise<void> {
     try {
       const appointments = await this._adminService.listAppointments();
@@ -329,7 +315,7 @@ async getUsersPaginated(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // For getting paginated appointments (with search)
+  
   async appointmentsListPaginated(req: Request, res: Response): Promise<void> {
     try {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
@@ -347,7 +333,7 @@ async getUsersPaginated(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // For appointment cancelation
+  
   async adminCancelAppointment(req: Request, res: Response): Promise<void> {
     try {
       const { appointmentId } = req.params;
@@ -363,9 +349,9 @@ async getUsersPaginated(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // For admin dashboard
+  
   async adminDashboard(req: Request, res: Response): Promise<void> {
-     const search = req.query.search ? (req.query.search as string).trim() : "";
+    const search = req.query.search ? (req.query.search as string).trim() : "";
     try {
       const doctors = await this._adminService.getDoctors();
       const users = await this._adminService.getUsers(search);

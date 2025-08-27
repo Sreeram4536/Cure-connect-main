@@ -12,6 +12,7 @@ import {
   isValidPassword,
 } from "../../utils/validator";
 import { PaymentService } from "../../services/implementation/PaymentService";
+import { IPaymentService } from "../../services/interface/IPaymentService";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -22,11 +23,12 @@ import { use } from "passport";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../../models/appointmentModel";
+import { AuthRequest, JwtPayloadExt } from "../../types/customRequest";
 
 export class UserController implements IUserController {
   constructor(
     private _userService: IUserService,
-    private _paymentService: PaymentService
+    private _paymentService: IPaymentService
   ) {}
 
   async registerUser(req: Request, res: Response): Promise<void> {
@@ -332,7 +334,7 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
       try {
-        const decoded: any = jwt.decode(token);
+        const decoded = jwt.decode(token) as JwtPayloadExt | null;
         if (decoded && decoded.exp) {
           const expiresAt = new Date(decoded.exp * 1000);
           await addTokenToBlacklist(token, expiresAt);
@@ -355,7 +357,11 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
 
   async getProfile(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User ID not found" });
+        return;
+      }
       const userData = await this._userService.getProfile(userId);
       if (!userData) {
         res

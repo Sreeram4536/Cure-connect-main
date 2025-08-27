@@ -1,12 +1,17 @@
 import { Request, Response } from "express";
 import { ISlotLockController } from "../interface/IslotlockController.interface";
 import { ISlotLockService } from "../../services/interface/ISlotLockService";
+import { AuthRequest } from "../../types/customRequest";
 
 class SlotLockController implements ISlotLockController {
   constructor(private slotLockService: ISlotLockService) {}
 
   async lockSlot(req: Request, res: Response) {
-    const userId = (req as any).userId; // set by authRole middleware
+    const userId = (req as AuthRequest).userId; // set by authRole middleware
+    if (!userId) {
+      res.status(401).json({ success: false, message: "User not authenticated" });
+      return;
+    }
     const { docId, slotDate, slotTime } = req.body;
     const result = await this.slotLockService.lockSlot({ userId, docId, slotDate, slotTime });
     if (result.success) {

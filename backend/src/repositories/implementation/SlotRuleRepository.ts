@@ -2,12 +2,15 @@ import SlotRule from "../../models/slotRuleModel";
 import mongoose from "mongoose";
 import { LeaveManagementService } from "../../services/implementation/LeaveManagementService";
 import { ISlotRuleRepository } from "../interface/ISlotRuleRepository";
+import { ILeaveManagementService } from "../../services/interface/ILeaveManagementService";
 
 export class SlotRuleRepository implements ISlotRuleRepository {
-  private leaveManagementService: LeaveManagementService;
+ 
 
-  constructor() {
-    this.leaveManagementService = new LeaveManagementService();
+  constructor(
+     private leaveManagementService: ILeaveManagementService
+  ) {
+    
   }
 
   async getRuleByDoctor(doctorId: string) {

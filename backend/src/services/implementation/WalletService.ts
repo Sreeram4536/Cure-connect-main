@@ -1,7 +1,7 @@
 import { IWalletService } from "../interface/IWalletService";
 import { WalletRepository } from "../../repositories/implementation/WalletRepository";
 import { WalletTransaction, WalletDTO, WalletTransactionDTO } from "../../types/wallet";
-import { PaginationResult } from "../../repositories/interface/IWalletRepository";
+import { IWalletRepository, PaginationResult } from "../../repositories/interface/IWalletRepository";
 
 export class WalletService implements IWalletService {
   private toWalletTransactionDTO(tx: any): WalletTransactionDTO {
@@ -22,10 +22,9 @@ export class WalletService implements IWalletService {
       transactions: (wallet.transactions || []).map(this.toWalletTransactionDTO),
     };
   }
-  private walletRepository: WalletRepository;
-
-  constructor() {
-    this.walletRepository = new WalletRepository();
+  
+  constructor(private walletRepository: IWalletRepository) {
+    
   }
 
   async createWallet(userId: string): Promise<void> {

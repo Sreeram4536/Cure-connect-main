@@ -12,7 +12,7 @@ import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
 import { releaseSlotLock } from "../../utils/slot.util";
 import mongoose from "mongoose";
 
-export class AdminRepository extends BaseRepository<AdminDocument> {
+export class AdminRepository extends BaseRepository<AdminDocument> implements IAdminRepository{
   constructor() {
     super(adminModel);
   }

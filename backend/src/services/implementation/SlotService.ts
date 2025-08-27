@@ -1,11 +1,13 @@
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
 import appointmentModel from "../../models/appointmentModel";
+import { ISlotRepository } from "../../repositories/interface/ISlotRepository";
+import { ISlotRuleRepository } from "../../repositories/interface/ISlotRuleRepository";
 
 export class DoctorSlotService {
   constructor(
-    private readonly _slotRepo: SlotRepository,
-    private readonly _ruleRepo = new SlotRuleRepository()
+    private readonly _slotRepo: ISlotRepository,
+    private readonly _ruleRepo :ISlotRuleRepository
   ) {}
 
   // Helper method to format date as YYYY-MM-DD

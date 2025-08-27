@@ -1,7 +1,8 @@
 import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
+import { ISlotRuleRepository } from "../../repositories/interface/ISlotRuleRepository";
 
 export class SlotRuleService {
-  constructor(private repo = new SlotRuleRepository()) {}
+  constructor(private repo :ISlotRuleRepository) {}
 
   async getRule(doctorId: string) {
     return this.repo.getRuleByDoctor(doctorId);

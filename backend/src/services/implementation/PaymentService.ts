@@ -1,4 +1,5 @@
 import Razorpay from "razorpay";
+import { IPaymentService } from "../interface/IPaymentService";
 
 export interface RazorpayOrderPayload {
   fees: number;
@@ -10,7 +11,7 @@ export interface RazorpayVerifyPayload {
   razorpay_order_id: string;
 }
 
-export class PaymentService {
+export class PaymentService implements IPaymentService{
   private razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID!,
     key_secret: process.env.RAZORPAY_KEY_SECRET!,

@@ -1,4 +1,4 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { DoctorController } from "../controllers/implementation/DoctorController";
 import { DoctorService } from "../services/implementation/DoctorService";
 import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
@@ -11,22 +11,23 @@ import SlotLockController from "../controllers/implementation/SlotLockController
 import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
 import { UserRepository } from "../repositories/implementation/UserRepository";
 import { SlotLockService } from "../services/implementation/SlotLockService";
+import {doctorController,slotLockController,slotRuleController} from "../dependencyhandler/doctor.dependency"
 
-const doctorRepository = new DoctorRepository();
-const slotRepository = new SlotRepository();
-const appointmentRepository = new AppointmentRepository();
-const userRepository = new UserRepository();
-const slotLockService = new SlotLockService(appointmentRepository, userRepository, doctorRepository);
-const doctorService = new DoctorService(doctorRepository);
-const slotService = new DoctorSlotService(slotRepository);
-const doctorController = new DoctorController(doctorService, slotService);
-const slotRuleController = new SlotRuleController();
-const slotLockController = new SlotLockController(slotLockService);
+// const doctorRepository = new DoctorRepository();
+// const slotRepository = new SlotRepository();
+// const appointmentRepository = new AppointmentRepository();
+// const userRepository = new UserRepository();
+// const slotLockService = new SlotLockService(appointmentRepository, userRepository, doctorRepository);
+// const doctorService = new DoctorService(doctorRepository);
+// const slotService = new DoctorSlotService(slotRepository);
+// const doctorController = new DoctorController(doctorService, slotService);
+// const slotRuleController = new SlotRuleController();
+// const slotLockController = new SlotLockController(slotLockService);
 
 const doctorRouter = express.Router();
 
 function asyncHandler(fn: any) {
-  return function(req: any, res: any, next: any) {
+  return function(req: Request, res: Response, next: NextFunction) {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
