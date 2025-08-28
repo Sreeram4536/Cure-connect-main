@@ -112,11 +112,16 @@ const ChatPage: React.FC = () => {
       }
     });
 
+    socket.on("message deleted", (data: { messageId: string }) => {
+      setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+    });
+
     return () => {
       socket.off('new_message');
       socket.off('typing_start');
       socket.off('typing_stopped');
       socket.off('messages_read');
+      socket.off('message deleted');
     };
   }, [socket, conversation]);
 

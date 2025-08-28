@@ -15,6 +15,7 @@ import passport from "passport";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { setupSocketHandlers } from "./socket/socketHandlers";
+import { setIO } from "./utils/socketManager";
 dotenv.config();
 
 // app config
@@ -26,6 +27,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+setIO(io);
 
 const PORT = process.env.PORT || 4000;
 

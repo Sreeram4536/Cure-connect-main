@@ -1,31 +1,7 @@
 import express from "express";
-import { UserController } from "../controllers/implementation/UserController";
-import { UserService } from "../services/implementation/UserService";
-import { UserRepository } from "../repositories/implementation/UserRepository";
 import upload from "../middlewares/multer";
-import { PaymentService } from "../services/implementation/PaymentService";
 import authRole from "../middlewares/authRole";
-import SlotLockController from "../controllers/implementation/SlotLockController";
-import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
-import { SlotLockService } from "../services/implementation/SlotLockService";
-import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
-import { WalletService } from "../services/implementation/WalletService";
-import { WalletPaymentService } from "../services/implementation/WalletPaymentService";
-import { WalletRepository } from "../repositories/implementation/WalletRepository";
-
-
-
-const userRepository = new UserRepository();
-const walletRepository = new WalletRepository();
-const paymentService = new PaymentService();
-const appointmentRepo = new AppointmentRepository();
-const doctorRepo = new DoctorRepository();
-const slotLockService = new SlotLockService(appointmentRepo, userRepository, doctorRepo);
-const walletService = new WalletService(walletRepository);
-const walletPaymentService = new WalletPaymentService(walletService,appointmentRepo);
-const userService = new UserService(walletPaymentService,userRepository, paymentService, slotLockService, walletService);
-const userController = new UserController(userService, paymentService);
-const slotLockController = new SlotLockController(slotLockService);
+import {slotLockController,userController} from "../dependencyhandler/user.dependency"
 
 const userRouter = express.Router();
 

@@ -1,28 +1,8 @@
 import express, { NextFunction, Request, Response } from "express";
-import { DoctorController } from "../controllers/implementation/DoctorController";
-import { DoctorService } from "../services/implementation/DoctorService";
-import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
 import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
-import { SlotRepository } from "../repositories/implementation/SlotRepository";
-import { DoctorSlotService } from "../services/implementation/SlotService";
-import { SlotRuleController } from "../controllers/implementation/SlotRuleController";
-import SlotLockController from "../controllers/implementation/SlotLockController";
-import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
-import { UserRepository } from "../repositories/implementation/UserRepository";
-import { SlotLockService } from "../services/implementation/SlotLockService";
 import {doctorController,slotLockController,slotRuleController} from "../dependencyhandler/doctor.dependency"
 
-// const doctorRepository = new DoctorRepository();
-// const slotRepository = new SlotRepository();
-// const appointmentRepository = new AppointmentRepository();
-// const userRepository = new UserRepository();
-// const slotLockService = new SlotLockService(appointmentRepository, userRepository, doctorRepository);
-// const doctorService = new DoctorService(doctorRepository);
-// const slotService = new DoctorSlotService(slotRepository);
-// const doctorController = new DoctorController(doctorService, slotService);
-// const slotRuleController = new SlotRuleController();
-// const slotLockController = new SlotLockController(slotLockService);
 
 const doctorRouter = express.Router();
 

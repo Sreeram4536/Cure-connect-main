@@ -218,6 +218,7 @@ export const setupSocketHandlers = (io: Server) => {
               },
               { new: true }
             );
+            io.emit("message deleted",{ messageId: messageId })
             break;
           
           case "restore":

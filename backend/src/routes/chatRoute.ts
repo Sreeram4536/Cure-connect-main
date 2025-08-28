@@ -11,21 +11,8 @@ import { AppointmentRepository } from "../repositories/implementation/Appointmen
 import { WalletRepository } from "../repositories/implementation/WalletRepository";
 import { WalletService } from "../services/implementation/WalletService";
 import { SlotLockService } from "../services/implementation/SlotLockService";
+import { chatController } from "../dependencyhandler/chat.dependency";
 
-const chatRepository = new ChatRepository();
-const userRepository = new UserRepository()
-const walletRepository = new WalletRepository()
-const appointmentRepository = new AppointmentRepository();
-const doctorRepository = new DoctorRepository();
-const walletService = new WalletService(walletRepository);
-const slotLockService = new SlotLockService(
-  appointmentRepository,
-  userRepository,
-  doctorRepository
-);
-const doctorService = new DoctorService(doctorRepository,walletService,slotLockService);
-const chatService = new ChatService(chatRepository, doctorService, userRepository);
-const chatController = new ChatController(chatService);
 
 const chatRouter = express.Router();
 

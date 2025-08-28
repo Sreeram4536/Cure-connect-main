@@ -5,6 +5,7 @@ import { IDoctorService } from "../interface/IDoctorService";
 import { IUserRepository } from "../../repositories/interface/IUserRepository";
 import { ChatMessage } from "../../models/chatModel";
 import { getFileUrl, getFileType } from "../../middlewares/fileUpload";
+import { emitToConversation } from "../../utils/socketManager";
 
 export class ChatService implements IChatService {
   constructor(
@@ -224,7 +225,12 @@ export class ChatService implements IChatService {
       throw new Error("You can only delete your own messages");
     }
 
-    return await this.chatRepository.deleteMessage(messageId);
+    const deleted = await this.chatRepository.deleteMessage(messageId);
+    if (deleted) {
+      // Broadcast deletion to the conversation room for real-time UI updates
+      emitToConversation(message.conversationId, "message deleted", { messageId });
+    }
+    return deleted;
   }
 
   async softDeleteMessage(messageId: string, senderId: string): Promise<boolean> {
@@ -239,7 +245,11 @@ export class ChatService implements IChatService {
       throw new Error("You can only delete your own messages");
     }
 
-    return await this.chatRepository.softDeleteMessage(messageId);
+    const deleted = await this.chatRepository.softDeleteMessage(messageId);
+    if (deleted) {
+      emitToConversation(message.conversationId, "message deleted", { messageId });
+    }
+    return deleted;
   }
 
  
