@@ -6,7 +6,7 @@ import { DoctorDocument } from "../types/doctor";
 export function generateSlotsForDate(rule: SlotRuleType, slotDate: string) {
   const date = moment(slotDate, "YYYY-MM-DD");
   // Check for custom day (leave/partial leave)
-  const customDay = (rule.customDays || []).find((cd: { date: string; leaveType: string; breaks?: { start: string; end: string }[] }) => cd.date === slotDate);
+  const customDay = (rule.customDays || []).find((cd: CustomDayInput) => cd.date === slotDate);
   if (customDay) {
     if (customDay.leaveType === "full") return [];
     // Partial leave: use custom breaks for this day

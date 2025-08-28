@@ -24,8 +24,6 @@ export interface AppointmentTypes {
   razorpayOrderId?: string;
   paymentMethod?: 'razorpay' | 'wallet';
   walletTransactionId?: string;
-  
-  // New fields for cancellation tracking
   cancelledBy?: "user" | "doctor" | "admin";
   cancelledAt?: Date;
   cancellationReason?: string;
@@ -53,10 +51,10 @@ export interface AppointmentDocument
   _id: Types.ObjectId;
 }
 
-// DTOs exposed externally (no internal mongoose fields)
+
 export interface AppointmentDTO {
   id: string;
-  _id?: string; // backward-compat for frontend expecting _id
+  _id?: string; 
   userId: string;
   docId: string;
   slotDate: string;
@@ -68,7 +66,7 @@ export interface AppointmentDTO {
   status: "pending" | "confirmed" | "cancelled";
   isConfirmed: boolean;
   isCompleted: boolean;
-  // lightweight embedded info
+ 
   userData?: {
     name: string;
     email: string;

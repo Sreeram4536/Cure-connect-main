@@ -4,6 +4,7 @@ import { userData, UserProfileDTO, UserAuthDTO } from "../../types/user";
 import { PaginationResult } from "../../repositories/interface/IUserRepository";
 import { WalletTransaction } from "../../types/wallet";
 import { WalletPaymentData, WalletPaymentResponse } from "../../types/appointment";
+import { Orders } from "razorpay/dist/types/orders";
 
 export interface UserDocument extends userData {
   _id: string;
@@ -47,14 +48,14 @@ export interface IUserService {
     dateTo?: string
   ): Promise<PaginationResult<AppointmentDTO>>;
   cancelAppointment(userId: string, appointmentId: string): Promise<void>;
-  startPayment(userId: string, appointmentId: string): Promise<{ order: any }>;
+  startPayment(userId: string, appointmentId: string): Promise<{ order: Orders.RazorpayOrder }>;
   verifyPayment(
     userId: string,
     appointmentId: string,
     razorpay_order_id: string
   ): Promise<void>;
-  getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]>;
-  getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<any[]>;
+  getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<TimeSlot[]>;
+  getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<TimeSlot[]>;
   changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }>;
   getWalletBalance(userId: string): Promise<number>;
   getWalletTransactions(
@@ -68,4 +69,15 @@ export interface IUserService {
   processWalletPayment(paymentData: WalletPaymentData): Promise<WalletPaymentResponse>;
   finalizeWalletPayment(appointmentId: string, userId: string, amount: number): Promise<WalletPaymentResponse>;
   validateWalletBalance(userId: string, amount: number): Promise<boolean>;
+}
+
+// Define proper types for slots
+interface TimeSlot {
+  date: string;
+  start: string;
+  end: string;
+  baseDuration?: number;
+  customDuration?: number;
+  isBooked: boolean;
+  isPast: boolean;
 }

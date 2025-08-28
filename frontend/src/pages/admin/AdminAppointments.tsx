@@ -29,22 +29,10 @@ const AdminAppointments = () => {
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
 
-  useEffect(() => {
-    if (aToken) {
-      fetchAppointments();
-    }
-  }, [aToken, currentPage, searchQuery]);
+  // Ref to track if we're currently searching to prevent race conditions
+  const isSearching = useRef(false);
 
-  useEffect(() => {
-    if (!aToken) {
-      navigate("/admin/login");
-    }
-  }, [aToken, navigate]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
+  // Simple fetch function without useCallback
   const fetchAppointments = async () => {
     try {
       setLoading(true);
@@ -57,6 +45,31 @@ const AdminAppointments = () => {
       setLoading(false);
     }
   };
+
+  // Effect for page changes only
+  useEffect(() => {
+    if (aToken) {
+      fetchAppointments();
+    }
+  }, [aToken, currentPage]);
+
+  // Effect for search changes only
+  useEffect(() => {
+    if (aToken && searchQuery !== "") {
+      setCurrentPage(1); // Reset to first page when searching
+      fetchAppointments();
+    }
+  }, [aToken, searchQuery]);
+
+  useEffect(() => {
+    if (!aToken) {
+      navigate("/admin/login");
+    }
+  }, [aToken, navigate]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
@@ -75,7 +88,6 @@ const AdminAppointments = () => {
     }
     searchTimeout.current = setTimeout(() => {
       setSearchQuery(query);
-      setCurrentPage(1);
     }, 300);
   };
 
@@ -207,3 +219,4 @@ const AdminAppointments = () => {
 };
 
 export default AdminAppointments;
+

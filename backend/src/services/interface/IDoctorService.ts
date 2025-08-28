@@ -4,11 +4,17 @@ import { PaginationResult } from "../../repositories/interface/IDoctorRepository
 
 export interface IDoctorService {
   getDoctorsByStatusAndLimit(status: string, limit: number): Promise<DoctorListDTO[]>;
-  getDoctorDashboard(docId: string): Promise<any>;
+  getDoctorDashboard(docId: string): Promise<{
+    totalAppointments: number;
+    confirmedAppointments: number;
+    pendingAppointments: number;
+    cancelledAppointments: number;
+    totalEarnings: number;
+  }>;
   registerDoctor(data: DoctorData): Promise<void>;
   toggleAvailability(docId: string): Promise<void>;
-  getAllDoctors(): Promise<any[]>;
-  getDoctorsPaginated(page: number, limit: number,speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<any>>;
+  getAllDoctors(): Promise<DoctorListDTO[]>;
+  getDoctorsPaginated(page: number, limit: number,speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<DoctorListDTO>>;
   loginDoctor(
     email: string,
     password: string

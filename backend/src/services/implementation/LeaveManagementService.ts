@@ -1,16 +1,13 @@
 import { ILeaveManagementService } from "../interface/ILeaveManagementService";
-import appointmentModel from "../../models/appointmentModel";
-import { WalletService } from "./WalletService";
 import { IWalletService } from "../interface/IWalletService";
+import { ILeaveManagementRepository } from "../../repositories/interface/ILeaveManagementRepository";
+import { AppointmentDocument } from "../../types/appointment";
 
 export class LeaveManagementService implements ILeaveManagementService {
-  
-
   constructor(
-    private walletService: IWalletService
-  ) {
-    
-  }
+    private walletService: IWalletService,
+    private leaveManagementRepository: ILeaveManagementRepository
+  ) {}
 
   async handleDoctorLeave(doctorId: string, date: string, leaveType: 'full' | 'break' | 'custom'): Promise<{
     success: boolean;
@@ -21,13 +18,8 @@ export class LeaveManagementService implements ILeaveManagementService {
     try {
       console.log(`[LeaveManagementService] Handling doctor leave for doctorId: ${doctorId}, date: ${date}, leaveType: ${leaveType}`);
 
-      // Find all appointments for this doctor on the specified date
-      const appointments = await appointmentModel.find({
-        docId: doctorId,
-        slotDate: date,
-        status: { $in: ['confirmed', 'pending'] },
-        cancelled: { $ne: true }
-      });
+      // Find all appointments for this doctor on the specified date using repository
+      const appointments = await this.leaveManagementRepository.findAppointmentsByDoctorAndDate(doctorId, date);
 
       if (appointments.length === 0) {
         return {
@@ -83,17 +75,18 @@ export class LeaveManagementService implements ILeaveManagementService {
     }
   }
 
-  private async cancelAppointment(appointment: any): Promise<void> {
+  private async cancelAppointment(appointment: AppointmentDocument): Promise<void> {
     try {
       console.log(`[LeaveManagementService] Cancelling appointment: ${appointment._id}`);
 
-      // Update appointment status
-      appointment.status = 'cancelled';
-      appointment.cancelled = true;
-      appointment.cancelledBy = 'doctor';
-      appointment.cancelledAt = new Date();
-      appointment.cancellationReason = 'Doctor marked day as leave';
-      await appointment.save();
+      // Update appointment status using repository
+      await this.leaveManagementRepository.updateAppointmentStatus(appointment._id.toString(), {
+        status: 'cancelled',
+        cancelled: true,
+        cancelledBy: 'doctor',
+        cancelledAt: new Date(),
+        cancellationReason: 'Doctor marked day as leave'
+      });
 
       // Process refund if payment was made
       if (appointment.payment && appointment.amount > 0) {
@@ -106,7 +99,7 @@ export class LeaveManagementService implements ILeaveManagementService {
         );
       }
 
-      // Send notification to user (you can implement this later)
+      // Send notification to user
       await this.sendCancellationNotification(appointment);
 
     } catch (error) {
@@ -115,10 +108,9 @@ export class LeaveManagementService implements ILeaveManagementService {
     }
   }
 
-  private async sendCancellationNotification(appointment: any): Promise<void> {
+  private async sendCancellationNotification(appointment: AppointmentDocument): Promise<void> {
     try {
       // Get doctor and user information for notification
-      // We'll use the data already stored in the appointment
       const doctorName = appointment.docData?.name || 'Doctor';
       const userEmail = appointment.userData?.email;
       const slotDate = appointment.slotDate;

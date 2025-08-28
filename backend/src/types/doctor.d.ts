@@ -44,10 +44,10 @@ export interface DoctorDTO {
 
 export type DoctorDocument = HydratedDocument<DoctorData>;
 
-// DTOs exposed externally
+
 export interface DoctorProfileDTO {
   id: string;
-  _id?: string; // backward-compat for frontend expecting _id
+  _id?: string; 
   name: string;
   email: string;
   image?: string;
@@ -63,7 +63,7 @@ export interface DoctorProfileDTO {
 
 export interface DoctorListDTO {
   id: string;
-  _id?: string; // backward-compat for frontend expecting _id
+  _id?: string; 
   name: string;
   image?: string;
   speciality: string;

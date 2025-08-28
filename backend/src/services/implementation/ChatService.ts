@@ -13,36 +13,7 @@ export class ChatService implements IChatService {
     private userRepository: IUserRepository
   ) {}
 
-  private toConversationResponse(conversation: any): ConversationResponse {
-    return {
-      id: (conversation._id ?? conversation.id).toString(),
-      userId: String(conversation.userId),
-      doctorId: String(conversation.doctorId),
-      lastMessage: conversation.lastMessage ?? undefined,
-      lastMessageTime: conversation.lastMessageTime ?? undefined,
-      unreadCount: typeof conversation.unreadCount === 'number' ? conversation.unreadCount : 0,
-      isActive: Boolean(conversation.isActive),
-      createdAt: conversation.createdAt,
-      updatedAt: conversation.updatedAt,
-    };
-  }
 
-  private toMessageResponse(message: any): ChatMessageResponse {
-    return {
-      id: (message._id ?? message.id).toString(),
-      conversationId: String(message.conversationId),
-      senderId: String(message.senderId),
-      senderType: message.senderType,
-      message: message.message,
-      messageType: message.messageType,
-      timestamp: message.timestamp,
-      isRead: Boolean(message.isRead),
-      isDeleted: Boolean(message.isDeleted),
-      deletedAt: message.deletedAt ?? undefined,
-      deletedBy: message.deletedBy ?? undefined,
-      attachments: Array.isArray(message.attachments) ? message.attachments : [],
-    };
-  }
 
   // Conversation methods
   async createConversation(userId: string, doctorId: string): Promise<ConversationResponse> {
@@ -52,7 +23,7 @@ export class ChatService implements IChatService {
     const existingConversation = await this.chatRepository.getConversation(userId, doctorId);
     if (existingConversation) {
       console.log("Found existing conversation:", existingConversation);
-      return this.toConversationResponse(existingConversation);
+      return existingConversation;
     }
 
     const conversationData: ConversationDTO = {
@@ -64,17 +35,17 @@ export class ChatService implements IChatService {
 
     console.log("Creating new conversation with data:", conversationData);
     const created = await this.chatRepository.createConversation(conversationData);
-    return this.toConversationResponse(created);
+    return created;
   }
 
   async getConversation(userId: string, doctorId: string): Promise<ConversationResponse | null> {
     const conv = await this.chatRepository.getConversation(userId, doctorId);
-    return conv ? this.toConversationResponse(conv) : null;
+    return conv;
   }
 
   async getConversationById(conversationId: string): Promise<ConversationResponse | null> {
     const conv = await this.chatRepository.getConversationById(conversationId);
-    return conv ? this.toConversationResponse(conv) : null;
+    return conv;
   }
 
   async getUserConversations(userId: string, page: number, limit: number): Promise<ChatListResponse> {
@@ -82,10 +53,7 @@ export class ChatService implements IChatService {
     if (limit < 1 || limit > 50) limit = 20;
 
     const list = await this.chatRepository.getUserConversations(userId, page, limit);
-    return {
-      ...list,
-      conversations: list.conversations.map(this.toConversationResponse),
-    };
+    return list;
   }
 
   async getDoctorConversations(doctorId: string, page: number, limit: number): Promise<ChatListResponse> {
@@ -93,10 +61,7 @@ export class ChatService implements IChatService {
     if (limit < 1 || limit > 50) limit = 20;
 
     const list = await this.chatRepository.getDoctorConversations(doctorId, page, limit);
-    return {
-      ...list,
-      conversations: list.conversations.map(this.toConversationResponse),
-    };
+    return list;
   }
 
   async deleteConversation(conversationId: string, userId: string): Promise<boolean> {
@@ -209,7 +174,6 @@ export class ChatService implements IChatService {
     const res = await this.chatRepository.getMessages(conversationId, page, limit);
     return {
       ...res,
-      messages: res.messages.map(this.toMessageResponse),
       conversationId,
     };
   }

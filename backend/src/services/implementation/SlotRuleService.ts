@@ -1,5 +1,6 @@
 import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
 import { ISlotRuleRepository } from "../../repositories/interface/ISlotRuleRepository";
+import { SlotRuleType, DaySlot } from "../../types/slotRule";
 
 export class SlotRuleService {
   constructor(private repo :ISlotRuleRepository) {}

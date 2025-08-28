@@ -4,7 +4,7 @@ import { userData, UserAuthDTO, UserProfileDTO } from "../../types/user";
 import bcrypt from "bcrypt";
 import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
-import { AppointmentTypes, WalletPaymentData, WalletPaymentResponse, AppointmentDTO } from "../../types/appointment";
+import { AppointmentTypes, AppointmentDTO, AppointmentDocument, WalletPaymentData, WalletPaymentResponse } from "../../types/appointment";
 import { isValidDateOfBirth, isValidPhone } from "../../utils/validator";
 import { DoctorData } from "../../types/doctor";
 import { PaymentService } from "./PaymentService";
@@ -26,6 +26,22 @@ import { IPaymentService } from "../interface/IPaymentService";
 import { IWalletService } from "../interface/IWalletService";
 import { WalletRepository } from "../../repositories/implementation/WalletRepository";
 import { LeaveManagementService } from "./LeaveManagementService";
+import { Orders } from "razorpay/dist/types/orders";
+import { LeaveManagementRepository } from "../../repositories/implementation/LeaveManagementRepository";
+
+// Extended type for appointments that includes _id from MongoDB documents
+type AppointmentWithId = AppointmentTypes & { _id?: string };
+
+// Define proper types for slots
+interface TimeSlot {
+  date: string;
+  start: string;
+  end: string;
+  baseDuration?: number;
+  customDuration?: number;
+  isBooked: boolean;
+  isPast: boolean;
+}
 
 export interface UserDocument extends userData {
   _id: string;
@@ -33,8 +49,9 @@ export interface UserDocument extends userData {
 
 const slotRepository = new SlotRepository();
 const walletRepository = new WalletRepository();
+const leaveManagementRepository = new LeaveManagementRepository();
 const walletService = new WalletService(walletRepository);
-const leaveManagementService = new LeaveManagementService(walletService)
+const leaveManagementService = new LeaveManagementService(walletService,leaveManagementRepository)
 const slotRuleRepository = new SlotRuleRepository(leaveManagementService)
 const slotService = new DoctorSlotService(slotRepository,slotRuleRepository);
 
@@ -52,10 +69,10 @@ export class UserService implements IUserService {
 
    
 
-  private toAppointmentDTO(a: any): AppointmentDTO {
+  private toAppointmentDTO(a: AppointmentWithId): AppointmentDTO {
     return {
-      id: a._id?.toString?.() ?? String(a._id),
-      _id: a._id?.toString?.() ?? String(a._id),
+      id: a._id?.toString() ?? "",
+      _id: a._id?.toString() ?? "",
       userId: String(a.userId),
       docId: String(a.docId),
       slotDate: a.slotDate,
@@ -97,9 +114,9 @@ export class UserService implements IUserService {
     return { token, refreshToken };
   }
 
-  private toUserAuthDTO(user: any): UserAuthDTO {
+  private toUserAuthDTO(user: userData & { _id: string }): UserAuthDTO {
     return {
-      id: user._id?.toString?.() ?? String(user._id),
+      id: user._id?.toString() ?? "",
       name: user.name,
       email: user.email,
       image: user.image,
@@ -107,9 +124,9 @@ export class UserService implements IUserService {
     };
   }
 
-  private toUserProfileDTO(user: any): UserProfileDTO {
+  private toUserProfileDTO(user: userData & { _id: string; createdAt?: Date; updatedAt?: Date }): UserProfileDTO {
     return {
-      id: user._id?.toString?.() ?? String(user._id),
+      id: user._id?.toString() ?? "",
       name: user.name,
       email: user.email,
       image: user.image,
@@ -299,7 +316,7 @@ export class UserService implements IUserService {
   async startPayment(
     userId: string,
     appointmentId: string
-  ): Promise<{ order: any }> {
+  ): Promise<{ order: Orders.RazorpayOrder }> {
     const appointment = await this._userRepository.findPayableAppointment(
       userId,
       appointmentId
@@ -337,12 +354,12 @@ export class UserService implements IUserService {
     await this._userRepository.markAppointmentPaid(appointmentId);
   }
 
-  async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]> {
+  async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<TimeSlot[]> {
    
     return slotService.getMonthlySlots(doctorId, year, month);
   }
 
-  async getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<any[]> {
+  async getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<TimeSlot[]> {
     return slotService.getSlotsForDate(doctorId, dateStr);
   }
 

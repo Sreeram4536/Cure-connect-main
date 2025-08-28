@@ -7,7 +7,7 @@ export interface DaySlot {
 export interface CustomDayInput {
   date: string;
   leaveType: "full" | "break" | "custom";
-  breaks?: string[];
+  breaks?: { start: string; end: string }[];
   reason?: string;
   slots?: DaySlot[];
 }
@@ -25,10 +25,5 @@ export interface SlotRuleType {
   breaks: { start: string; end: string }[];
   effectiveFrom?: Date;
   effectiveTo?: Date;
-  customDays?: {
-    date: string;
-    leaveType: "full" | "break";
-    breaks?: { start: string; end: string }[];
-    reason?: string;
-  }[];
+  customDays?: CustomDayInput[];
 }

@@ -1,12 +1,17 @@
 import { IWalletService } from "../interface/IWalletService";
 import { WalletRepository } from "../../repositories/implementation/WalletRepository";
 import { WalletTransaction, WalletDTO, WalletTransactionDTO } from "../../types/wallet";
-import { IWalletRepository, PaginationResult } from "../../repositories/interface/IWalletRepository";
+import { IWalletRepository, PaginationResult, WalletDocument } from "../../repositories/interface/IWalletRepository";
+
+// Extended type for transactions that includes an id field
+interface TransactionWithId extends WalletTransaction {
+  _id?: string;
+}
 
 export class WalletService implements IWalletService {
-  private toWalletTransactionDTO(tx: any): WalletTransactionDTO {
+  private toWalletTransactionDTO(tx: TransactionWithId): WalletTransactionDTO {
     return {
-      id: tx._id?.toString?.() ?? String(tx._id ?? ''),
+      id: tx._id?.toString() ?? "",
       type: tx.type,
       amount: tx.amount,
       description: tx.description,
@@ -15,7 +20,7 @@ export class WalletService implements IWalletService {
     };
   }
 
-  private toWalletDTO(wallet: any): WalletDTO {
+  private toWalletDTO(wallet: WalletDocument): WalletDTO {
     return {
       userId: wallet.userId,
       balance: wallet.balance,

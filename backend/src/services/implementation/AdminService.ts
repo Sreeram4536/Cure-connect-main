@@ -11,7 +11,7 @@ import { IDoctorRepository } from "../../repositories/interface/IDoctorRepositor
 import { adminData, AdminDocument } from "../../types/admin";
 import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.utils";
 import { PaginationResult } from "../../repositories/interface/IAdminRepository";
-import { UserProfileDTO } from "../../types/user";
+import { UserProfileDTO, userData } from "../../types/user";
 import { WalletService } from "./WalletService";
 import { IWalletService } from "../interface/IWalletService";
 import { UserRepository } from "../../repositories/implementation/UserRepository";
@@ -29,10 +29,7 @@ export class AdminService implements IAdminService {
     private readonly _walletService : IWalletService,
     private readonly _userRepository :IUserRepository,
     private readonly _slotLockService :ISlotLockService
-      // new AppointmentRepository(),
-      // new UserRepository(),
-      // new DoctorRepository()
-    
+ 
   ) {}
 
 async login(email: string, password: string): Promise<{ admin: AdminDocument, accessToken: string, refreshToken: string }> {
@@ -153,10 +150,10 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return "Doctor rejected successfully";
   }
 
-  private toDoctorListDTO(doc: any): DoctorListDTO {
+  private toDoctorListDTO(doc: Omit<DoctorData, "password">): DoctorListDTO {
     return {
-      id: doc._id?.toString?.() ?? String(doc._id),
-      _id: doc._id?.toString?.() ?? String(doc._id),
+      id: doc._id?.toString() ?? "",
+      _id: doc._id?.toString() ?? "",
       name: doc.name,
       image: doc.image,
       speciality: doc.speciality,
@@ -169,10 +166,10 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     };
   }
 
-  private toUserProfileDTO(u: any): UserProfileDTO {
+  private toUserProfileDTO(u: Omit<userData, "password"> & { _id?: string; createdAt?: Date; updatedAt?: Date }): UserProfileDTO {
     return {
-      id: u._id?.toString?.() ?? String(u._id),
-      _id: u._id?.toString?.() ?? String(u._id),
+      id: u._id?.toString() ?? "",
+      _id: u._id?.toString() ?? "",
       name: u.name,
       email: u.email,
       image: u.image,
@@ -186,9 +183,9 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     };
   }
 
-  private toAppointmentDTO(a: any): AppointmentDTO {
+  private toAppointmentDTO(a: AppointmentTypes): AppointmentDTO {
     return {
-      id: a._id?.toString?.() ?? String(a._id),
+      id: "", // AppointmentTypes doesn't have _id, so we'll use empty string
       userId: String(a.userId),
       docId: String(a.docId),
       slotDate: a.slotDate,
@@ -210,27 +207,20 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return list.map(this.toDoctorListDTO);
   }
 
-  async getDoctorsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<any>> {
+  async getDoctorsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<DoctorListDTO>> {
     const res = await this._adminRepository.getDoctorsPaginated(page, limit, search);
-    return { ...res, data: res.data.map(this.toDoctorListDTO) } as PaginationResult<any>;
+    return { ...res, data: res.data.map(this.toDoctorListDTO) };
   }
 
-  // async getUsers(): Promise<any[]> {
-  //   return await this._adminRepository.getAllUsers();
-  // }
-
-  // async getUsersPaginated(page: number, limit: number): Promise<PaginationResult<any>> {
-  //   return await this._adminRepository.getUsersPaginated(page, limit);
-  // }
-
-    async getUsers(search?: string): Promise<any[]> {
+  
+    async getUsers(search?: string): Promise<UserProfileDTO[]> {
     const users = await this._adminRepository.getAllUsers(search);
     return users.map(this.toUserProfileDTO);
   }
 
-  async getUsersPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<any>> {
+  async getUsersPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<UserProfileDTO>> {
     const res = await this._adminRepository.getUsersPaginated(page, limit, search);
-    return { ...res, data: res.data.map(this.toUserProfileDTO) } as PaginationResult<any>;
+    return { ...res, data: res.data.map(this.toUserProfileDTO) };
   }
 
   async toggleUserBlock(userId: string, block: boolean): Promise<string> {
@@ -246,16 +236,16 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return list.map(this.toAppointmentDTO);
   }
 
-  async listAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<any>> {
+  async listAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentDTO>> {
     const res = await this._adminRepository.getAppointmentsPaginated(page, limit, search);
-    return { ...res, data: res.data.map(this.toAppointmentDTO) } as PaginationResult<any>;
+    return { ...res, data: res.data.map(this.toAppointmentDTO) };
   }
 
   async cancelAppointment(appointmentId: string): Promise<void> {
     try {
       console.log(`Admin cancelling appointment: ${appointmentId}`);
       
-      // Get appointment details to check if payment was made
+    
       const appointment = await this._adminRepository.findPayableAppointment(appointmentId);
       
       console.log(`Found appointment for admin cancellation:`, {
@@ -266,7 +256,7 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
         status: appointment.status
       });
       
-      // Process refund BEFORE cancelling the appointment
+      
       if (appointment.payment && appointment.amount > 0) {
         console.log(`Processing refund to wallet for admin cancellation: ${appointment.amount}`);
         await this._walletService.processAppointmentCancellation(

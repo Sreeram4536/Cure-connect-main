@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -28,22 +28,10 @@ const AdminDoctorRequests = () => {
   const itemsPerPage = 6;
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    if (aToken) {
-      fetchDoctors();
-    }
-  }, [aToken, currentPage]);
+  // Ref to track if we're currently searching to prevent race conditions
+  const isSearching = useRef(false);
 
-  useEffect(() => {
-    if (!aToken) {
-      navigate("/admin/login");
-    }
-  }, [aToken, navigate]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
+  // Simple fetch function without useCallback
   const fetchDoctors = async () => {
     try {
       setLoading(true);
@@ -57,6 +45,31 @@ const AdminDoctorRequests = () => {
       setLoading(false);
     }
   };
+
+  // Effect for page changes only
+  useEffect(() => {
+    if (aToken) {
+      fetchDoctors();
+    }
+  }, [aToken, currentPage]);
+
+  // Effect for search changes only
+  useEffect(() => {
+    if (aToken && searchQuery !== "") {
+      setCurrentPage(1); // Reset to first page when searching
+      fetchDoctors();
+    }
+  }, [aToken, searchQuery]);
+
+  useEffect(() => {
+    if (!aToken) {
+      navigate("/admin/login");
+    }
+  }, [aToken, navigate]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   const handleApproveDoctor = async (doctorId: string) => {
     try {
@@ -85,6 +98,17 @@ const AdminDoctorRequests = () => {
       doc.speciality?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+  // Debounce search
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const handleSearch = (query: string) => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearchQuery(query);
+    }, 300);
+  };
+
   return (
     <div className="m-5 max-h-[90vh] overflow-y-scroll">
       <h1 className="text-lg font-medium mb-3">Doctor Requests</h1>
@@ -93,7 +117,7 @@ const AdminDoctorRequests = () => {
       <div className="mb-5 max-w-sm">
         <SearchBar
           placeholder="Search by name or speciality"
-          onSearch={(query) => setSearchQuery(query)}
+          onSearch={(query) => handleSearch(query)}
         />
       </div>
 
@@ -155,3 +179,4 @@ const AdminDoctorRequests = () => {
 };
 
 export default AdminDoctorRequests;
+

@@ -17,6 +17,9 @@ import { DoctorRepository } from "../../repositories/implementation/DoctorReposi
 import { IWalletService } from "../interface/IWalletService";
 import { ISlotLockService } from "../interface/ISlotLockService";
 
+// Extended type that includes _id from MongoDB documents
+type AppointmentWithId = AppointmentTypes & { _id?: string };
+
 export interface DoctorDocument extends DoctorData {
   _id: string;
 }
@@ -28,10 +31,10 @@ export class DoctorService implements IDoctorService {
     private readonly _slotLockService:ISlotLockService
   ) {}
 
-  private toAppointmentDTO(a: any): AppointmentDTO {
+  private toAppointmentDTO(a: AppointmentWithId): AppointmentDTO {
     return {
-      id: a._id?.toString?.() ?? String(a._id),
-      _id: a._id?.toString?.() ?? String(a._id),
+      id: a._id?.toString() ?? "",
+      _id: a._id?.toString() ?? "",
       userId: String(a.userId),
       docId: String(a.docId),
       slotDate: a.slotDate,
@@ -114,37 +117,37 @@ export class DoctorService implements IDoctorService {
     await this._doctorRepository.updateAvailability(docId, !doc.available);
   }
 
-  private toDoctorProfileDTO(doc: any): DoctorProfileDTO {
+  private toDoctorProfileDTO(doc: Partial<DoctorData>): DoctorProfileDTO {
     return {
-      id: doc._id?.toString?.() ?? String(doc._id),
-      _id: doc._id?.toString?.() ?? String(doc._id),
-      name: doc.name,
-      email: doc.email,
-      image: doc.image,
-      speciality: doc.speciality,
-      degree: doc.degree,
-      experience: doc.experience,
-      about: doc.about,
-      fees: doc.fees,
-      address: doc.address,
-      available: doc.available,
-      status: doc.status,
+      id: doc._id?.toString() ?? "",
+      _id: doc._id?.toString() ?? "",
+      name: doc.name ?? "",
+      email: doc.email ?? "",
+      image: doc.image ?? "",
+      speciality: doc.speciality ?? "",
+      degree: doc.degree ?? "",
+      experience: doc.experience ?? "",
+      about: doc.about ?? "",
+      fees: doc.fees ?? 0,
+      address: doc.address ?? { line1: "", line2: "" },
+      available: doc.available ?? false,
+      status: doc.status ?? "pending",
     };
   }
 
-  private toDoctorListDTO(doc: any): DoctorListDTO {
+  private toDoctorListDTO(doc: Partial<DoctorData>): DoctorListDTO {
     return {
-      id: doc._id?.toString?.() ?? String(doc._id),
-      _id: doc._id?.toString?.() ?? String(doc._id),
-      name: doc.name,
-      image: doc.image,
-      speciality: doc.speciality,
-      degree: doc.degree,
-      experience: doc.experience,
-      fees: doc.fees,
-      available: doc.available,
-      isBlocked: doc.isBlocked,
-      status: doc.status,
+      id: doc._id?.toString() ?? "",
+      _id: doc._id?.toString() ?? "",
+      name: doc.name ?? "",
+      image: doc.image ?? "",
+      speciality: doc.speciality ?? "",
+      degree: doc.degree ?? "",
+      experience: doc.experience ?? "",
+      fees: doc.fees ?? 0,
+      available: doc.available ?? false,
+      isBlocked: doc.isBlocked ?? false,
+      status: doc.status ?? "pending",
     };
   }
 
@@ -216,7 +219,7 @@ export class DoctorService implements IDoctorService {
         appointmentId
       );
       console.log(`Found appointment for doctor cancellation:`, {
-        appointmentId: (appointment as any)._id,
+        appointmentId: (appointment as any)._id?.toString() ?? "",
         userId: appointment.userId,
         docId: appointment.docId,
         payment: appointment.payment,
@@ -281,7 +284,7 @@ export class DoctorService implements IDoctorService {
         });
         imageUrl = uploadResult.secure_url;
 
-        fs.unlink(data.imagePath, (err: any) => {
+        fs.unlink(data.imagePath, (err: NodeJS.ErrnoException | null) => {
           if (err) console.error("Failed to delete local file:", err);
         });
       } catch (uploadError) {
@@ -307,7 +310,15 @@ export class DoctorService implements IDoctorService {
     return docs.map(this.toDoctorListDTO);
   }
 
-  async getDoctorDashboard(docId: string): Promise<any> {
+  async getDoctorDashboard(docId: string): Promise<{
+    totalAppointments: number;
+    confirmedAppointments: number;
+    pendingAppointments: number;
+    cancelledAppointments: number;
+    totalEarnings: number;
+    latestAppointments: AppointmentTypes[];
+    upcomingAppointments: number;
+  }> {
     try {
       console.log(`Getting dashboard data for doctor: ${docId}`);
       

@@ -20,6 +20,7 @@ import { WalletService } from "../services/implementation/WalletService";
 import { SlotRuleRepository } from "../repositories/implementation/SlotRuleRepository";
 import { WalletRepository } from "../repositories/implementation/WalletRepository";
 import { LeaveManagementService } from "../services/implementation/LeaveManagementService";
+import { LeaveManagementRepository } from "../repositories/implementation/LeaveManagementRepository";
 
 // Admin Layer
 const adminRepository = new AdminRepository();
@@ -40,7 +41,8 @@ const adminService = new AdminService(adminRepository, doctorRepository,  wallet
 const adminController = new AdminController(adminService);
 
 // Doctor Layer
-const leaveManagementService =  new LeaveManagementService(walletService)
+const leaveManagementRepository = new LeaveManagementRepository
+const leaveManagementService =  new LeaveManagementService(walletService,leaveManagementRepository)
 const slotRuleRepository = new SlotRuleRepository(leaveManagementService)
 const doctorService = new DoctorService(doctorRepository,walletService,slotLockService);
 const SlotService = new DoctorSlotService(slotRepository,slotRuleRepository);

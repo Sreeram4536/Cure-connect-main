@@ -1,4 +1,4 @@
-import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO } from "../../types/chat";
+import { ChatMessageDTO, ConversationDTO, ChatMessageResponse, ConversationResponse, ChatListResponse, MessageListResponse, AttachmentDTO, DoctorInfoDTO, UserInfoDTO } from "../../types/chat";
 
 export interface IChatService {
   // Conversation methods
@@ -8,8 +8,8 @@ export interface IChatService {
   getUserConversations(userId: string, page: number, limit: number): Promise<ChatListResponse>;
   getDoctorConversations(doctorId: string, page: number, limit: number): Promise<ChatListResponse>;
   deleteConversation(conversationId: string, userId: string): Promise<boolean>;
-  getDoctorInfo(doctorId: string): Promise<any>;
-  getUserInfo(userId: string): Promise<any>;
+  getDoctorInfo(doctorId: string): Promise<DoctorInfoDTO>;
+  getUserInfo(userId: string): Promise<UserInfoDTO>;
 
   // Message methods
   sendMessage(messageData: ChatMessageDTO, senderId: string): Promise<ChatMessageResponse>;

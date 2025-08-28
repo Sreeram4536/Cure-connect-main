@@ -13,12 +13,14 @@ import { SlotRuleRepository } from "../repositories/implementation/SlotRuleRepos
 import { WalletService } from "../services/implementation/WalletService";
 import { WalletRepository } from "../repositories/implementation/WalletRepository";
 import { LeaveManagementService } from "../services/implementation/LeaveManagementService";
+import { LeaveManagementRepository } from "../repositories/implementation/LeaveManagementRepository";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
 const walletRepository = new WalletRepository();
+const leaveManagementRepository = new LeaveManagementRepository
 const walletService = new WalletService(walletRepository);
-const leaveManagementService = new LeaveManagementService(walletService)
+const leaveManagementService = new LeaveManagementService(walletService,leaveManagementRepository)
 const slotRuleRepository = new SlotRuleRepository(leaveManagementService)
 const appointmentRepository = new AppointmentRepository();
 const userRepository = new UserRepository();

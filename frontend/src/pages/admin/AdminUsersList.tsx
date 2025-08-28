@@ -25,11 +25,38 @@ const AdminUsersList = () => {
   const [targetAction, setTargetAction] = useState<"block" | "unblock" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  // Ref to track if we're currently searching to prevent race conditions
+  const isSearching = useRef(false);
+
+  // Simple fetch function without useCallback
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const result = await getUsersPaginated(currentPage, itemsPerPage, searchQuery);
+      setUsers(result.data);
+      setTotalPages(result.totalPages);
+  // setTotalCount(result.totalCount); // Removed unused state
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Effect for page changes only
   useEffect(() => {
     if (aToken) {
       fetchUsers();
     }
-  }, [aToken, currentPage,searchQuery]);
+  }, [aToken, currentPage]);
+
+  // Effect for search changes only
+  useEffect(() => {
+    if (aToken && searchQuery !== "") {
+      setCurrentPage(1); // Reset to first page when searching
+      fetchUsers();
+    }
+  }, [aToken, searchQuery]);
 
   useEffect(() => {
     if (!aToken) {
@@ -40,20 +67,6 @@ const AdminUsersList = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const result = await getUsersPaginated(currentPage, itemsPerPage,searchQuery);
-      setUsers(result.data);
-      setTotalPages(result.totalPages);
-  // setTotalCount(result.totalCount); // Removed unused state
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleToggleBlock = (userId: string, isBlocked: boolean) => {
     setTargetUser(users.find((u) => u._id === userId));
@@ -83,15 +96,15 @@ const AdminUsersList = () => {
     setTargetAction(null);
   };
 
-  const handleSearch =(query:string)=>{
+  // Debounce search
+  const handleSearch = (query: string) => {
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
     searchTimeout.current = setTimeout(() => {
       setSearchQuery(query);
-      setCurrentPage(1);
-    },300);
-  }
+    }, 300);
+  };
 
   useEffect(() => {
     return () => {

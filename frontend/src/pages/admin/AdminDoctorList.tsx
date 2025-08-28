@@ -21,28 +21,16 @@ const AdminDoctorList = () => {
   const [totalPages, setTotalPages] = useState(1);
   // const [totalCount, setTotalCount] = useState(0); 
   const [loading, setLoading] = useState(false);
-  const itemsPerPage = 6;
+  const itemsPerPage = 2;
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetDoctor, setTargetDoctor] = useState<any>(null);
   const [targetAction, setTargetAction] = useState<"block" | "unblock" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    if (aToken) {
-      fetchDoctors();
-    }
-  }, [aToken, currentPage, searchQuery]);
+  
+  const isSearching = useRef(false);
 
-  useEffect(() => {
-    if (!aToken) {
-      navigate("/admin/login");
-    }
-  }, [aToken, navigate]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
 
   const fetchDoctors = async () => {
     try {
@@ -57,10 +45,35 @@ const AdminDoctorList = () => {
     }
   };
 
+  
+  useEffect(() => {
+    if (aToken) {
+      fetchDoctors();
+    }
+  }, [aToken, currentPage]);
+
+ 
+  useEffect(() => {
+    if (aToken && searchQuery !== "") {
+      setCurrentPage(1); 
+      fetchDoctors();
+    }
+  }, [aToken, searchQuery]);
+
+  useEffect(() => {
+    if (!aToken) {
+      navigate("/admin/login");
+    }
+  }, [aToken, navigate]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
+
   const handleChangeAvailability = async (docId: string) => {
     try {
       await changeAvailability(docId);
-      // Refresh current page after changing availability
+      
       fetchDoctors();
     } catch (error) {
       console.error("Failed to change availability:", error);
@@ -107,7 +120,6 @@ const AdminDoctorList = () => {
     }
     searchTimeout.current = setTimeout(() => {
       setSearchQuery(query);
-      setCurrentPage(1);
     }, 300);
   };
 
@@ -236,3 +248,4 @@ const AdminDoctorList = () => {
 };
 
 export default AdminDoctorList;
+
