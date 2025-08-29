@@ -228,6 +228,7 @@ export class ChatService implements IChatService {
     const deleted = await this.chatRepository.deleteMessage(messageId);
     if (deleted) {
       // Broadcast deletion to the conversation room for real-time UI updates
+      console.log(`Emitting message deleted event for message ${messageId} in conversation ${message.conversationId}`);
       emitToConversation(message.conversationId, "message deleted", { messageId });
     }
     return deleted;
@@ -247,6 +248,7 @@ export class ChatService implements IChatService {
 
     const deleted = await this.chatRepository.softDeleteMessage(messageId);
     if (deleted) {
+      console.log(`Emitting message deleted event for soft deleted message ${messageId} in conversation ${message.conversationId}`);
       emitToConversation(message.conversationId, "message deleted", { messageId });
     }
     return deleted;

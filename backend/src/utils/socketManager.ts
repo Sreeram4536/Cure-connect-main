@@ -14,7 +14,11 @@ export function getIO(): Server {
 }
 
 export function emitToConversation(conversationId: string, event: string, payload: unknown) {
-  if (!ioInstance) return;
+  if (!ioInstance) {
+    console.log('SocketManager: No IO instance available');
+    return;
+  }
   const room = `conversation_${conversationId}`;
+  console.log(`SocketManager: Emitting ${event} to room ${room} with payload:`, payload);
   ioInstance.to(room).emit(event, payload);
 }

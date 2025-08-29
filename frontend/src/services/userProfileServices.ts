@@ -5,9 +5,7 @@ import { USER_PROFILE_API } from "../constants/apiRoutes";
 
 // Get user profile
 export const getUserProfileAPI = async (token: string) => {
-  return api.get(USER_PROFILE_API.GET, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  return api.get(USER_PROFILE_API.GET);
 };
 
 // Update user profile
@@ -28,7 +26,6 @@ export const updateUserProfileAPI = async (
 
     const res = await api.put(USER_PROFILE_API.UPDATE, formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
       },
     });
@@ -42,9 +39,7 @@ export const updateUserProfileAPI = async (
 // Change user password
 export const changeUserPasswordAPI = async (token: string, currentPassword: string, newPassword: string) => {
   try {
-    const res = await api.put('/api/user/password/change', { currentPassword, newPassword }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await api.put('/api/user/password/change', { currentPassword, newPassword });
     return res.data;
   } catch (error) {
     showErrorToast(error);

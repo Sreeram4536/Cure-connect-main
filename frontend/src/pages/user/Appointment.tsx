@@ -89,29 +89,45 @@ const Appointment = () => {
     setIsRefreshingSlots(true);
     if (!docId) return;
     const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    
+    // Calculate next month
+    let nextMonth = currentMonth + 1;
+    let nextYear = currentYear;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear = currentYear + 1;
+    }
 
     try {
-      const { data } = await getAvailableSlotsAPI(docId, year, month);
-      const slotsArray = data.slots || [];
-      console.log('[Appointment] Received slots from backend:', slotsArray);
+      // Fetch slots for both current and next month
+      const [currentMonthData, nextMonthData] = await Promise.allSettled([
+        getAvailableSlotsAPI(docId, currentYear, currentMonth),
+        getAvailableSlotsAPI(docId, nextYear, nextMonth)
+      ]);
 
-      // Group slots by date for the UI - no filtering, backend handles all validation
+      const currentMonthSlots = currentMonthData.status === 'fulfilled' ? (currentMonthData.value.data?.slots || []) : [];
+      const nextMonthSlots = nextMonthData.status === 'fulfilled' ? (nextMonthData.value.data?.slots || []) : [];
+      
+      // Combine slots from both months
+      const allSlots = [...currentMonthSlots, ...nextMonthSlots];
+      console.log('[Appointment] Received slots from backend:', allSlots);
+
       const slotMap: Record<string, any[]> = {};
-      slotsArray.forEach((slot: any) => {
+      allSlots.forEach((slot: any) => {
         if (!slotMap[slot.date]) slotMap[slot.date] = [];
         slotMap[slot.date].push(slot);
       });
 
-      const weekSlots: TimeSlot[][] = [];
+      // Show slots for next 7 days
+      const daySlots: TimeSlot[][] = [];
       for (let i = 0; i < 7; i++) {
         let currentDate = new Date(today);
         currentDate.setDate(today.getDate() + i);
         const dateKey = formatLocalDate(currentDate);
         const slots = slotMap[dateKey] || [];
 
-        // Create time slots without any frontend filtering - backend already filtered past times
         const timeSlots: TimeSlot[] = slots.map((slot) => {
           const [hour, minute] = slot.start.split(":").map(Number);
           const slotDate = new Date(currentDate);
@@ -125,10 +141,10 @@ const Appointment = () => {
           };
         });
 
-        weekSlots.push(timeSlots);
+        daySlots.push(timeSlots);
       }
 
-      setDocSlots(weekSlots);
+      setDocSlots(daySlots);
       setSlotIndex(0);
       setShowCustomDatePicker(false);
     } catch (err: any) {
@@ -221,7 +237,7 @@ const Appointment = () => {
     const slotDate = formatLocalDate(date);
 
     try {
-      // 1. Lock the slot before payment
+      
       const { data: lockData } = await lockAppointmentSlotAPI({
         docId,
         slotDate,
@@ -236,7 +252,7 @@ const Appointment = () => {
       setPaymentWindowOpen(true);
       console.log('Set pendingAppointmentId:', lockData.appointmentId);
 
-      // 2. Process payment based on selected method
+      
       if (paymentMethod === 'wallet') {
         await processWalletPayment(lockData.appointmentId!, slotDate, slotTime);
       } else {
@@ -262,7 +278,7 @@ const Appointment = () => {
         return;
       }
 
-      // Validate wallet balance first
+      
       const { data: balanceData } = await validateWalletBalanceAPI(docInfo.fees, token);
       if (!balanceData.hasSufficientBalance) {
         toast.error("Insufficient wallet balance");
@@ -310,7 +326,7 @@ const Appointment = () => {
         return;
       }
 
-      // 2. Initiate payment (get order from backend)
+     
       const { data: orderData } = await PaymentRazorpayAPI(docId, slotDate, slotTime, token);
       if (!orderData.success) {
         toast.error(orderData.message || "Failed to initiate payment");
@@ -318,7 +334,7 @@ const Appointment = () => {
       }
       const order = orderData.order;
 
-      // 3. Open Razorpay payment window
+      
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
@@ -328,7 +344,7 @@ const Appointment = () => {
         order_id: order.id,
         handler: async (response: any) => {
           try {
-            // 4. On payment success, finalize appointment
+            
             const { data: finalizeData } = await finalizeAppointmentAPI({
               docId,
               slotDate,
@@ -401,7 +417,7 @@ const Appointment = () => {
     getAvailableSlots();
   }, [docInfo]);
 
-  // Refresh slots every 5 minutes to ensure real-time validation
+  
   useEffect(() => {
     const interval = setInterval(() => {
       if (docInfo) {
@@ -498,7 +514,7 @@ const Appointment = () => {
           <div className="flex gap-3 items-center w-full overflow-x-auto pb-2">
             {docSlots.map((item, index) => {
               const isAvailable = item.length > 0;
-              // Calculate the date for this index
+              
               const today = new Date();
               const currentDate = new Date(today);
               currentDate.setDate(today.getDate() + index);
@@ -562,11 +578,11 @@ const Appointment = () => {
                   }
                 }}
                 minDate={new Date()}
-                maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // Max 1 year from now
+                maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} 
                 filterDate={(date) => {
-                  // Disable weekends if needed (optional)
+                  
                   const day = date.getDay();
-                  return day !== 0 && day !== 6; // Disable Sunday (0) and Saturday (6)
+                  return day !== 0 && day !== 6; 
                 }}
                 className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:border-primary focus:outline-none w-full"
                 placeholderText="Select a future date"

@@ -16,9 +16,7 @@ export class LeaveManagementService implements ILeaveManagementService {
     message: string;
   }> {
     try {
-      console.log(`[LeaveManagementService] Handling doctor leave for doctorId: ${doctorId}, date: ${date}, leaveType: ${leaveType}`);
-
-      // Find all appointments for this doctor on the specified date using repository
+     
       const appointments = await this.leaveManagementRepository.findAppointmentsByDoctorAndDate(doctorId, date);
 
       if (appointments.length === 0) {
@@ -33,21 +31,19 @@ export class LeaveManagementService implements ILeaveManagementService {
       let cancelledCount = 0;
       let totalRefundedAmount = 0;
 
-      // Process each appointment
+      
       for (const appointment of appointments) {
         try {
-          // Check if the appointment should be cancelled based on leave type
+          
           if (leaveType === 'full') {
-            // Full day leave - cancel all appointments
+            
             await this.cancelAppointment(appointment);
             cancelledCount++;
             if (appointment.payment && appointment.amount > 0) {
               totalRefundedAmount += appointment.amount;
             }
           } else if (leaveType === 'break' || leaveType === 'custom') {
-            // For break/custom leave, we need to check if the specific time slot is affected
-            // This would require more complex logic based on the specific slots marked as leave
-            // For now, we'll cancel all appointments for custom/break leave as well
+      
             await this.cancelAppointment(appointment);
             cancelledCount++;
             if (appointment.payment && appointment.amount > 0) {
@@ -56,7 +52,7 @@ export class LeaveManagementService implements ILeaveManagementService {
           }
         } catch (error) {
           console.error(`[LeaveManagementService] Error cancelling appointment ${appointment._id}:`, error);
-          // Continue with other appointments even if one fails
+          
         }
       }
 
@@ -79,7 +75,7 @@ export class LeaveManagementService implements ILeaveManagementService {
     try {
       console.log(`[LeaveManagementService] Cancelling appointment: ${appointment._id}`);
 
-      // Update appointment status using repository
+      
       await this.leaveManagementRepository.updateAppointmentStatus(appointment._id.toString(), {
         status: 'cancelled',
         cancelled: true,
@@ -99,7 +95,7 @@ export class LeaveManagementService implements ILeaveManagementService {
         );
       }
 
-      // Send notification to user
+      
       await this.sendCancellationNotification(appointment);
 
     } catch (error) {
@@ -110,33 +106,28 @@ export class LeaveManagementService implements ILeaveManagementService {
 
   private async sendCancellationNotification(appointment: AppointmentDocument): Promise<void> {
     try {
-      // Get doctor and user information for notification
+      
       const doctorName = appointment.docData?.name || 'Doctor';
       const userEmail = appointment.userData?.email;
       const slotDate = appointment.slotDate;
       const slotTime = appointment.slotTime;
 
       if (userEmail) {
-        // You can implement email/SMS notification here
+        
         console.log(`[LeaveManagementService] Sending cancellation notification to user: ${userEmail}`);
         console.log(`[LeaveManagementService] Appointment cancelled for doctor: ${doctorName} on ${slotDate} at ${slotTime}`);
         
-        // TODO: Implement actual notification sending
-        // await sendEmail(userEmail, 'Appointment Cancelled', `Your appointment with Dr. ${doctorName} on ${slotDate} at ${slotTime} has been cancelled due to doctor's leave.`);
+        
       }
     } catch (error) {
       console.error(`[LeaveManagementService] Error sending cancellation notification:`, error);
-      // Don't throw error for notification failures
+      
     }
   }
 
   async checkAndHandleFutureLeaves(): Promise<void> {
     try {
       console.log(`[LeaveManagementService] Checking for future leaves that need appointment cancellations`);
-      
-      // This method can be called periodically to check for any leaves that were set
-      // but appointments weren't cancelled at the time
-      // Implementation would depend on your specific requirements
       
     } catch (error) {
       console.error(`[LeaveManagementService] Error checking future leaves:`, error);

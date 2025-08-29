@@ -13,7 +13,7 @@ export const PaymentRazorpayAPI = async (
   return api.post(
     '/api/user/appointments/initiate',
     { docId, slotDate, slotTime },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -29,10 +29,6 @@ export const VerifyRazorpayAPI = async (
       appointmentId,
       razorpay_order_id: response.razorpay_order_id,
     },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    {}
   );
 };

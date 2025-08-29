@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import express, { Request, Response, NextFunction } from 'express';
 
-// Ensure uploads directory exists
+
 const uploadsDir = path.join(process.cwd(), 'uploads');
 const chatUploadsDir = path.join(uploadsDir, 'chat');
 
@@ -15,7 +15,7 @@ if (!fs.existsSync(chatUploadsDir)) {
   fs.mkdirSync(chatUploadsDir, { recursive: true });
 }
 
-// Define allowed file types
+
 const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 const allowedDocumentTypes = [
   'application/pdf',
@@ -30,7 +30,7 @@ const allowedDocumentTypes = [
 
 const allowedMimeTypes = [...allowedImageTypes, ...allowedDocumentTypes];
 
-// Configure multer storage
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, chatUploadsDir);
@@ -43,7 +43,7 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter function
+
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
@@ -52,20 +52,20 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   }
 };
 
-// Configure multer
+
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB per file
-    files: 10, // Maximum 10 files per upload
+    fileSize: 50 * 1024 * 1024, 
+    files: 10, 
   },
 });
 
-// Middleware for handling multiple file uploads
+
 export const uploadChatFiles = upload.array('files', 10);
 
-// Helper function to determine file type
+
 export const getFileType = (mimeType: string): "image" | "document" => {
   if (allowedImageTypes.includes(mimeType)) {
     return "image";
@@ -73,7 +73,7 @@ export const getFileType = (mimeType: string): "image" | "document" => {
   return "document";
 };
 
-// Error handling middleware for multer
+
 export const handleUploadError: express.ErrorRequestHandler = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     switch (error.code) {
@@ -115,7 +115,7 @@ export const handleUploadError: express.ErrorRequestHandler = (error, req, res, 
   next(error);
 };
 
-// Utility function to clean up uploaded files in case of error
+
 export const cleanupUploadedFiles = (files: Express.Multer.File[]) => {
   files.forEach(file => {
     if (fs.existsSync(file.path)) {
@@ -124,11 +124,13 @@ export const cleanupUploadedFiles = (files: Express.Multer.File[]) => {
   });
 };
 
-// Function to get file URL for serving
+
 export const getFileUrl = (filePath: string): string => {
   const relativePath = path.relative(chatUploadsDir, filePath);
   return `/api/chat/files/${relativePath}`;
 };
+
+
 
 
 

@@ -30,14 +30,11 @@ const Doctors = () => {
 
   const { getDoctorsPaginated } = context;
 
-  // Reset page to 1 when speciality or searchQuery changes
-  // useEffect(() => {
-  //   setCurrentPage(1);
-  // }, [speciality, searchQuery]);
+ 
 
   useEffect(() => {
     fetchDoctors();
-    // eslint-disable-next-line
+   
   }, [currentPage, speciality, searchQuery, sortBy, sortOrder]);
 
   useEffect(() => {
@@ -201,9 +198,17 @@ const Doctors = () => {
                     <div className="p-5 flex flex-col gap-2">
                       <p className="text-gray-900 text-lg font-bold truncate">{item.name}</p>
                       <p className="text-indigo-600 text-sm font-medium">{item.speciality}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-gray-500 text-xs">Experience: <span className="font-semibold text-gray-700">{item.experience} yrs</span></span>
-                        <span className="text-gray-500 text-xs">Fees: <span className="font-semibold text-gray-700">₹{item.fees}</span></span>
+                      <div className="flex flex-col gap-1 mt-2 w-full">
+                        <div className="flex items-center gap-1">
+                          <AcademicCapIcon className="h-4 w-4 text-indigo-400" />
+                          <span className="text-gray-500 text-xs">Experience:</span>
+                          <span className="font-semibold text-gray-700 text-xs ml-1">{item.experience} </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <CurrencyRupeeIcon className="h-4 w-4 text-indigo-400" />
+                          <span className="text-gray-500 text-xs">Fees:</span>
+                          <span className="font-semibold text-gray-700 text-xs ml-1">₹{item.fees}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

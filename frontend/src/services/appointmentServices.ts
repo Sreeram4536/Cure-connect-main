@@ -12,7 +12,7 @@ export const appointmentBookingAPI = async (
   return api.post(
     APPOINTMENT_API.BASE,
     { docId, slotDate, slotTime },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -31,9 +31,7 @@ export const getAvailableSlotsForDateAPI = async (
   dateStr: string,
   token: string
 ) => {
-  return api.get(`/api/user/doctor/${docId}/slots/date?date=${dateStr}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  return api.get(`/api/user/doctor/${docId}/slots/date?date=${dateStr}`);
 };
 
 // Lock appointment slot
@@ -51,7 +49,7 @@ export const lockAppointmentSlotAPI = async ({
   return api.post(
     "/api/user/appointments/lock",
     { docId, slotDate, slotTime },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -63,7 +61,7 @@ export const cancelAppointmentLockAPI = async (
   return api.patch(
     `/api/user/appointments/${appointmentId}/cancel-lock`,
     {},
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -84,7 +82,7 @@ export const finalizeAppointmentAPI = async ({
   return api.post(
     "/api/user/appointments/finalize",
     { docId, slotDate, slotTime, payment },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -110,9 +108,7 @@ export const getAppointmentsPaginatedAPI = async (
   if (sortBy) params.append("sortBy", sortBy);
   if (sortOrder) params.append("sortOrder", sortOrder);
 
-  return api.get(`/api/user/appointments?${params.toString()}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  return api.get(`/api/user/appointments?${params.toString()}`);
 };
 
 // Cancel appointment
@@ -123,7 +119,7 @@ export const cancelAppointmentAPI = async (
   return api.patch(
     `/api/user/appointments/${appointmentId}/cancel`,
     {},
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -139,7 +135,7 @@ export const processWalletPaymentAPI = async (
   return api.post(
     "/api/user/appointments/wallet/payment",
     { docId, slotDate, slotTime, amount, appointmentId },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -151,7 +147,7 @@ export const finalizeWalletPaymentAPI = async (
   return api.post(
     "/api/user/appointments/wallet/finalize",
     { appointmentId, amount },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
@@ -162,6 +158,6 @@ export const validateWalletBalanceAPI = async (
   return api.post(
     "/api/user/wallet/validate-balance",
     { amount },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };

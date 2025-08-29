@@ -36,11 +36,11 @@ const authWithRefresh = async (
     }
 
     try {
-      // Try to verify the access token
+      //  to verify the access token
       const decoded = verifyAccessToken(token);
       console.log("JWT decoded:", decoded);
       
-      // Set user info based on role
+      
       if (decoded.role === 'user') {
         req.userId = decoded.id;
         req.userType = 'user';
@@ -74,11 +74,8 @@ const authWithRefresh = async (
 
           // Verify refresh token
           const refreshDecoded = verifyRefreshToken(refreshToken);
-          
-                      // Determine user type from refresh token payload
             let userType = refreshDecoded.role || 'user';
-            
-            // Fallback to cookie name if role not in token
+           
             if (!refreshDecoded.role) {
               if (req.cookies?.refreshToken_doctor) {
                 userType = 'doctor';
@@ -116,7 +113,7 @@ const authWithRefresh = async (
           });
         }
       } else {
-        // Other token verification errors
+        
         res.status(HttpStatus.UNAUTHORIZED).json({
           success: false,
           message: "Invalid token",

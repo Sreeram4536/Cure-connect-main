@@ -277,7 +277,7 @@ export class ChatController implements IChatController {
     }
   }
 
-  // Upload-only endpoints to return URLs for Socket-based sending
+  
   async uploadFilesForUser(req: Request, res: Response): Promise<void> {
     try {
       const files = (req as any).files as Express.Multer.File[];
@@ -379,7 +379,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      // Get user information
+      
       const userInfo = await this.chatService.getUserInfo(conversation.userId);
       
       res.status(HttpStatus.OK).json({
@@ -411,7 +411,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      // First get the conversation
+      
       const conversation = await this.chatService.getConversation(userId, doctorId);
       if (!conversation) {
         res.status(HttpStatus.NOT_FOUND).json({
@@ -421,7 +421,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      // Then get messages for that conversation
+      
       const messages = await this.chatService.getMessages(conversation.id, page, limit);
       
       res.status(HttpStatus.OK).json({
@@ -553,12 +553,12 @@ export class ChatController implements IChatController {
       const fileName = path.basename(req.params.fileName);
       const absolute = path.join(process.cwd(), 'uploads', 'chat', fileName);
       if (!fs.existsSync(absolute)) {
-        res.status(404).json({ success: false, message: 'File not found' });
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'File not found' });
         return;
       }
       res.sendFile(absolute);
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Failed to serve file' });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to serve file' });
     }
   }
 } 

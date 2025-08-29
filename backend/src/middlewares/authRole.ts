@@ -73,12 +73,11 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
 
         next();
       } catch (tokenError: any) {
-        // If token is expired, try to refresh it
+        
         if (tokenError.name === 'TokenExpiredError') {
           console.log("Token expired in authRole, attempting refresh...");
           
           try {
-            // Get refresh token from cookies
             const refreshToken = req.cookies?.refreshToken_user || 
                                req.cookies?.refreshToken_doctor || 
                                req.cookies?.refreshToken_admin;
@@ -91,13 +90,13 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
               return;
             }
 
-            // Verify refresh token
+            
             const refreshDecoded = verifyRefreshToken(refreshToken);
             
-            // Determine user type from refresh token payload
+            
             let userType = refreshDecoded.role || 'user';
             
-            // Fallback to cookie name if role not in token
+            
             if (!refreshDecoded.role) {
               if (req.cookies?.refreshToken_doctor) {
                 userType = 'doctor';
@@ -117,8 +116,6 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
 
             // Generate new access token
             const newAccessToken = generateAccessToken(refreshDecoded.id, "", userType as any);
-            
-            // Set new access token in response header
             res.setHeader('New-Access-Token', newAccessToken);
             
             // Verify user exists and is not blocked
@@ -171,7 +168,7 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
             });
           }
         } else {
-          // Other token verification errors
+          
           res.status(HttpStatus.UNAUTHORIZED).json({
             success: false,
             message: "Invalid token",

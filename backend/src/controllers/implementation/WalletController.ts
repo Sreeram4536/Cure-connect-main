@@ -3,6 +3,7 @@ import { IWalletController } from "../interface/IWalletController.interface";
 import { WalletService } from "../../services/implementation/WalletService";
 import { IWalletService } from "../../services/interface/IWalletService";
 import { AuthRequest } from "../../types/customRequest";
+import { HttpStatus } from "../../constants/status.constants";
 
 export class WalletController implements IWalletController {
   private walletService: IWalletService;
@@ -21,14 +22,14 @@ export class WalletController implements IWalletController {
 
       const balance = await this.walletService.getWalletBalance(userId);
       
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: { balance },
         message: "Wallet balance retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting wallet balance:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get wallet balance"
       });
@@ -39,7 +40,7 @@ export class WalletController implements IWalletController {
     try {
       const userId = (req as AuthRequest).userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
         return;
       }
 
@@ -56,14 +57,14 @@ export class WalletController implements IWalletController {
         sortOrder
       );
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: transactions,
         message: "Wallet transactions retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting wallet transactions:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get wallet transactions"
       });
@@ -74,20 +75,20 @@ export class WalletController implements IWalletController {
     try {
       const userId = (req as AuthRequest).userId;
       if (!userId) {
-        res.status(401).json({ success: false, message: "User not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
         return;
       }
 
       const walletDetails = await this.walletService.getWalletDetails(userId);
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: walletDetails,
         message: "Wallet details retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting wallet details:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get wallet details"
       });
