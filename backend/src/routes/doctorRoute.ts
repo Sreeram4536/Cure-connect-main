@@ -152,4 +152,23 @@ doctorRouter.patch(
 
 doctorRouter.get("/top", doctorController.getTopDoctors.bind(doctorController));
 
+// Doctor Wallet Routes
+doctorRouter.get(
+  "/wallet/details",
+  authRole(["doctor"]),
+  doctorController.getDoctorWalletDetails.bind(doctorController)
+);
+
+doctorRouter.get(
+  "/wallet/transactions",
+  authRole(["doctor"]),
+  doctorController.getDoctorWalletTransactions.bind(doctorController)
+);
+
+doctorRouter.get(
+  "/wallet/balance",
+  authRole(["doctor"]),
+  doctorController.getDoctorWalletBalance.bind(doctorController)
+);
+
 export default doctorRouter;

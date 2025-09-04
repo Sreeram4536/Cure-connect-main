@@ -14,6 +14,7 @@ interface WalletTransaction {
 
 interface WalletDocument extends WalletTypes, Document {
   _id: Types.ObjectId;
+  userType: 'user' | 'doctor' | 'admin';
   transactions: WalletTransaction[];
 }
 
@@ -53,7 +54,12 @@ const walletSchema: Schema<WalletDocument> = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true,
+  },
+  userType: {
+    type: String,
+    enum: ['user', 'doctor', 'admin'],
+    required: true,
+    default: 'user'
   },
   balance: {
     type: Number,
@@ -64,6 +70,9 @@ const walletSchema: Schema<WalletDocument> = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+// Create compound index for userId and userType to ensure unique wallets per user type
+walletSchema.index({ userId: 1, userType: 1 }, { unique: true });
 
 const walletModel: Model<WalletDocument> = mongoose.model<WalletDocument>(
   "wallet",

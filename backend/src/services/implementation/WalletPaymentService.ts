@@ -9,12 +9,15 @@ import { HttpStatus } from "../../constants/status.constants";
 import { IWalletService } from "../interface/IWalletService";
 import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
 import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
+import { IRevenueDistributionService } from "../interface/IRevenueDistributionService";
+import { RevenueDistributionData } from "../../types/wallet";
 
 export class WalletPaymentService implements IWalletPaymentService {
   
   constructor( 
     private walletService: IWalletService,
     private appointmentRepository: IAppointmentRepository,
+    private revenueDistributionService: IRevenueDistributionService
     ) {
    
     
@@ -78,6 +81,19 @@ export class WalletPaymentService implements IWalletPaymentService {
         lockExpiresAt: undefined,
         date: new Date()
       });
+
+      // Distribute revenue to doctor and admin (80/20 split)
+      const revenueDistribution: RevenueDistributionData = {
+        appointmentId,
+        doctorId: docId,
+        totalAmount: amount,
+        doctorShare: Math.round(amount * 0.8 * 100) / 100,
+        adminShare: Math.round(amount * 0.2 * 100) / 100,
+        description: `Revenue from appointment on ${slotDate} at ${slotTime}`
+      };
+
+      const distributionResult = await this.revenueDistributionService.distributeRevenue(revenueDistribution);
+      console.log('Revenue distribution result:', distributionResult);
 
       return {
         success: true,
@@ -149,6 +165,19 @@ export class WalletPaymentService implements IWalletPaymentService {
         lockExpiresAt: undefined,
         date: new Date()
       });
+
+      // Distribute revenue to doctor and admin (80/20 split)
+      const revenueDistribution: RevenueDistributionData = {
+        appointmentId,
+        doctorId: appointment.docId,
+        totalAmount: amount,
+        doctorShare: Math.round(amount * 0.8 * 100) / 100,
+        adminShare: Math.round(amount * 0.2 * 100) / 100,
+        description: `Revenue from appointment on ${appointment.slotDate} at ${appointment.slotTime}`
+      };
+
+      const distributionResult = await this.revenueDistributionService.distributeRevenue(revenueDistribution);
+      console.log('Revenue distribution result:', distributionResult);
 
       return {
         success: true,

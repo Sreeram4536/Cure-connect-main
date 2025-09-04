@@ -79,4 +79,23 @@ adminRouter.get(
   adminController.adminDashboard.bind(adminController)
 );
 
+// Admin Wallet Routes
+adminRouter.get(
+  "/wallet/details",
+  authRole(["admin"]),
+  adminController.getAdminWalletDetails.bind(adminController)
+);
+
+adminRouter.get(
+  "/wallet/transactions",
+  authRole(["admin"]),
+  adminController.getAdminWalletTransactions.bind(adminController)
+);
+
+adminRouter.get(
+  "/wallet/balance",
+  authRole(["admin"]),
+  adminController.getAdminWalletBalance.bind(adminController)
+);
+
 export default adminRouter;

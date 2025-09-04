@@ -1,6 +1,8 @@
 import { AppointmentDTO, AppointmentTypes } from "../../types/appointment";
 import { DoctorData, DoctorListDTO, DoctorProfileDTO } from "../../types/doctor";
 import { PaginationResult } from "../../repositories/interface/IDoctorRepository";
+import { WalletTransaction } from "../../types/wallet";
+import { PaginationResult as WalletPaginationResult } from "../../repositories/interface/IWalletRepository";
 
 export interface IDoctorService {
   getDoctorsByStatusAndLimit(status: string, limit: number): Promise<DoctorListDTO[]>;
@@ -35,4 +37,15 @@ export interface IDoctorService {
     address: DoctorData["address"];
     imagePath?: string;
   }): Promise<void>;
+
+  // Doctor Wallet Methods
+  getDoctorWalletDetails(doctorId: string): Promise<{ balance: number; totalTransactions: number }>;
+  getDoctorWalletTransactions(
+    doctorId: string,
+    page: number,
+    limit: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc'
+  ): Promise<WalletPaginationResult<WalletTransaction>>;
+  getDoctorWalletBalance(doctorId: string): Promise<number>;
 }

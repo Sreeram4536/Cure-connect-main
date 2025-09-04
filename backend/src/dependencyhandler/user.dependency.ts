@@ -9,6 +9,7 @@ import { SlotLockService } from "../services/implementation/SlotLockService";
 import { UserService } from "../services/implementation/UserService";
 import { WalletPaymentService } from "../services/implementation/WalletPaymentService";
 import { WalletService } from "../services/implementation/WalletService";
+import { RevenueDistributionService } from "../services/implementation/RevenueDistributionService";
 
 const userRepository = new UserRepository();
 const walletRepository = new WalletRepository();
@@ -17,7 +18,8 @@ const appointmentRepo = new AppointmentRepository();
 const doctorRepo = new DoctorRepository();
 const slotLockService = new SlotLockService(appointmentRepo, userRepository, doctorRepo);
 const walletService = new WalletService(walletRepository);
-const walletPaymentService = new WalletPaymentService(walletService,appointmentRepo);
+const revenueDistributionService = new RevenueDistributionService(walletService);
+const walletPaymentService = new WalletPaymentService(walletService, appointmentRepo, revenueDistributionService);
 const userService = new UserService(walletPaymentService,userRepository, paymentService, slotLockService, walletService);
 export const userController = new UserController(userService, paymentService);
 export const slotLockController = new SlotLockController(slotLockService);

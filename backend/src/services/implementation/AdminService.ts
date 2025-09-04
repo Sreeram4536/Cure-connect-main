@@ -39,6 +39,9 @@ async login(email: string, password: string): Promise<{ admin: AdminDocument, ac
   const isMatch = await bcrypt.compare(password, admin.password);
   if (!isMatch) throw new Error("Invalid credentials");
 
+  // Ensure admin wallet exists
+  await this._walletService.ensureWalletExists(admin._id.toString(), 'admin');
+
   const accessToken = generateAccessToken(admin._id.toString(), admin.email, "admin");
   const refreshToken = generateRefreshToken(admin._id.toString(), "admin");
 
@@ -136,6 +139,10 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
 
     doctor.status = "approved";
     await this._doctorRepository.save(doctor);
+    
+    // Create wallet for approved doctor
+    await this._walletService.createWalletByType(doctorId, 'doctor');
+    
     return "Doctor approved successfully";
   }
 
@@ -280,6 +287,40 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     } catch (error) {
       console.error(`Error in admin cancelAppointment:`, error);
       throw error;
+    }
+  }
+
+  // Admin Wallet Methods
+  async getAdminWalletDetails(adminId: string): Promise<{ balance: number; totalTransactions: number }> {
+    try {
+      return await this._walletService.getWalletDetailsByType(adminId, 'admin');
+    } catch (error) {
+      console.error(`Error getting admin wallet details:`, error);
+      throw new Error(`Failed to get admin wallet details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getAdminWalletTransactions(
+    adminId: string,
+    page: number,
+    limit: number,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<any> {
+    try {
+      return await this._walletService.getWalletTransactionsByType(adminId, 'admin', page, limit, sortBy, sortOrder);
+    } catch (error) {
+      console.error(`Error getting admin wallet transactions:`, error);
+      throw new Error(`Failed to get admin wallet transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getAdminWalletBalance(adminId: string): Promise<number> {
+    try {
+      return await this._walletService.getWalletBalanceByType(adminId, 'admin');
+    } catch (error) {
+      console.error(`Error getting admin wallet balance:`, error);
+      throw new Error(`Failed to get admin wallet balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

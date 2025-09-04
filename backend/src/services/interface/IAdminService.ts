@@ -3,6 +3,8 @@ import { AppointmentDTO, AppointmentDocument, AppointmentTypes } from "../../typ
 import { DoctorData, DoctorDTO, DoctorListDTO } from "../../types/doctor";
 import { UserProfileDTO } from "../../types/user";
 import { PaginationResult } from "../../repositories/interface/IAdminRepository";
+import { WalletTransaction } from "../../types/wallet";
+import { PaginationResult as WalletPaginationResult } from "../../repositories/interface/IWalletRepository";
 
 export interface DoctorInput extends DoctorData {
   imageFile?: Express.Multer.File;
@@ -24,4 +26,15 @@ export interface IAdminService {
   cancelAppointment(appointmentId: string): Promise<void>;
   approveDoctor(doctorId: string): Promise<string>;
   rejectDoctor(doctorId: string): Promise<string>;
+
+  // Admin Wallet Methods
+  getAdminWalletDetails(adminId: string): Promise<{ balance: number; totalTransactions: number }>;
+  getAdminWalletTransactions(
+    adminId: string,
+    page: number,
+    limit: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc'
+  ): Promise<WalletPaginationResult<WalletTransaction>>;
+  getAdminWalletBalance(adminId: string): Promise<number>;
 }

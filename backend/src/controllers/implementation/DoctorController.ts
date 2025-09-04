@@ -443,4 +443,101 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
     }
   }
 
+  // Doctor Wallet Methods
+  async getDoctorWalletDetails(req: Request, res: Response): Promise<void> {
+    try {
+      const authReq = req as AuthRequest;
+      const doctorId = authReq.doctorId;
+
+      if (!doctorId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: HttpResponse.UNAUTHORIZED
+        });
+        return;
+      }
+
+      const walletDetails = await this._doctorService.getDoctorWalletDetails(doctorId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Doctor wallet details retrieved successfully",
+        data: walletDetails
+      });
+    } catch (error) {
+      console.error("Error getting doctor wallet details:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.INTERNAL_SERVER_ERROR
+      });
+    }
+  }
+
+  async getDoctorWalletTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const authReq = req as AuthRequest;
+      const doctorId = authReq.doctorId;
+
+      if (!doctorId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: HttpResponse.UNAUTHORIZED
+        });
+        return;
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const sortBy = req.query.sortBy as string || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+
+      const transactions = await this._doctorService.getDoctorWalletTransactions(
+        doctorId, 
+        page, 
+        limit, 
+        sortBy, 
+        sortOrder
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Doctor wallet transactions retrieved successfully",
+        data: transactions
+      });
+    } catch (error) {
+      console.error("Error getting doctor wallet transactions:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.INTERNAL_SERVER_ERROR
+      });
+    }
+  }
+
+  async getDoctorWalletBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const authReq = req as AuthRequest;
+      const doctorId = authReq.doctorId;
+
+      if (!doctorId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: HttpResponse.UNAUTHORIZED
+        });
+        return;
+      }
+
+      const balance = await this._doctorService.getDoctorWalletBalance(doctorId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Doctor wallet balance retrieved successfully",
+        data: { balance }
+      });
+    } catch (error) {
+      console.error("Error getting doctor wallet balance:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.INTERNAL_SERVER_ERROR
+      });
+    }
+  }
+
 }

@@ -388,4 +388,101 @@ export class AdminController implements IAdminController {
       res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: (error as Error).message });
     }
   }
+
+  // Admin Wallet Methods
+  async getAdminWalletDetails(req: Request, res: Response): Promise<void> {
+    try {
+      const customReq = req as CustomRequest;
+      const adminId = customReq.adminId;
+
+      if (!adminId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: HttpResponse.UNAUTHORIZED
+        });
+        return;
+      }
+
+      const walletDetails = await this._adminService.getAdminWalletDetails(adminId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Admin wallet details retrieved successfully",
+        data: walletDetails
+      });
+    } catch (error) {
+      console.error("Error getting admin wallet details:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.INTERNAL_SERVER_ERROR
+      });
+    }
+  }
+
+  async getAdminWalletTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const customReq = req as CustomRequest;
+      const adminId = customReq.adminId;
+
+      if (!adminId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: HttpResponse.UNAUTHORIZED
+        });
+        return;
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const sortBy = req.query.sortBy as string || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+
+      const transactions = await this._adminService.getAdminWalletTransactions(
+        adminId, 
+        page, 
+        limit, 
+        sortBy, 
+        sortOrder
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Admin wallet transactions retrieved successfully",
+        data: transactions
+      });
+    } catch (error) {
+      console.error("Error getting admin wallet transactions:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.INTERNAL_SERVER_ERROR
+      });
+    }
+  }
+
+  async getAdminWalletBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const customReq = req as CustomRequest;
+      const adminId = customReq.adminId;
+
+      if (!adminId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: HttpResponse.UNAUTHORIZED
+        });
+        return;
+      }
+
+      const balance = await this._adminService.getAdminWalletBalance(adminId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: "Admin wallet balance retrieved successfully",
+        data: { balance }
+      });
+    } catch (error) {
+      console.error("Error getting admin wallet balance:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.INTERNAL_SERVER_ERROR
+      });
+    }
+  }
 }

@@ -359,4 +359,38 @@ export class DoctorService implements IDoctorService {
       throw error;
     }
   }
+
+  // Doctor Wallet Methods
+  async getDoctorWalletDetails(doctorId: string): Promise<{ balance: number; totalTransactions: number }> {
+    try {
+      return await this._walletService.getWalletDetailsByType(doctorId, 'doctor');
+    } catch (error) {
+      console.error(`Error getting doctor wallet details:`, error);
+      throw new Error(`Failed to get doctor wallet details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getDoctorWalletTransactions(
+    doctorId: string,
+    page: number,
+    limit: number,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<any> {
+    try {
+      return await this._walletService.getWalletTransactionsByType(doctorId, 'doctor', page, limit, sortBy, sortOrder);
+    } catch (error) {
+      console.error(`Error getting doctor wallet transactions:`, error);
+      throw new Error(`Failed to get doctor wallet transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getDoctorWalletBalance(doctorId: string): Promise<number> {
+    try {
+      return await this._walletService.getWalletBalanceByType(doctorId, 'doctor');
+    } catch (error) {
+      console.error(`Error getting doctor wallet balance:`, error);
+      throw new Error(`Failed to get doctor wallet balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
