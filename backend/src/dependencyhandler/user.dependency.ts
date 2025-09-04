@@ -20,6 +20,6 @@ const slotLockService = new SlotLockService(appointmentRepo, userRepository, doc
 const walletService = new WalletService(walletRepository);
 const revenueDistributionService = new RevenueDistributionService(walletService);
 const walletPaymentService = new WalletPaymentService(walletService, appointmentRepo, revenueDistributionService);
-const userService = new UserService(walletPaymentService,userRepository, paymentService, slotLockService, walletService);
+const userService = new UserService(walletPaymentService, userRepository, paymentService, slotLockService, walletService, revenueDistributionService);
 export const userController = new UserController(userService, paymentService);
 export const slotLockController = new SlotLockController(slotLockService);

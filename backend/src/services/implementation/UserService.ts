@@ -28,6 +28,8 @@ import { WalletRepository } from "../../repositories/implementation/WalletReposi
 import { LeaveManagementService } from "./LeaveManagementService";
 import { Orders } from "razorpay/dist/types/orders";
 import { LeaveManagementRepository } from "../../repositories/implementation/LeaveManagementRepository";
+import { IRevenueDistributionService } from "../interface/IRevenueDistributionService";
+import { RevenueDistributionData } from "../../types/wallet";
 
 // Extended type for appointments that includes _id from MongoDB documents
 type AppointmentWithId = AppointmentTypes & { _id?: string };
@@ -62,7 +64,8 @@ export class UserService implements IUserService {
     private _userRepository: IUserRepository,
     private _paymentService :IPaymentService,
     private _slotLockService: ISlotLockService,
-    private _walletService : IWalletService
+    private _walletService : IWalletService,
+    private _revenueDistributionService: IRevenueDistributionService
   ) {
     
   }
@@ -339,7 +342,8 @@ export class UserService implements IUserService {
     appointmentId: string,
     razorpay_order_id: string
   ): Promise<void> {
-    await this._userRepository.findPayableAppointment(userId, appointmentId);
+    // Find the appointment to get details for revenue distribution
+    const appointment = await this._userRepository.findPayableAppointment(userId, appointmentId);
 
     const orderInfo = await this._paymentService.fetchOrder(razorpay_order_id);
 
@@ -351,7 +355,31 @@ export class UserService implements IUserService {
       throw new Error("Receipt / appointment mismatch");
     }
 
+    // Mark appointment as paid
     await this._userRepository.markAppointmentPaid(appointmentId);
+
+    // Distribute revenue to doctor and admin (80/20 split)
+    if (appointment && appointment.amount > 0) {
+      console.log(`[UserService] Distributing revenue for appointment ${appointmentId}`);
+      
+      const revenueDistribution: RevenueDistributionData = {
+        appointmentId,
+        doctorId: appointment.docId,
+        totalAmount: appointment.amount,
+        doctorShare: Math.round(appointment.amount * 0.8 * 100) / 100,
+        adminShare: Math.round(appointment.amount * 0.2 * 100) / 100,
+        description: `Revenue from Razorpay payment for appointment on ${appointment.slotDate} at ${appointment.slotTime}`
+      };
+
+      const distributionResult = await this._revenueDistributionService.distributeRevenue(revenueDistribution);
+      console.log(`[UserService] Revenue distribution result:`, distributionResult);
+      
+      if (!distributionResult.success) {
+        console.error(`[UserService] Revenue distribution failed:`, distributionResult.message);
+        // Note: We don't throw error here as payment is already verified and appointment marked as paid
+        // Revenue distribution failure should be logged for manual intervention
+      }
+    }
   }
 
   async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<TimeSlot[]> {

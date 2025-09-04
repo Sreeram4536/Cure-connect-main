@@ -53,10 +53,15 @@ Successfully implemented wallet functionality for doctors and admins with 80/20 
 **Enhanced Methods:**
 - `ensureWalletExists()` now accepts optional `userType` parameter
 
-### 6. Payment Integration (`/backend/src/services/implementation/WalletPaymentService.ts`)
-- Integrated revenue distribution into payment flow
-- Automatically distributes revenue when appointments are paid
+### 6. Payment Integration 
+**WalletPaymentService (`/backend/src/services/implementation/WalletPaymentService.ts`):**
+- Integrated revenue distribution into wallet payment flow
 - Both `processWalletPayment()` and `finalizeWalletPayment()` now trigger revenue sharing
+
+**UserService (`/backend/src/services/implementation/UserService.ts`):**
+- Updated `verifyPayment()` method to include revenue distribution for Razorpay payments
+- Ensures revenue sharing happens for both wallet and Razorpay payment methods
+- Added proper error handling without breaking payment verification flow
 
 ### 7. Doctor Wallet Integration
 **Controller Methods Added to DoctorController:**
@@ -102,10 +107,19 @@ Successfully implemented wallet functionality for doctors and admins with 80/20 
 
 ## Revenue Sharing Flow
 
+**For Wallet Payments:**
 1. **User pays for appointment** → User wallet debited
-2. **Payment confirmed** → Revenue distribution triggered
+2. **Payment processed** → Revenue distribution triggered immediately
 3. **Doctor receives 80%** → Credited to doctor wallet
 4. **Admin receives 20%** → Credited to admin (system) wallet
+
+**For Razorpay Payments:**
+1. **User pays via Razorpay** → External payment gateway
+2. **Payment verified in verifyPayment()** → Revenue distribution triggered
+3. **Doctor receives 80%** → Credited to doctor wallet  
+4. **Admin receives 20%** → Credited to admin (system) wallet
+
+**Revenue distribution happens for BOTH payment methods ensuring consistent earning distribution.**
 
 ## SOLID Principles Implementation
 
