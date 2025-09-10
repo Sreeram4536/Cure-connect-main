@@ -539,7 +539,7 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
   async initiatePayment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      const { docId, slotDate, slotTime } = req.body;
+      const { docId, slotDate, slotTime, appointmentId } = req.body;
       console.log('initiatePayment received:', { userId, docId, slotDate, slotTime });
       
       const doctor = await this._userService.getDoctorById(docId);
@@ -549,9 +549,12 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
       }
       
       const amount = doctor.fees;
-      
-      const shortReceipt = `${userId.toString().slice(-6)}-${docId.slice(-6)}-${Date.now()}`;
-      const order = await this._paymentService.createOrder(amount * 100, shortReceipt);
+      // Use appointmentId as receipt so verifyPayment can match order.receipt === appointmentId
+      if (!appointmentId) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'appointmentId is required' });
+        return;
+      }
+      const order = await this._paymentService.createOrder(amount * 100, appointmentId);
       res.status(HttpStatus.OK).json({ success: true, order });
     } catch (error) {
       console.error('initiatePayment error:', error);

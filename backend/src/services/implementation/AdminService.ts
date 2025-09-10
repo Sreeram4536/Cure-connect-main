@@ -261,6 +261,7 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
         console.log(`Processing refund to wallet for admin cancellation: ${appointment.amount}`);
         await this._walletService.processAppointmentCancellation(
           appointment.userId,
+          'user',
           appointmentId,
           appointment.amount,
           'admin'

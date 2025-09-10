@@ -311,7 +311,7 @@ const Appointment = () => {
       }
 
       // 2. Initiate payment (get order from backend)
-      const { data: orderData } = await PaymentRazorpayAPI(docId, slotDate, slotTime, token);
+      const { data: orderData } = await PaymentRazorpayAPI(docId, slotDate, slotTime, appointmentId, token);
       if (!orderData.success) {
         toast.error(orderData.message || "Failed to initiate payment");
         return;
@@ -328,7 +328,10 @@ const Appointment = () => {
         order_id: order.id,
         handler: async (response: any) => {
           try {
-            // 4. On payment success, finalize appointment
+            // 4. Verify Razorpay payment (marks paid + triggers revenue share)
+            await VerifyRazorpayAPI(appointmentId, response, token);
+
+            // 5. Finalize appointment (confirm + release locks)
             const { data: finalizeData } = await finalizeAppointmentAPI({
               docId,
               slotDate,

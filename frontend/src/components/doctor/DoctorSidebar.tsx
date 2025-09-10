@@ -11,6 +11,7 @@ const DoctorSidebar = () => {
     add_icon: "➕",
     slot_icon: "⏰",
     inbox_icon: "📬",
+    wallet_icon: "💰",
   };
 
   const menuItems = [
@@ -43,6 +44,12 @@ const DoctorSidebar = () => {
       icon: assets.inbox_icon,
       label: "Messages",
       gradient: "from-blue-500 to-primary"
+    },
+    {
+      to: "/doctor/wallet",
+      icon: assets.wallet_icon,
+      label: "Wallet",
+      gradient: "from-green-500 to-emerald-600"
     },
   ];
 

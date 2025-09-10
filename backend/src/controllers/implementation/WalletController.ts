@@ -19,7 +19,7 @@ export class WalletController implements IWalletController {
         return;
       }
 
-      const balance = await this.walletService.getWalletBalance(userId);
+      const balance = await this.walletService.getWalletBalance(userId, 'user');
       
       res.status(200).json({
         success: true,
@@ -50,6 +50,7 @@ export class WalletController implements IWalletController {
 
       const transactions = await this.walletService.getWalletTransactions(
         userId,
+        'user',
         page,
         limit,
         sortBy,
@@ -78,7 +79,7 @@ export class WalletController implements IWalletController {
         return;
       }
 
-      const walletDetails = await this.walletService.getWalletDetails(userId);
+      const walletDetails = await this.walletService.getWalletDetails(userId, 'user');
 
       res.status(200).json({
         success: true,

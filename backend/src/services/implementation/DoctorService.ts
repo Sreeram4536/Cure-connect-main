@@ -231,9 +231,10 @@ export class DoctorService implements IDoctorService {
       if (appointment.payment && appointment.amount > 0) {
         console.log(`Processing refund to wallet for doctor cancellation: ${appointment.amount}`);
         // Ensure wallet exists before refunding
-        await this._walletService.ensureWalletExists(appointment.userId);
+        await this._walletService.ensureWalletExists(appointment.userId, 'user');
         await this._walletService.processAppointmentCancellation(
           appointment.userId,
+          'user',
           appointmentId,
           appointment.amount,
           'doctor'

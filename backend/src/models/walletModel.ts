@@ -1,13 +1,18 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
-import { WalletTypes } from "../types/wallet";
+import { WalletTypes, UserRole } from "../types/wallet";
 
 interface WalletTransaction {
   _id: Types.ObjectId;
   userId: string;
+  userRole: UserRole;
   type: 'credit' | 'debit';
   amount: number;
   description: string;
   appointmentId?: string;
+  revenueShare?: {
+    doctorAmount?: number;
+    adminAmount?: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,6 +25,11 @@ interface WalletDocument extends WalletTypes, Document {
 const walletTransactionSchema = new Schema<WalletTransaction>({
   userId: {
     type: String,
+    required: true,
+  },
+  userRole: {
+    type: String,
+    enum: ['user', 'doctor', 'admin'],
     required: true,
   },
   type: {
@@ -39,6 +49,16 @@ const walletTransactionSchema = new Schema<WalletTransaction>({
     type: String,
     default: null,
   },
+  revenueShare: {
+    doctorAmount: {
+      type: Number,
+      default: null,
+    },
+    adminAmount: {
+      type: Number,
+      default: null,
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -53,7 +73,11 @@ const walletSchema: Schema<WalletDocument> = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true,
+  },
+  userRole: {
+    type: String,
+    enum: ['user', 'doctor', 'admin'],
+    required: true,
   },
   balance: {
     type: Number,
@@ -64,6 +88,9 @@ const walletSchema: Schema<WalletDocument> = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+// Compound index to ensure one wallet per user per role
+walletSchema.index({ userId: 1, userRole: 1 }, { unique: true });
 
 const walletModel: Model<WalletDocument> = mongoose.model<WalletDocument>(
   "wallet",

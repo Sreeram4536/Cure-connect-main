@@ -10,6 +10,8 @@ import userRouter from "./routes/userRoute";
 import authRouter from "./routes/authRoute";
 import chatRouter from "./routes/chatRoute";
 import walletRouter from "./routes/walletRoute";
+import adminWalletRouter from "./routes/adminWalletRoute";
+import doctorWalletRouter from "./routes/doctorWalletRoute";
 import "./utils/passport";
 import passport from "passport";
 import { createServer } from "http";
@@ -57,6 +59,8 @@ app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/wallet", walletRouter);
+app.use("/api/admin-wallet", adminWalletRouter);
+app.use("/api/doctor-wallet", doctorWalletRouter);
 
 app.get("/", (req, res) => {
   res.send("API WORKING");

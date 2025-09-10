@@ -93,6 +93,7 @@ export class LeaveManagementService implements ILeaveManagementService {
         console.log(`[LeaveManagementService] Processing refund for appointment: ${appointment._id}, amount: ${appointment.amount}`);
         await this.walletService.processAppointmentCancellation(
           appointment.userId,
+          'user',
           appointment._id.toString(),
           appointment.amount,
           'doctor'

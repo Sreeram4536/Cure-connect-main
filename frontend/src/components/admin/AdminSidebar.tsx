@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Calendar, AlertTriangle, UserCheck, MessageSquare, ChevronLeft, ChevronRight, Activity, Shield } from 'lucide-react';
+import { Home, Users, Calendar, AlertTriangle, UserCheck, MessageSquare, ChevronLeft, ChevronRight, Activity, Shield, Wallet } from 'lucide-react';
 
 const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -53,6 +53,14 @@ const AdminSidebar = () => {
       color: "from-teal-500 to-cyan-500",
       bgColor: "bg-teal-50",
       borderColor: "border-teal-200"
+    },
+    {
+      to: "/admin/wallet",
+      icon: Wallet,
+      label: "Wallet Management",
+      color: "from-purple-500 to-indigo-500",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-200"
     }
   ];
 

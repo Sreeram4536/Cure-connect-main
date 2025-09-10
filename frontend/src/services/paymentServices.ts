@@ -8,11 +8,12 @@ export const PaymentRazorpayAPI = async (
   docId: string,
   slotDate: string,
   slotTime: string,
+  appointmentId: string,
   token: string
 ) => {
   return api.post(
     '/api/user/appointments/initiate',
-    { docId, slotDate, slotTime },
+    { docId, slotDate, slotTime, appointmentId },
     { headers: { Authorization: `Bearer ${token}` } }
   );
 };

@@ -19,6 +19,7 @@ import { ISlotLockService } from "../interface/ISlotLockService";
 import { WalletService } from "./WalletService";
 import { WalletTransaction } from "../../types/wallet";
 import { WalletPaymentService } from "./WalletPaymentService";
+import { RevenueShareService } from "./RevenueShareService";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
 import { IWalletPaymentService } from "../interface/IWalletPaymentService";
@@ -106,7 +107,7 @@ export class UserService implements IUserService {
     })) as UserDocument;
 
     // Create wallet for new user
-    await this._walletService.createWallet(user._id);
+    await this._walletService.createWallet(user._id, 'user');
 
     const token = generateAccessToken(user._id, user.email, "user");
     const refreshToken = generateRefreshToken(user._id, "user");
@@ -152,7 +153,7 @@ export class UserService implements IUserService {
       throw new Error("Your account has been blocked by admin");
 
     // Ensure wallet exists for user
-    await this._walletService.createWallet(user._id);
+    await this._walletService.createWallet(user._id, 'user');
 
     const token = generateAccessToken(user._id, user.email, "user");
     const refreshToken = generateRefreshToken(user._id, "user");
@@ -215,7 +216,7 @@ export class UserService implements IUserService {
     const user = (await this._userRepository.create(userData)) as UserDocument;
     
     // Create wallet for new user
-    await this._walletService.createWallet(user._id);
+    await this._walletService.createWallet(user._id, 'user');
     
     return user;
   }
@@ -288,13 +289,15 @@ export class UserService implements IUserService {
       
       // Process refund BEFORE cancelling the appointment
       if (appointment.payment && appointment.amount > 0) {
-        console.log(`Processing refund to wallet: ${appointment.amount}`);
-        await this._walletService.processAppointmentCancellation(
+        console.log(`Processing refund with revenue reversal: ${appointment.amount}`);
+        const walletRepository = new WalletRepository();
+        const revenueShare = new RevenueShareService(this._walletService, walletRepository);
+        await revenueShare.reverseRevenueShare({
+          totalAmount: appointment.amount,
+          doctorId: String(appointment.docId),
           userId,
-          appointmentId,
-          appointment.amount,
-          'user'
-        );
+          appointmentId
+        });
         console.log(`Refund processed successfully`);
       } else {
         console.log(`No refund needed - payment: ${appointment.payment}, amount: ${appointment.amount}`);
@@ -339,7 +342,7 @@ export class UserService implements IUserService {
     appointmentId: string,
     razorpay_order_id: string
   ): Promise<void> {
-    await this._userRepository.findPayableAppointment(userId, appointmentId);
+    const appointment = await this._userRepository.findPayableAppointment(userId, appointmentId);
 
     const orderInfo = await this._paymentService.fetchOrder(razorpay_order_id);
 
@@ -352,6 +355,24 @@ export class UserService implements IUserService {
     }
 
     await this._userRepository.markAppointmentPaid(appointmentId);
+
+    // Revenue share after successful Razorpay payment
+    try {
+      const amount = appointment.amount;
+      const docId = String(appointment.docId);
+      // Ensure doctor/admin wallets exist and credit shares via WalletPaymentService pattern
+      const walletRepository = new WalletRepository();
+      const revenueShare = new RevenueShareService(this._walletService, walletRepository);
+      await revenueShare.processRevenueShare({
+        totalAmount: amount,
+        doctorAmount: 0,
+        adminAmount: 0,
+        doctorId: docId,
+        appointmentId
+      });
+    } catch (err) {
+      console.error('Revenue share after Razorpay verify failed:', err);
+    }
   }
 
   async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<TimeSlot[]> {
@@ -385,7 +406,7 @@ export class UserService implements IUserService {
   }
 
   async getWalletBalance(userId: string): Promise<number> {
-    return await this._walletService.getWalletBalance(userId);
+    return await this._walletService.getWalletBalance(userId, 'user');
   }
 
   async getWalletTransactions(
@@ -395,11 +416,11 @@ export class UserService implements IUserService {
     sortBy: string = 'createdAt',
     sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<PaginationResult<WalletTransaction>> {
-    return await this._walletService.getWalletTransactions(userId, page, limit, sortBy, sortOrder);
+    return await this._walletService.getWalletTransactions(userId, 'user', page, limit, sortBy, sortOrder);
   }
 
   async getWalletDetails(userId: string): Promise<{ balance: number; totalTransactions: number }> {
-    return await this._walletService.getWalletDetails(userId);
+    return await this._walletService.getWalletDetails(userId, 'user');
   }
 
   async processWalletPayment(paymentData: WalletPaymentData): Promise<WalletPaymentResponse> {
