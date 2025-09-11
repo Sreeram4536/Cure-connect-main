@@ -3,20 +3,33 @@ import { IAdminService } from "../interface/IAdminService";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
-import { DoctorData, DoctorDTO } from "../../types/doctor";
+import { DoctorData, DoctorDTO, DoctorListDTO } from "../../types/doctor";
 import { isValidEmail, isValidPassword } from "../../utils/validator";
 import dotenv from "dotenv";
-import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
+import { AppointmentDocument, AppointmentTypes, AppointmentDTO } from "../../types/appointment";
 import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
 import { adminData, AdminDocument } from "../../types/admin";
 import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.utils";
 import { PaginationResult } from "../../repositories/interface/IAdminRepository";
+import { UserProfileDTO, userData } from "../../types/user";
+import { WalletService } from "./WalletService";
+import { IWalletService } from "../interface/IWalletService";
+import { UserRepository } from "../../repositories/implementation/UserRepository";
+import { SlotLockService } from "./SlotLockService";
+import { AppointmentRepository } from "../../repositories/implementation/AppointmentRepository";
+import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
+import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { ISlotLockService } from "../interface/ISlotLockService";
 dotenv.config();
 
 export class AdminService implements IAdminService {
   constructor(
     private readonly _adminRepository: IAdminRepository,
-    private readonly _doctorRepository: IDoctorRepository
+    private readonly _doctorRepository: IDoctorRepository,
+    private readonly _walletService : IWalletService,
+    private readonly _userRepository :IUserRepository,
+    private readonly _slotLockService :ISlotLockService
+ 
   ) {}
 
 async login(email: string, password: string): Promise<{ admin: AdminDocument, accessToken: string, refreshToken: string }> {
@@ -27,7 +40,7 @@ async login(email: string, password: string): Promise<{ admin: AdminDocument, ac
   if (!isMatch) throw new Error("Invalid credentials");
 
   const accessToken = generateAccessToken(admin._id.toString(), admin.email, "admin");
-  const refreshToken = generateRefreshToken(admin._id.toString());
+  const refreshToken = generateRefreshToken(admin._id.toString(), "admin");
 
   return { admin, accessToken, refreshToken };
 }
@@ -137,20 +150,77 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return "Doctor rejected successfully";
   }
 
-  async getDoctors(): Promise<any[]> {
-    return await this._adminRepository.getAllDoctors();
+  private toDoctorListDTO(doc: Omit<DoctorData, "password">): DoctorListDTO {
+    return {
+      id: doc._id?.toString() ?? "",
+      _id: doc._id?.toString() ?? "",
+      name: doc.name,
+      image: doc.image,
+      speciality: doc.speciality,
+      degree: doc.degree,
+      experience: doc.experience,
+      fees: doc.fees,
+      available: doc.available,
+      isBlocked: doc.isBlocked,
+      status: doc.status,
+    };
   }
 
-  async getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<any>> {
-    return await this._adminRepository.getDoctorsPaginated(page, limit);
+  private toUserProfileDTO(u: Omit<userData, "password"> & { _id?: string; createdAt?: Date; updatedAt?: Date }): UserProfileDTO {
+    return {
+      id: u._id?.toString() ?? "",
+      _id: u._id?.toString() ?? "",
+      name: u.name,
+      email: u.email,
+      image: u.image,
+      address: u.address,
+      gender: u.gender,
+      dob: u.dob,
+      phone: u.phone,
+      isBlocked: !!u.isBlocked,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    };
   }
 
-  async getUsers(): Promise<any[]> {
-    return await this._adminRepository.getAllUsers();
+  private toAppointmentDTO(a: AppointmentTypes): AppointmentDTO {
+    return {
+      id: "", 
+      userId: String(a.userId),
+      docId: String(a.docId),
+      slotDate: a.slotDate,
+      slotTime: a.slotTime,
+      amount: a.amount,
+      date: a.date,
+      cancelled: a.cancelled,
+      payment: a.payment,
+      status: a.status,
+      isConfirmed: a.isConfirmed,
+      isCompleted: a.isCompleted,
+      userData: a.userData,
+      docData: a.docData,
+    };
   }
 
-  async getUsersPaginated(page: number, limit: number): Promise<PaginationResult<any>> {
-    return await this._adminRepository.getUsersPaginated(page, limit);
+  async getDoctors(): Promise<DoctorListDTO[]> {
+    const list = await this._adminRepository.getAllDoctors();
+    return list.map(this.toDoctorListDTO);
+  }
+
+  async getDoctorsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<DoctorListDTO>> {
+    const res = await this._adminRepository.getDoctorsPaginated(page, limit, search);
+    return { ...res, data: res.data.map(this.toDoctorListDTO) };
+  }
+
+  
+    async getUsers(search?: string): Promise<UserProfileDTO[]> {
+    const users = await this._adminRepository.getAllUsers(search);
+    return users.map(this.toUserProfileDTO);
+  }
+
+  async getUsersPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<UserProfileDTO>> {
+    const res = await this._adminRepository.getUsersPaginated(page, limit, search);
+    return { ...res, data: res.data.map(this.toUserProfileDTO) };
   }
 
   async toggleUserBlock(userId: string, block: boolean): Promise<string> {
@@ -161,15 +231,56 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return await this._adminRepository.toggleDoctorBlock(doctorId, block);
   }
 
-  async listAppointments(): Promise<AppointmentDocument[]> {
-    return await this._adminRepository.getAllAppointments();
+  async listAppointments(): Promise<AppointmentDTO[]> {
+    const list = await this._adminRepository.getAllAppointments();
+    return list.map(this.toAppointmentDTO);
   }
 
-  async listAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>> {
-    return await this._adminRepository.getAppointmentsPaginated(page, limit);
+  async listAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentDTO>> {
+    const res = await this._adminRepository.getAppointmentsPaginated(page, limit, search);
+    return { ...res, data: res.data.map(this.toAppointmentDTO) };
   }
 
   async cancelAppointment(appointmentId: string): Promise<void> {
-    await this._adminRepository.cancelAppointment(appointmentId);
+    try {
+      console.log(`Admin cancelling appointment: ${appointmentId}`);
+      
+    
+      const appointment = await this._adminRepository.findPayableAppointment(appointmentId);
+      
+      console.log(`Found appointment for admin cancellation:`, {
+        appointmentId: appointment._id,
+        userId: appointment.userId,
+        payment: appointment.payment,
+        amount: appointment.amount,
+        status: appointment.status
+      });
+      
+      
+      if (appointment.payment && appointment.amount > 0) {
+        console.log(`Processing refund to wallet for admin cancellation: ${appointment.amount}`);
+        await this._walletService.processAppointmentCancellation(
+          appointment.userId,
+          'user',
+          appointmentId,
+          appointment.amount,
+          'admin'
+        );
+        console.log(`Refund processed successfully for admin cancellation`);
+      } else {
+        console.log(`No refund needed for admin cancellation - payment: ${appointment.payment}, amount: ${appointment.amount}`);
+      }
+      
+      
+      const result = await this._slotLockService.cancelAppointment({ appointmentId });
+      console.log(`Slot lock service result:`, result);
+      
+      if (!result.success) {
+        throw new Error(result.message || "Failed to cancel appointment");
+      }
+    } catch (error) {
+      console.error(`Error in admin cancelAppointment:`, error);
+      throw error;
+    }
   }
 }

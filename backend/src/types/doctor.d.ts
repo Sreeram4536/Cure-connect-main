@@ -42,7 +42,38 @@ export interface DoctorDTO {
   isBlocked?: boolean;
 }
 
+export type DoctorDocument = HydratedDocument<DoctorData>;
 
+
+export interface DoctorProfileDTO {
+  id: string;
+  _id?: string; 
+  name: string;
+  email: string;
+  image?: string;
+  speciality: string;
+  degree: string;
+  experience: string;
+  about: string;
+  fees: number;
+  address: Address;
+  available?: boolean;
+  status?: "pending" | "approved" | "rejected";
+}
+
+export interface DoctorListDTO {
+  id: string;
+  _id?: string; 
+  name: string;
+  image?: string;
+  speciality: string;
+  degree: string;
+  experience: string;
+  fees: number;
+  available?: boolean;
+  isBlocked?: boolean;
+  status?: "pending" | "approved" | "rejected";
+}
 
 export type DoctorDocument = HydratedDocument<DoctorData>;
 

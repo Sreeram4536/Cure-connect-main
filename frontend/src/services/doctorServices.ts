@@ -1,5 +1,7 @@
-import { doctorApi as api } from "../axios/doctorAxiosInstance";
+import { getApi } from "../axios/axiosInstance";
 import { DOCTOR_API } from "../constants/apiRoutes";
+
+const api = getApi("doctor");
 
 // Get all doctors
 export const getDoctorsAPI = () => {
@@ -42,23 +44,45 @@ export const getDoctorAppointmentsAPI = () => {
 };
 
 // Get paginated appointments for doctor
-export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number) => {
-  return api.get(`${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}`);
+export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number, search?: string) => {
+  let url = `${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  return api.get(url);
 };
 
 // Confirm appointment
 export const AppointmentConfirmAPI = (appointmentId: string) => {
-  return api.patch(DOCTOR_API.APPOINTMENT_CONFIRM(appointmentId));
+  return api.patch(`/api/doctor/appointment/confirm/${appointmentId}`);
 };
 
 // Cancel appointment
-export const AppointmentCancelAPI = (appointmentId: string) => {
-  return api.patch(DOCTOR_API.APPOINTMENT_CANCEL(appointmentId));
+export const AppointmentCancelAPI = (appointmentId: string, page?: number, limit?: number) => {
+  let url = `/api/doctor/appointments/${appointmentId}/cancel`;
+  if (page && limit) {
+    url += `?page=${page}&limit=${limit}`;
+  }
+  return api.patch(url);
+};
+
+export const ReleaseSlotLockAPI = (appointmentId: string) => {
+  return api.patch(`/api/doctor/slot/release/${appointmentId}`);
 };
 
 // Get doctor profile
 export const getDoctorProfileAPI = () => {
   return api.get(DOCTOR_API.PROFILE);
+};
+
+// Get doctor dashboard data
+export const doctorDashboardAPI = () => {
+  return api.get("/api/doctor/dashboard");
+};
+
+// Doctor metrics (daily | weekly | monthly)
+export const getDoctorMetricsAPI = (range: 'daily' | 'weekly' | 'monthly' = 'monthly', token?: string) => {
+  return api.get(`/api/doctor/dashboard/metrics?range=${encodeURIComponent(range)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
 };
 
 // Update doctor profile
@@ -129,5 +153,13 @@ export const updateDoctorCustomSlotAPI = (date: string, start: string, duration:
 
 export const cancelDoctorCustomSlotAPI = (date: string, start: string) => {
   return api.patch(DOCTOR_API.CANCEL_CUSTOM_SLOT, { date, start });
+};
+
+export const removeDoctorLeaveAPI = (date: string) => {
+  return api.delete(`/api/doctor/leave/remove/${date}`);
+};
+
+export const setDoctorLeaveAPI = (date: string, leaveType: 'full' | 'break' | 'custom', slots?: any[]) => {
+  return api.post('/api/doctor/leave/set', { date, leaveType, slots });
 };
 

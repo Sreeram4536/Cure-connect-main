@@ -1,15 +1,7 @@
 import express from "express";
-import { UserController } from "../controllers/implementation/UserController";
-import { UserService } from "../services/implementation/UserService";
-import { UserRepository } from "../repositories/implementation/UserRepository";
 import upload from "../middlewares/multer";
-import { PaymentService } from "../services/implementation/PaymentService";
 import authRole from "../middlewares/authRole";
-
-const userRepository = new UserRepository();
-const paymentService = new PaymentService();
-const userService = new UserService(userRepository, paymentService);
-const userController = new UserController(userService, paymentService);
+import {slotLockController,userController} from "../dependencyhandler/user.dependency"
 
 const userRouter = express.Router();
 
@@ -62,7 +54,7 @@ userRouter.get(
 userRouter.post(
   "/appointments/lock",
   authRole(["user"]),
-  userController.lockSlot.bind(userController)
+  slotLockController.lockSlot.bind(slotLockController)
 );
 
 userRouter.patch(
@@ -74,7 +66,7 @@ userRouter.patch(
 userRouter.patch(
   "/appointments/:appointmentId/cancel-lock",
   authRole(["user"]),
-  userController.cancelLock.bind(userController)
+  slotLockController.cancelAppointment.bind(slotLockController)
 );
 
 userRouter.post(
@@ -99,6 +91,44 @@ userRouter.get(
   "/doctor/:doctorId/slots/date",
   authRole(["user"]),
   userController.getAvailableSlotsForDate.bind(userController)
+);
+
+// Wallet routes
+userRouter.get(
+  "/wallet/balance",
+  authRole(["user"]),
+  userController.getWalletBalance.bind(userController)
+);
+
+userRouter.get(
+  "/wallet/transactions",
+  authRole(["user"]),
+  userController.getWalletTransactions.bind(userController)
+);
+
+userRouter.get(
+  "/wallet/details",
+  authRole(["user"]),
+  userController.getWalletDetails.bind(userController)
+);
+
+// Wallet payment routes
+userRouter.post(
+  "/appointments/wallet/payment",
+  authRole(["user"]),
+  userController.processWalletPayment.bind(userController)
+);
+
+userRouter.post(
+  "/appointments/wallet/finalize",
+  authRole(["user"]),
+  userController.finalizeWalletPayment.bind(userController)
+);
+
+userRouter.post(
+  "/wallet/validate-balance",
+  authRole(["user"]),
+  userController.validateWalletBalance.bind(userController)
 );
 
 export default userRouter;

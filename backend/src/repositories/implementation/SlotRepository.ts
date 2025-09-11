@@ -1,6 +1,6 @@
 // import slotModel from "../../models/slotModel";
 import slotRuleModel from "../../models/slotRuleModel";
-import { SlotDocument } from "../../types/slots";
+
 
 export class SlotRepository {
   async getSlotsByDoctor(doctorId: string) {

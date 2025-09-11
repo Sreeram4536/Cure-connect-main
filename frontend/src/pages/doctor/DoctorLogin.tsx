@@ -19,26 +19,52 @@ const DoctorLogin = () => {
     throw new Error("DoctorContext must be used within DoctorContextProvider");
   }
 
-  const { dToken, setDToken } = context;
+  const { dToken, setDToken, loading } = context;
 
+  // Test context functionality
   useEffect(() => {
-    if (dToken) navigate("/doctor/dashboard");
-  }, [dToken, navigate]);
+    console.log("DoctorLogin: Context test - dToken:", dToken);
+    console.log("DoctorLogin: Context test - setDToken type:", typeof setDToken);
+    console.log("DoctorLogin: Context test - loading:", loading);
+  }, [dToken, setDToken, loading]);
+
+  // Redirect to dashboard if already logged in and not loading
+  useEffect(() => {
+    if (!loading && dToken) {
+      console.log("DoctorLogin: Already logged in, redirecting to dashboard");
+      navigate("/doctor/dashboard");
+    }
+  }, [dToken, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      console.log("Doctor login: Attempting login with email:", email);
+      console.log("Doctor login: Context available:", !!context);
+      console.log("Doctor login: setDToken function:", typeof setDToken);
+      
       const { data } = await doctorLoginAPI(email, password);
+      console.log("Doctor login: API response:", data);
       if (data.success) {
-        updateDoctorAccessToken(data.token);
-        setDToken(data.token);
-                localStorage.removeItem("isDoctorLoggedOut");
-                toast.success("Login successfull")
-        navigate("/doctor/dashboard");
+        console.log("Doctor login: Login successful, setting token:", data.accessToken);
+        updateDoctorAccessToken(data.accessToken);
+        console.log("Doctor login: About to call setDToken");
+        setDToken(data.accessToken);
+        console.log("Doctor login: setDToken called successfully");
+        localStorage.removeItem("isDoctorLoggedOut");
+        toast.success("Login successful");
+        console.log("Doctor login: Navigating to dashboard");
+        // Add a small delay to ensure token is set and context is updated
+        setTimeout(() => {
+          console.log("Doctor login: Delayed navigation to dashboard");
+          navigate("/doctor/dashboard");
+        }, 200);
       } else {
+        console.error("Doctor login: Login failed:", data.message);
         toast.error(data.message);
       }
     } catch (error) {
+      console.error("Doctor login: Error during login:", error);
       showErrorToast(error);
     }
   };

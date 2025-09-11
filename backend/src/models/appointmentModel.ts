@@ -1,7 +1,9 @@
-import mongoose, { Schema, Model, Document } from "mongoose";
+import mongoose, { Schema, Model, Document, Types } from "mongoose";
 import { AppointmentTypes } from "../types/appointment";
 
-interface AppointmentDocument extends AppointmentTypes, Document {}
+export interface AppointmentDocument extends AppointmentTypes, Document {
+  _id: Types.ObjectId;
+}
 
 const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
   userId: {
@@ -40,7 +42,7 @@ const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
   },
 
   date: {
-    type: Number,
+    type: Date,
     required: true,
   },
 
@@ -75,9 +77,26 @@ const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
   },
 
   razorpayOrderId: {
-  type: String,
-  default: null,
-},
+    type: String,
+    default: null,
+  },
+
+  // New fields for cancellation tracking
+  cancelledBy: {
+    type: String,
+    enum: ["user", "doctor", "admin"],
+    default: null,
+  },
+
+  cancelledAt: {
+    type: Date,
+    default: null,
+  },
+
+  cancellationReason: {
+    type: String,
+    default: null,
+  },
 });
 
 const appointmentModel: Model<AppointmentDocument> =

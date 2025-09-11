@@ -49,14 +49,28 @@ export const HttpResponse = {
   APPOINTMENT_BOOKED: "Appointment Booked",
   APPOINTMENT_CANCELLED: "Appointment Cancelled",
   APPOINTMENT_CONFIRMED: "Appointment Confirmed",
+  APPOINTMENT_NOT_FOUND: "Appointment not found",
+
+  // Slot/Lock
+  SLOT_ALREADY_BOOKED: "Slot already booked",
+  SLOT_RELEASED: "Slot released successfully",
+  USER_OR_DOCTOR_NOT_FOUND: "User or doctor not found",
 
   // Payment
   PAYMENT_SUCCESS: "Payment successful",
   PAYMENT_FAILED: "Payment transaction failed",
+  
+  // Wallet
+  WALLET_INSUFFICIENT_BALANCE: "Insufficient wallet balance",
+  WALLET_PAYMENT_SUCCESS: "Payment successful using wallet",
+  WALLET_PAYMENT_FAILED: "Wallet payment failed",
+  WALLET_NOT_FOUND: "Wallet not found",
+  WALLET_CREATED: "Wallet created successfully",
+  WALLET_BALANCE_UPDATED: "Wallet balance updated successfully",
+  WALLET_TRANSACTION_ADDED: "Transaction added to wallet",
+  WALLET_REFUND_SUCCESS: "Refund processed successfully to wallet",
+  WALLET_DEDUCTION_SUCCESS: "Amount deducted from wallet successfully",
 };
 
 
 
-// class Parent {
-//   c
-// }

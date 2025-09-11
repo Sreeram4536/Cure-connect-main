@@ -1,24 +1,28 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/admin/assets";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 import SearchBar from "../../components/common/SearchBar";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
 import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck } from 'react-icons/fa';
+// import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
 
 const DoctorAppointments = () => {
+  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const context = useContext(DoctorContext);
   const appContext = useContext(AppContext);
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // default: newest first
@@ -45,13 +49,14 @@ const DoctorAppointments = () => {
     if (dToken) {
       fetchAppointments();
     }
-  }, [dToken, currentPage, sortOrder]);
+    // eslint-disable-next-line
+  }, [dToken, currentPage, sortOrder, searchQuery]);
 
   useEffect(() => {
     if (!dToken) {
       navigate("/doctor/login");
     }
-  });
+  }, [dToken, navigate]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -60,10 +65,10 @@ const DoctorAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const result = await getAppointmentsPaginated(currentPage, itemsPerPage);
+      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery);
       setAppointments(result.data);
       setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
+  // setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Failed to fetch appointments:", error);
     } finally {
@@ -73,8 +78,7 @@ const DoctorAppointments = () => {
 
   const handleConfirmAppointment = async (appointmentId: string) => {
     try {
-      await confirmAppointment(appointmentId);
-      
+      await confirmAppointment(appointmentId); // Use context method
       fetchAppointments();
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
@@ -83,17 +87,24 @@ const DoctorAppointments = () => {
 
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
-      await cancelAppointment(appointmentId);
-      
-      fetchAppointments();
+      const data = await cancelAppointment(appointmentId, currentPage, itemsPerPage);
+      if (data && data.data) {
+        setAppointments(data.data);
+        setTotalPages(data.totalPages || 1);
+  // setTotalCount(data.totalCount || 0);
+      } else if (data && data.appointments) {
+        setAppointments(data.appointments);
+        setTotalPages(1);
+  // setTotalCount(data.appointments.length);
+      } else {
+        fetchAppointments(); // fallback
+      }
     } catch (error) {
       console.error("Failed to cancel appointment:", error);
     }
   };
 
-  const filteredAppointments = appointments.filter((item) =>
-    item.userData.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
 
   const columns = [
     {
@@ -166,7 +177,17 @@ const DoctorAppointments = () => {
       header: "Action",
       width: "1fr",
       render: (item: any) => (
-        <>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedAppointment(item);
+              setShowModal(true);
+            }}
+            className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-indigo-200 transition"
+          >
+            Info
+          </button>
           {item.cancelled ? (
             <p className="text-red-500">Cancelled</p>
           ) : item.isConfirmed ? (
@@ -180,7 +201,7 @@ const DoctorAppointments = () => {
               Consultation
             </button>
           ) : (
-            <div className="flex gap-2">
+            <>
               <img
                 onClick={(e) => {
                   e.stopPropagation();
@@ -199,9 +220,9 @@ const DoctorAppointments = () => {
                 src={assets.tick_icon}
                 alt="Confirm"
               />
-            </div>
+            </>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -221,7 +242,15 @@ const DoctorAppointments = () => {
         <div className="max-w-sm w-full">
           <SearchBar
             placeholder="Search by patient name"
-            onSearch={(query) => setSearchQuery(query)}
+            onSearch={(query) => {
+              if (searchTimeout.current) clearTimeout(searchTimeout.current);
+              searchTimeout.current = setTimeout(() => {
+                if (query !== searchQuery) {
+                  setSearchQuery(query);
+                  setCurrentPage(1);
+                }
+              }, 400);
+            }}
           />
         </div>
         {/* Modern Sort Dropdown */}
@@ -265,22 +294,73 @@ const DoctorAppointments = () => {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-      ) : filteredAppointments.length > 0 ? (
+      ) : appointments.length > 0 ? (
         <>
           <DataTable
-            data={filteredAppointments}
+            data={appointments}
             columns={columns}
             emptyMessage="No matching appointments found."
             gridCols="grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr]"
             containerClassName="max-h-[80vh] min-h-[50vh]"
           />
-
           {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={(page) => setCurrentPage(page)}
             />
+          )}
+          {/* Modal for appointment details */}
+          {showModal && selectedAppointment && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-fade-in">
+                <button
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                  onClick={() => setShowModal(false)}
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
+                <h2 className="text-2xl font-bold mb-4 text-indigo-700">Appointment Details</h2>
+                <div className="space-y-4 text-gray-700">
+                  <div>
+                    <span className="font-semibold">Patient:</span> {selectedAppointment.userData?.name || '-'}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Email:</span> {selectedAppointment.userData?.email || '-'}
+                  </div>
+                  {selectedAppointment.userData?.phone && (
+                    <div>
+                      <span className="font-semibold">Phone:</span> {selectedAppointment.userData.phone}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold">Date & Time:</span> {slotDateFormat(selectedAppointment.slotDate)}, {selectedAppointment.slotTime}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Payment Method:</span> {selectedAppointment.payment?.method || 'Not Paid'}
+                  </div>
+                  {selectedAppointment.payment && (
+                    <div>
+                      <span className="font-semibold">Amount Paid:</span> ₹{selectedAppointment.payment.amount}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold">Booking Date:</span> {selectedAppointment.createdAt ? slotDateFormat(selectedAppointment.createdAt) : '-'}
+                  </div>
+                  {selectedAppointment.notes && (
+                    <div>
+                      <span className="font-semibold">Notes/Symptoms:</span> {selectedAppointment.notes}
+                    </div>
+                  )}
+                  {selectedAppointment.cancelled && selectedAppointment.cancellationReason && (
+                    <div>
+                      <span className="font-semibold text-red-600">Cancellation Reason:</span> {selectedAppointment.cancellationReason}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </>
       ) : (

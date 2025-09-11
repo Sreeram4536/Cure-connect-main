@@ -1,10 +1,10 @@
 import { IUserService } from "../interface/IUserService";
 import { IUserRepository, PaginationResult } from "../../repositories/interface/IUserRepository";
-import { userData } from "../../types/user";
+import { userData, UserAuthDTO, UserProfileDTO } from "../../types/user";
 import bcrypt from "bcrypt";
 import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
-import { AppointmentTypes } from "../../types/appointment";
+import { AppointmentTypes, AppointmentDTO, AppointmentDocument, WalletPaymentData, WalletPaymentResponse } from "../../types/appointment";
 import { isValidDateOfBirth, isValidPhone } from "../../utils/validator";
 import { DoctorData } from "../../types/doctor";
 import { PaymentService } from "./PaymentService";
@@ -15,16 +15,80 @@ import {
 } from "../../utils/jwt.utils";
 import { DoctorSlotService } from "./SlotService";
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
+import { ISlotLockService } from "../interface/ISlotLockService";
+import { WalletService } from "./WalletService";
+import { WalletTransaction } from "../../types/wallet";
+import { WalletPaymentService } from "./WalletPaymentService";
+import { RevenueShareService } from "./RevenueShareService";
+import { HttpResponse } from "../../constants/responseMessage.constants";
+import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
+import { IWalletPaymentService } from "../interface/IWalletPaymentService";
+import { IPaymentService } from "../interface/IPaymentService";
+import { IWalletService } from "../interface/IWalletService";
+import { WalletRepository } from "../../repositories/implementation/WalletRepository";
+import { LeaveManagementService } from "./LeaveManagementService";
+import { Orders } from "razorpay/dist/types/orders";
+import { LeaveManagementRepository } from "../../repositories/implementation/LeaveManagementRepository";
+
+// Extended type for appointments that includes _id from MongoDB documents
+type AppointmentWithId = AppointmentTypes & { _id?: string };
+
+// Define proper types for slots
+interface TimeSlot {
+  date: string;
+  start: string;
+  end: string;
+  baseDuration?: number;
+  customDuration?: number;
+  isBooked: boolean;
+  isPast: boolean;
+}
 
 export interface UserDocument extends userData {
   _id: string;
 }
 
+const slotRepository = new SlotRepository();
+const walletRepository = new WalletRepository();
+const leaveManagementRepository = new LeaveManagementRepository();
+const walletService = new WalletService(walletRepository);
+const leaveManagementService = new LeaveManagementService(walletService,leaveManagementRepository)
+const slotRuleRepository = new SlotRuleRepository(leaveManagementService)
+const slotService = new DoctorSlotService(slotRepository,slotRuleRepository);
+
 export class UserService implements IUserService {
+  
   constructor(
+    private _walletPaymentService: IWalletPaymentService,
     private _userRepository: IUserRepository,
-    private _paymentService = new PaymentService()
-  ) {}
+    private _paymentService :IPaymentService,
+    private _slotLockService: ISlotLockService,
+    private _walletService : IWalletService
+  ) {
+    
+  }
+
+   
+
+  private toAppointmentDTO(a: AppointmentWithId): AppointmentDTO {
+    return {
+      id: a._id?.toString() ?? "",
+      _id: a._id?.toString() ?? "",
+      userId: String(a.userId),
+      docId: String(a.docId),
+      slotDate: a.slotDate,
+      slotTime: a.slotTime,
+      amount: a.amount,
+      date: a.date,
+      cancelled: a.cancelled,
+      payment: a.payment,
+      status: a.status,
+      isConfirmed: a.isConfirmed,
+      isCompleted: a.isCompleted,
+      userData: a.userData,
+      docData: a.docData,
+    };
+  }
 
   async register(
     name: string,
@@ -42,16 +106,45 @@ export class UserService implements IUserService {
       password: hashedPassword,
     })) as UserDocument;
 
+    // Create wallet for new user
+    await this._walletService.createWallet(user._id, 'user');
+
     const token = generateAccessToken(user._id, user.email, "user");
-    const refreshToken = generateRefreshToken(user._id);
+    const refreshToken = generateRefreshToken(user._id, "user");
 
     return { token, refreshToken };
+  }
+
+  private toUserAuthDTO(user: userData & { _id: string }): UserAuthDTO {
+    return {
+      id: user._id?.toString() ?? "",
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      isBlocked: !!user.isBlocked,
+    };
+  }
+
+  private toUserProfileDTO(user: userData & { _id: string; createdAt?: Date; updatedAt?: Date }): UserProfileDTO {
+    return {
+      id: user._id?.toString() ?? "",
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      address: user.address,
+      gender: user.gender,
+      dob: user.dob,
+      phone: user.phone,
+      isBlocked: !!user.isBlocked,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   async login(
     email: string,
     password: string
-  ): Promise<{ user: UserDocument, token: string; refreshToken: string }> {
+  ): Promise<{ user: UserAuthDTO, token: string; refreshToken: string }> {
     const user = await this._userRepository.findByEmail(email);
     if (!user) throw new Error("User not found");
     const isMatch = await bcrypt.compare(password, user.password);
@@ -59,14 +152,18 @@ export class UserService implements IUserService {
     if (user.isBlocked)
       throw new Error("Your account has been blocked by admin");
 
-    const token = generateAccessToken(user._id, user.email, "user");
-    const refreshToken = generateRefreshToken(user._id);
+    // Ensure wallet exists for user
+    await this._walletService.createWallet(user._id, 'user');
 
-    return { user, token, refreshToken };
+    const token = generateAccessToken(user._id, user.email, "user");
+    const refreshToken = generateRefreshToken(user._id, "user");
+
+    return { user: this.toUserAuthDTO(user), token, refreshToken };
   }
 
-  async getProfile(userId: string): Promise<userData | null> {
-    return await this._userRepository.findById(userId);
+  async getProfile(userId: string): Promise<UserProfileDTO | null> {
+    const user = await this._userRepository.findById(userId);
+    return user ? this.toUserProfileDTO(user) : null;
   }
 
   async updateProfile(
@@ -110,22 +207,19 @@ export class UserService implements IUserService {
   async hashPassword(password: string) {
     return await bcrypt.hash(password, 10);
   }
-async finalizeRegister(userData: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<UserDocument> {
-  const existing = await this._userRepository.findByEmail(userData.email);
-  if (existing) throw new Error("User already exists");
 
-  const newUser = (await this._userRepository.create({
-    name: userData.name,
-    email: userData.email,
-    password: userData.password, // already hashed!
-  })) as UserDocument;
-
-  return newUser;
-}
+  async finalizeRegister(userData: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<UserDocument> {
+    const user = (await this._userRepository.create(userData)) as UserDocument;
+    
+    // Create wallet for new user
+    await this._walletService.createWallet(user._id, 'user');
+    
+    return user;
+  }
 
   async resetPassword(
     email: string,
@@ -140,19 +234,18 @@ async finalizeRegister(userData: {
   async getUserById(id: string): Promise<UserDocument> {
     const user = await this._userRepository.findById(id);
     if (!user) throw new Error("User not found");
-    return user;
+    return user as UserDocument;
   }
 
   async getDoctorById(id: string): Promise<DoctorData> {
-    const doctor = (await this._userRepository.findDoctorById(
-      id
-    )) as DoctorData | null;
+    const doctor = await this._userRepository.findDoctorById(id);
     if (!doctor) throw new Error("Doctor not found");
     return doctor;
   }
 
-  async listUserAppointments(userId: string): Promise<AppointmentTypes[]> {
-    return await this._userRepository.getAppointmentsByUserId(userId);
+  async listUserAppointments(userId: string): Promise<AppointmentDTO[]> {
+    const list = await this._userRepository.getAppointmentsByUserId(userId);
+    return list.map(this.toAppointmentDTO);
   }
 
   async listUserAppointmentsPaginated(
@@ -164,8 +257,8 @@ async finalizeRegister(userData: {
     status?: string,
     dateFrom?: string,
     dateTo?: string
-  ): Promise<PaginationResult<AppointmentTypes>> {
-    return await this._userRepository.getAppointmentsByUserIdPaginated(
+  ): Promise<PaginationResult<AppointmentDTO>> {
+    const res = await this._userRepository.getAppointmentsByUserIdPaginated(
       userId,
       page,
       limit,
@@ -175,29 +268,68 @@ async finalizeRegister(userData: {
       dateFrom,
       dateTo
     );
+    return { ...res, data: res.data.map(this.toAppointmentDTO) } as PaginationResult<AppointmentDTO>;
   }
 
   async cancelAppointment(
     userId: string,
     appointmentId: string
   ): Promise<void> {
-    await this._userRepository.cancelAppointment(userId, appointmentId);
+    try {
+      console.log(`Attempting to cancel appointment: ${appointmentId} for user: ${userId}`);
+      
+      // Get appointment details to check if payment was made
+      const appointment = await this._userRepository.findPayableAppointment(userId, appointmentId);
+      console.log(`Found appointment:`, { 
+        appointmentId: appointment._id, 
+        payment: appointment.payment, 
+        amount: appointment.amount,
+        status: appointment.status 
+      });
+      
+      // Process refund BEFORE cancelling the appointment
+      if (appointment.payment && appointment.amount > 0) {
+        console.log(`Processing refund with revenue reversal: ${appointment.amount}`);
+        const walletRepository = new WalletRepository();
+        const adminRepository = require("../../repositories/implementation/AdminRepository").default;
+        const adminRepo = new adminRepository();
+        const revenueShare = new RevenueShareService(this._walletService, walletRepository, adminRepo);
+        await revenueShare.reverseRevenueShare({
+          totalAmount: appointment.amount,
+          doctorId: String(appointment.docId),
+          userId,
+          appointmentId
+        });
+        console.log(`Refund processed successfully`);
+      } else {
+        console.log(`No refund needed - payment: ${appointment.payment}, amount: ${appointment.amount}`);
+      }
+      
+      // Use the existing slot lock service to cancel the appointment and release the slot AFTER refund
+      const result = await this._slotLockService.cancelAppointment({ appointmentId });
+      console.log(`Slot lock service result:`, result);
+      
+      if (!result.success) {
+        throw new Error(result.message || "Failed to cancel appointment");
+      }
+    } catch (error) {
+      console.error(`Error in cancelAppointment:`, error);
+      throw error;
+    }
   }
 
   async startPayment(
     userId: string,
     appointmentId: string
-  ): Promise<{ order: any }> {
+  ): Promise<{ order: Orders.RazorpayOrder }> {
     const appointment = await this._userRepository.findPayableAppointment(
       userId,
       appointmentId
     );
 
-
     console.log("Appointment:", appointment);
-console.log("Amount:", appointment.amount);
-console.log("hii");
-
+    console.log("Amount:", appointment.amount);
+    console.log("hii");
 
     const order = await this._paymentService.createOrder(
       appointment.amount * 100,
@@ -212,7 +344,7 @@ console.log("hii");
     appointmentId: string,
     razorpay_order_id: string
   ): Promise<void> {
-    await this._userRepository.findPayableAppointment(userId, appointmentId);
+    const appointment = await this._userRepository.findPayableAppointment(userId, appointmentId);
 
     const orderInfo = await this._paymentService.fetchOrder(razorpay_order_id);
 
@@ -225,16 +357,34 @@ console.log("hii");
     }
 
     await this._userRepository.markAppointmentPaid(appointmentId);
+
+    // Revenue share after successful Razorpay payment
+    try {
+      const amount = appointment.amount;
+      const docId = String(appointment.docId);
+      // Ensure doctor/admin wallets exist and credit shares via WalletPaymentService pattern
+      const walletRepository = new WalletRepository();
+      const adminRepository = require("../../repositories/implementation/AdminRepository").default;
+      const adminRepo = new adminRepository();
+      const revenueShare = new RevenueShareService(this._walletService, walletRepository, adminRepo);
+      await revenueShare.processRevenueShare({
+        totalAmount: amount,
+        doctorAmount: 0,
+        adminAmount: 0,
+        doctorId: docId,
+        appointmentId
+      });
+    } catch (err) {
+      console.error('Revenue share after Razorpay verify failed:', err);
+    }
   }
-  async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<any[]> {
-    const slotRepository = new SlotRepository();
-    const slotService = new DoctorSlotService(slotRepository);
+
+  async getAvailableSlotsForDoctor(doctorId: string, year: number, month: number): Promise<TimeSlot[]> {
+   
     return slotService.getMonthlySlots(doctorId, year, month);
   }
 
-  async getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<any[]> {
-    const slotRepository = new SlotRepository();
-    const slotService = new DoctorSlotService(slotRepository);
+  async getAvailableSlotsForDate(doctorId: string, dateStr: string): Promise<TimeSlot[]> {
     return slotService.getSlotsForDate(doctorId, dateStr);
   }
 
@@ -257,5 +407,35 @@ console.log("hii");
     const hashed = await this.hashPassword(newPassword);
     await this._userRepository.updateById(userId, { password: hashed });
     return { success: true };
+  }
+
+  async getWalletBalance(userId: string): Promise<number> {
+    return await this._walletService.getWalletBalance(userId, 'user');
+  }
+
+  async getWalletTransactions(
+    userId: string,
+    page: number,
+    limit: number,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginationResult<WalletTransaction>> {
+    return await this._walletService.getWalletTransactions(userId, 'user', page, limit, sortBy, sortOrder);
+  }
+
+  async getWalletDetails(userId: string): Promise<{ balance: number; totalTransactions: number }> {
+    return await this._walletService.getWalletDetails(userId, 'user');
+  }
+
+  async processWalletPayment(paymentData: WalletPaymentData): Promise<WalletPaymentResponse> {
+    return await this._walletPaymentService.processWalletPayment(paymentData);
+  }
+
+  async finalizeWalletPayment(appointmentId: string, userId: string, amount: number): Promise<WalletPaymentResponse> {
+    return await this._walletPaymentService.finalizeWalletPayment(appointmentId, userId, amount);
+  }
+
+  async validateWalletBalance(userId: string, amount: number): Promise<boolean> {
+    return await this._walletPaymentService.validateWalletBalance(userId, amount);
   }
 }

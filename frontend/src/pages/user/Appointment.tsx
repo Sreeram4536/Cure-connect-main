@@ -10,13 +10,17 @@ import {
   appointmentBookingAPI,
   getAvailableSlotsAPI,
   getAvailableSlotsForDateAPI,
+  processWalletPaymentAPI,
+  finalizeWalletPaymentAPI,
+  validateWalletBalanceAPI,
 } from "../../services/appointmentServices";
 import { PaymentRazorpayAPI, VerifyRazorpayAPI } from "../../services/paymentServices";
 import { finalizeAppointmentAPI } from "../../services/appointmentServices";
 import { showErrorToast } from "../../utils/errorHandler";
-import { Star, Clock, MapPin, Users, Calendar, CheckCircle } from "lucide-react";
+import { Star, Clock, MapPin, Users, Calendar, CheckCircle, Wallet, CreditCard } from "lucide-react";
 import { lockAppointmentSlotAPI } from "../../services/appointmentServices";
 import { cancelAppointmentLockAPI } from '../../services/appointmentServices';
+import { api } from "../../axios/axiosInstance";
 
 function parse12HourTime(timeStr: string): { hour: number; minute: number } {
   const [time, modifier] = timeStr.split(" ");
@@ -66,6 +70,9 @@ const Appointment = () => {
   };
   const [paymentWindowOpen, setPaymentWindowOpen] = useState(false);
   const [isRefreshingSlots, setIsRefreshingSlots] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'wallet'>('razorpay');
+  const [isCheckingWallet, setIsCheckingWallet] = useState(false);
   
 
   const fetchDocInfo = () => {
@@ -82,28 +89,45 @@ const Appointment = () => {
     setIsRefreshingSlots(true);
     if (!docId) return;
     const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    
+    // Calculate next month
+    let nextMonth = currentMonth + 1;
+    let nextYear = currentYear;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear = currentYear + 1;
+    }
 
     try {
-      const slotsArray = await getAvailableSlotsAPI(docId, year, month);
-      console.log('[Appointment] Received slots from backend:', slotsArray);
+      // Fetch slots for both current and next month
+      const [currentMonthData, nextMonthData] = await Promise.allSettled([
+        getAvailableSlotsAPI(docId, currentYear, currentMonth),
+        getAvailableSlotsAPI(docId, nextYear, nextMonth)
+      ]);
 
-      // Group slots by date for the UI - no filtering, backend handles all validation
+      const currentMonthSlots = currentMonthData.status === 'fulfilled' ? (currentMonthData.value.data?.slots || []) : [];
+      const nextMonthSlots = nextMonthData.status === 'fulfilled' ? (nextMonthData.value.data?.slots || []) : [];
+      
+      // Combine slots from both months
+      const allSlots = [...currentMonthSlots, ...nextMonthSlots];
+      console.log('[Appointment] Received slots from backend:', allSlots);
+
       const slotMap: Record<string, any[]> = {};
-      slotsArray.forEach((slot: any) => {
+      allSlots.forEach((slot: any) => {
         if (!slotMap[slot.date]) slotMap[slot.date] = [];
         slotMap[slot.date].push(slot);
       });
 
-      const weekSlots: TimeSlot[][] = [];
+      // Show slots for next 7 days
+      const daySlots: TimeSlot[][] = [];
       for (let i = 0; i < 7; i++) {
         let currentDate = new Date(today);
         currentDate.setDate(today.getDate() + i);
         const dateKey = formatLocalDate(currentDate);
         const slots = slotMap[dateKey] || [];
 
-        // Create time slots without any frontend filtering - backend already filtered past times
         const timeSlots: TimeSlot[] = slots.map((slot) => {
           const [hour, minute] = slot.start.split(":").map(Number);
           const slotDate = new Date(currentDate);
@@ -117,10 +141,10 @@ const Appointment = () => {
           };
         });
 
-        weekSlots.push(timeSlots);
+        daySlots.push(timeSlots);
       }
 
-      setDocSlots(weekSlots);
+      setDocSlots(daySlots);
       setSlotIndex(0);
       setShowCustomDatePicker(false);
     } catch (err: any) {
@@ -136,7 +160,7 @@ const Appointment = () => {
     const dateStr = formatLocalDate(date);
 
     try {
-      const data = await getAvailableSlotsForDateAPI(docId, dateStr, token);
+      const { data } = await getAvailableSlotsForDateAPI(docId, dateStr, token);
       console.log('[Appointment] Received custom date slots from backend:', data);
 
       if (!data.success) {
@@ -164,6 +188,21 @@ const Appointment = () => {
     }
   };
 
+  const fetchWalletBalance = async () => {
+    if (!token) return;
+    try {
+      setIsCheckingWallet(true);
+      const response = await api.get("/api/user/wallet/details");
+      if (response.data.success) {
+        setWalletBalance(response.data.data.balance || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching wallet balance:", error);
+    } finally {
+      setIsCheckingWallet(false);
+    }
+  };
+
   const bookAppointment = async () => {
     if (pendingAppointmentId || paymentWindowOpen) {
       toast.warn("Please complete or cancel the current payment first.");
@@ -172,6 +211,10 @@ const Appointment = () => {
     if (!token) {
       toast.warn("Login to book appointment");
       return navigate("/login");
+    }
+    if (!docId) {
+      toast.error("Doctor ID not found");
+      return;
     }
 
     const selectedSlot = docSlots[slotIndex]?.find(s => s.time === slotTime);
@@ -194,9 +237,9 @@ const Appointment = () => {
     const slotDate = formatLocalDate(date);
 
     try {
-      // 1. Lock the slot before payment
+      
       const { data: lockData } = await lockAppointmentSlotAPI({
-        docId: docId!,
+        docId,
         slotDate,
         slotTime,
         token
@@ -208,15 +251,90 @@ const Appointment = () => {
       setPendingAppointmentIdSafe(lockData.appointmentId);
       setPaymentWindowOpen(true);
       console.log('Set pendingAppointmentId:', lockData.appointmentId);
+
+      
+      if (paymentMethod === 'wallet') {
+        await processWalletPayment(lockData.appointmentId!, slotDate, slotTime);
+      } else {
+        await processRazorpayPayment(lockData.appointmentId!, slotDate, slotTime);
+      }
+    } catch (err) {
+      showErrorToast(err);
+    }
+  };
+
+  const processWalletPayment = async (appointmentId: string, slotDate: string, slotTime: string) => {
+    try {
+      if (!docInfo) {
+        toast.error("Doctor information not available");
+        return;
+      }
+      if (!token) {
+        toast.error("Authentication token not available");
+        return;
+      }
+      if (!docId) {
+        toast.error("Doctor ID not available");
+        return;
+      }
+
+      
+      const { data: balanceData } = await validateWalletBalanceAPI(docInfo.fees, token);
+      if (!balanceData.hasSufficientBalance) {
+        toast.error("Insufficient wallet balance");
+        setPaymentWindowOpen(false);
+        setPendingAppointmentIdSafe(null);
+        return;
+      }
+
+      // Process wallet payment
+      const { data: walletData } = await processWalletPaymentAPI(
+        docId,
+        slotDate,
+        slotTime,
+        docInfo.fees,
+        appointmentId,
+        token
+      );
+
+      if (walletData.success) {
+        setPendingAppointmentIdSafe(null);
+        setPaymentWindowOpen(false);
+        toast.success(walletData.message || "Appointment booked successfully using wallet!");
+        getDoctorsData();
+        navigate("/my-appointments");
+      } else {
+        toast.error(walletData.message || "Wallet payment failed");
+        setPaymentWindowOpen(false);
+        setPendingAppointmentIdSafe(null);
+      }
+    } catch (err) {
+      setPaymentWindowOpen(false);
+      setPendingAppointmentIdSafe(null);
+      showErrorToast(err);
+    }
+  };
+
+  const processRazorpayPayment = async (appointmentId: string, slotDate: string, slotTime: string) => {
+    try {
+      if (!token) {
+        toast.error("Authentication token not available");
+        return;
+      }
+      if (!docId) {
+        toast.error("Doctor ID not available");
+        return;
+      }
+
       // 2. Initiate payment (get order from backend)
-      const { data: orderData } = await PaymentRazorpayAPI(docId!, slotDate, slotTime, token);
+      const { data: orderData } = await PaymentRazorpayAPI(docId, slotDate, slotTime, appointmentId, token);
       if (!orderData.success) {
         toast.error(orderData.message || "Failed to initiate payment");
         return;
       }
       const order = orderData.order;
 
-      // 3. Open Razorpay payment window
+      
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
@@ -226,9 +344,12 @@ const Appointment = () => {
         order_id: order.id,
         handler: async (response: any) => {
           try {
-            // 4. On payment success, finalize appointment
+            // 4. Verify Razorpay payment (marks paid + triggers revenue share)
+            await VerifyRazorpayAPI(appointmentId, response, token);
+
+            // 5. Finalize appointment (confirm + release locks)
             const { data: finalizeData } = await finalizeAppointmentAPI({
-              docId: docId!,
+              docId,
               slotDate,
               slotTime,
               payment: {
@@ -276,6 +397,8 @@ const Appointment = () => {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {
+      setPaymentWindowOpen(false);
+      setPendingAppointmentIdSafe(null);
       showErrorToast(err);
     }
   };
@@ -297,7 +420,7 @@ const Appointment = () => {
     getAvailableSlots();
   }, [docInfo]);
 
-  // Refresh slots every 5 minutes to ensure real-time validation
+  
   useEffect(() => {
     const interval = setInterval(() => {
       if (docInfo) {
@@ -307,6 +430,12 @@ const Appointment = () => {
 
     return () => clearInterval(interval);
   }, [docInfo]);
+
+  useEffect(() => {
+    if (paymentMethod === 'wallet' && token) {
+      fetchWalletBalance();
+    }
+  }, [paymentMethod, token]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -388,7 +517,7 @@ const Appointment = () => {
           <div className="flex gap-3 items-center w-full overflow-x-auto pb-2">
             {docSlots.map((item, index) => {
               const isAvailable = item.length > 0;
-              // Calculate the date for this index
+              
               const today = new Date();
               const currentDate = new Date(today);
               currentDate.setDate(today.getDate() + index);
@@ -452,11 +581,11 @@ const Appointment = () => {
                   }
                 }}
                 minDate={new Date()}
-                maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // Max 1 year from now
+                maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} 
                 filterDate={(date) => {
-                  // Disable weekends if needed (optional)
+                  
                   const day = date.getDay();
-                  return day !== 0 && day !== 6; // Disable Sunday (0) and Saturday (6)
+                  return day !== 0 && day !== 6; 
                 }}
                 className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:border-primary focus:outline-none w-full"
                 placeholderText="Select a future date"
@@ -514,13 +643,83 @@ const Appointment = () => {
           </div>
         </div>
 
+        {/* Payment Method Selection */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <CreditCard className="w-5 h-5 mr-2 text-primary" />
+            Select Payment Method
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Razorpay Option */}
+            <div
+              onClick={() => setPaymentMethod('razorpay')}
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
+                paymentMethod === 'razorpay'
+                  ? 'border-primary bg-primary/5 shadow-lg'
+                  : 'border-gray-200 bg-white hover:border-primary/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  paymentMethod === 'razorpay' ? 'border-primary bg-primary' : 'border-gray-300'
+                }`}>
+                  {paymentMethod === 'razorpay' && (
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900">Pay Online</h4>
+                  <p className="text-sm text-gray-600">Pay using Razorpay (Cards, UPI, Net Banking)</p>
+                </div>
+                <CreditCard className="w-5 h-5 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Wallet Option */}
+            <div
+              onClick={() => setPaymentMethod('wallet')}
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
+                paymentMethod === 'wallet'
+                  ? 'border-primary bg-primary/5 shadow-lg'
+                  : 'border-gray-200 bg-white hover:border-primary/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  paymentMethod === 'wallet' ? 'border-primary bg-primary' : 'border-gray-300'
+                }`}>
+                  {paymentMethod === 'wallet' && (
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-gray-900">Pay with Wallet</h4>
+                    {isCheckingWallet && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Balance: {currencySymbol}{walletBalance.toFixed(2)}
+                  </p>
+                  {paymentMethod === 'wallet' && docInfo && walletBalance < docInfo.fees && (
+                    <p className="text-xs text-red-500 mt-1">Insufficient balance</p>
+                  )}
+                </div>
+                <Wallet className="w-5 h-5 text-gray-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Book Appointment Button */}
         <div className="text-center">
           <button
             onClick={bookAppointment}
-            disabled={!slotTime || paymentWindowOpen}
+            disabled={Boolean(!slotTime || paymentWindowOpen || (paymentMethod === 'wallet' && docInfo && walletBalance < (docInfo.fees || 0)))}
             className={`px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg ${
-              slotTime && !paymentWindowOpen
+              slotTime && !paymentWindowOpen && !(paymentMethod === 'wallet' && docInfo && walletBalance < (docInfo.fees || 0))
                 ? "bg-gradient-to-r from-primary to-blue-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl transform hover:scale-105"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}

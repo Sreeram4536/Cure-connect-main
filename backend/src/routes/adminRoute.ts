@@ -1,31 +1,12 @@
 import express from "express";
 import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
-
-// Dependency layers
-import { AdminRepository } from "../repositories/implementation/AdminRepository";
-import { AdminService } from "../services/implementation/AdminService";
-import { AdminController } from "../controllers/implementation/AdminController";
-
-import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
-import { DoctorService } from "../services/implementation/DoctorService";
-import { DoctorController } from "../controllers/implementation/DoctorController";
-import { DoctorSlotService } from "../services/implementation/SlotService";
-import { SlotRepository } from "../repositories/implementation/SlotRepository";
-
-// Admin Layer
-const adminRepository = new AdminRepository();
-const doctorRepository = new DoctorRepository();
-const slotRepository = new SlotRepository();
-const adminService = new AdminService(adminRepository, doctorRepository);
-const adminController = new AdminController(adminService);
-
-// Doctor Layer
-const doctorService = new DoctorService(doctorRepository);
-const SlotService = new DoctorSlotService(slotRepository);
-const doctorController = new DoctorController(doctorService, SlotService);
+import {adminController,doctorController} from "../dependencyhandler/admin.dependency"
+import { AdminMetricsController } from "../controllers/implementation/AdminMetricsController";
+import { metricsService } from "../dependencyhandler/admin.dependency";
 
 const adminRouter = express.Router();
+const adminMetricsController = new AdminMetricsController(metricsService);
 
 adminRouter.post("/login", adminController.loginAdmin.bind(adminController));
 adminRouter.post(
@@ -98,6 +79,12 @@ adminRouter.get(
   "/dashboard",
   authRole(["admin"]),
   adminController.adminDashboard.bind(adminController)
+);
+
+adminRouter.get(
+  "/dashboard/metrics",
+  authRole(["admin"]),
+  adminMetricsController.getMetrics.bind(adminMetricsController)
 );
 
 export default adminRouter;

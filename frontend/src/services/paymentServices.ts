@@ -1,4 +1,5 @@
-import { api } from "../axios/axiosInstance";
+import { getApi } from "../axios/axiosInstance";
+const api = getApi("user");
 import { PAYMENT_API } from "../constants/apiRoutes";
 import type { RazorpayPaymentResponse } from "../types/razorpay";
 
@@ -7,11 +8,12 @@ export const PaymentRazorpayAPI = async (
   docId: string,
   slotDate: string,
   slotTime: string,
+  appointmentId: string,
   token: string
 ) => {
   return api.post(
     '/api/user/appointments/initiate',
-    { docId, slotDate, slotTime },
+    { docId, slotDate, slotTime, appointmentId },
     { headers: { Authorization: `Bearer ${token}` } }
   );
 };
@@ -28,10 +30,6 @@ export const VerifyRazorpayAPI = async (
       appointmentId,
       razorpay_order_id: response.razorpay_order_id,
     },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    {}
   );
 };

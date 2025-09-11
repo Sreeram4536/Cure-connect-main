@@ -15,12 +15,12 @@ interface JwtPayload {
 
 
 export const generateAccessToken = (id: string, email: string, role: Role) => {
-  return jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: "15m" });
+  return jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: "24h" });
 };
 
 
-export const generateRefreshToken = (id: string) => {
-  return jwt.sign({ id }, JWT_REFRESH_SECRET, { expiresIn: "7d" });
+export const generateRefreshToken = (id: string, role?: Role) => {
+  return jwt.sign({ id, role }, JWT_REFRESH_SECRET, { expiresIn: "7d" });
 };
 
 
@@ -29,7 +29,7 @@ export const verifyAccessToken = (token: string): JwtPayload => {
 };
 
 
-export const verifyRefreshToken = (token: string): { id: string } => {
-  return jwt.verify(token, JWT_REFRESH_SECRET) as { id: string };
+export const verifyRefreshToken = (token: string): { id: string; role?: Role } => {
+  return jwt.verify(token, JWT_REFRESH_SECRET) as { id: string; role?: Role };
 };
 

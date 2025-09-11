@@ -1,4 +1,3 @@
-// repositories/impl/AdminRepository.ts
 
 import { IAdminRepository, PaginationResult } from "../interface/IAdminRepository";
 import { BaseRepository } from "../BaseRepository";
@@ -10,8 +9,10 @@ import { DoctorData } from "../../types/doctor";
 import { userData } from "../../types/user";
 import { AdminDocument } from "../../types/admin";
 import { AppointmentDocument, AppointmentTypes } from "../../types/appointment";
+import { releaseSlotLock } from "../../utils/slot.util";
+import mongoose from "mongoose";
 
-export class AdminRepository extends BaseRepository<AdminDocument> {
+export class AdminRepository extends BaseRepository<AdminDocument> implements IAdminRepository{
   constructor() {
     super(adminModel);
   }
@@ -33,13 +34,21 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     return doctorModel.find({}).select("-password");
   }
 
-  async getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<Omit<DoctorData, "password">>> {
+  async getDoctorsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<Omit<DoctorData, "password">>> {
     const skip = (page - 1) * limit;
-    const totalCount = await doctorModel.countDocuments({});
-    const data = await doctorModel.find({}).select("-password").skip(skip).limit(limit);
-    
+    let query = {};
+    if (search && search.trim()) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { speciality: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    const totalCount = await doctorModel.countDocuments(query);
+    const data = await doctorModel.find(query).select("-password").skip(skip).limit(limit);
     const totalPages = Math.ceil(totalCount / limit);
-    
     return {
       data,
       totalCount,
@@ -50,14 +59,40 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     };
   }
 
-  async getAllUsers(): Promise<Omit<userData, "password">[]> {
-    return userModel.find({}).select("-password");
+  
+   async getAllUsers(search?: string): Promise<Omit<userData, "password">[]> {
+    let query = {};
+    
+    if (search && search.trim()) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    
+    return userModel.find(query).select("-password");
   }
 
-  async getUsersPaginated(page: number, limit: number): Promise<PaginationResult<Omit<userData, "password">>> {
+  async getUsersPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<Omit<userData, "password">>> {
     const skip = (page - 1) * limit;
-    const totalCount = await userModel.countDocuments({});
-    const data = await userModel.find({}).select("-password").skip(skip).limit(limit);
+    
+    let query = {};
+    
+    if (search && search.trim()) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    
+    const totalCount = await userModel.countDocuments(query);
+    const data = await userModel.find(query).select("-password").skip(skip).limit(limit).sort({ createdAt: -1 });
     
     const totalPages = Math.ceil(totalCount / limit);
     
@@ -96,16 +131,24 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     return appointmentModel.find({});
   }
 
-  async getAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>> {
+  async getAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>> {
     const skip = (page - 1) * limit;
-    const totalCount = await appointmentModel.countDocuments({});
-    const data = await appointmentModel.find({})
+    let query: any = {};
+    if (search && search.trim()) {
+      query = {
+        $or: [
+          { 'userData.name': { $regex: search, $options: 'i' } },
+          { 'docData.name': { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    const totalCount = await appointmentModel.countDocuments(query);
+    const data = await appointmentModel.find(query)
       .populate({ path: 'userId', select: 'name email image dob', model: 'user' })
       .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
-    
     data.forEach((appt: any) => {
       if (appt.userId) {
         if (!appt.userData) {
@@ -155,17 +198,57 @@ export class AdminRepository extends BaseRepository<AdminDocument> {
     appointment.cancelled = true;
     await appointment.save();
 
+    // Release the lock from doctor's slots_booked using utility
     const { docId, slotDate, slotTime } = appointment;
     const doctor = await doctorModel.findById(docId);
     if (doctor) {
-      const slots = doctor.slots_booked || {};
-      if (Array.isArray(slots[slotDate])) {
-        slots[slotDate] = slots[slotDate].filter((t: string) => t !== slotTime);
-        if (!slots[slotDate].length) delete slots[slotDate];
-        doctor.slots_booked = slots;
-        doctor.markModified("slots_booked");
-        await doctor.save();
-      }
+      await releaseSlotLock(doctor, slotDate, slotTime);
     }
+  }
+
+  async getAppointmentById(appointmentId: string): Promise<AppointmentDocument | null> {
+    return appointmentModel.findById(appointmentId);
+  }
+
+  async findPayableAppointment(
+    appointmentId: string
+  ): Promise<AppointmentDocument> {
+    try {
+      console.log(`Finding payable appointment: ${appointmentId} for admin`);
+      
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+        console.log(`Invalid ObjectId: ${appointmentId}`);
+        throw new Error("Invalid appointment ID");
+      }
+      
+      const appointment = await appointmentModel.findById<AppointmentDocument>(appointmentId);
+      if (!appointment) {
+        console.log(`Appointment not found: ${appointmentId}`);
+        throw new Error("Appointment not found");
+      }
+
+      console.log(`Found appointment:`, {
+        appointmentId: appointment._id,
+        userId: appointment.userId,
+        cancelled: appointment.cancelled,
+        payment: appointment.payment,
+        amount: appointment.amount
+      });
+
+      if (appointment.cancelled) {
+        console.log(`Appointment already cancelled`);
+        throw new Error("Appointment cancelled");
+      }
+
+      return appointment;
+    } catch (error) {
+      console.error(`Error in findPayableAppointment:`, error);
+      throw error;
+    }
+  }
+
+  async findFirstAdmin(): Promise<AdminDocument | null> {
+    return adminModel.findOne().lean() as any;
   }
 }

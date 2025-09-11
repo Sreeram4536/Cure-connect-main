@@ -1,24 +1,15 @@
-import express from "express";
-import { DoctorController } from "../controllers/implementation/DoctorController";
-import { DoctorService } from "../services/implementation/DoctorService";
-import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
+import express, { NextFunction, Request, Response } from "express";
 import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
-import { SlotRepository } from "../repositories/implementation/SlotRepository";
-import { DoctorSlotService } from "../services/implementation/SlotService";
-import { SlotRuleController } from "../controllers/implementation/SlotRuleController";
-
-const doctorRepository = new DoctorRepository();
-const slotRepository = new SlotRepository();
-const doctorService = new DoctorService(doctorRepository);
-const slotService = new DoctorSlotService(slotRepository);
-const doctorController = new DoctorController(doctorService, slotService);
-const slotRuleController = new SlotRuleController();
+import {doctorController,slotLockController,slotRuleController} from "../dependencyhandler/doctor.dependency"
+import { DoctorMetricsController } from "../controllers/implementation/DoctorMetricsController";
+import { doctorMetricsService } from "../dependencyhandler/doctor.dependency";
 
 const doctorRouter = express.Router();
+const doctorMetricsController = new DoctorMetricsController(doctorMetricsService);
 
 function asyncHandler(fn: any) {
-  return function(req: any, res: any, next: any) {
+  return function(req: Request, res: Response, next: NextFunction) {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
@@ -72,6 +63,18 @@ doctorRouter.get(
   doctorController.doctorProfile.bind(doctorController)
 );
 
+doctorRouter.get(
+  "/dashboard",
+  authRole(["doctor"]),
+  doctorController.doctorDashboard.bind(doctorController)
+);
+
+doctorRouter.get(
+  "/dashboard/metrics",
+  authRole(["doctor"]),
+  doctorMetricsController.getMetrics.bind(doctorMetricsController)
+);
+
 doctorRouter.patch(
   "/profile/update",
   authRole(["doctor"]),
@@ -116,6 +119,43 @@ doctorRouter.patch(
   "/slot-rule/cancel-slot",
   authRole(["doctor"]),
   asyncHandler(slotRuleController.cancelCustomSlot.bind(slotRuleController))
+);
+
+// New leave management routes
+doctorRouter.post(
+  "/leave/set",
+  authRole(["doctor"]),
+  asyncHandler(slotRuleController.setDayAsLeave.bind(slotRuleController))
+);
+
+doctorRouter.delete(
+  "/leave/remove/:date",
+  authRole(["doctor"]),
+  asyncHandler(slotRuleController.removeDayLeave.bind(slotRuleController))
+);
+
+doctorRouter.post(
+  "/slot/lock",
+  authRole(["doctor", "user"]),
+  slotLockController.lockSlot.bind(slotLockController)
+);
+
+doctorRouter.patch(
+  "/slot/release/:appointmentId",
+  authRole(["doctor", "user"]),
+  slotLockController.releaseSlot.bind(slotLockController)
+);
+
+doctorRouter.patch(
+  "/appointment/confirm/:appointmentId",
+  authRole(["doctor"]),
+  slotLockController.confirmAppointment.bind(slotLockController)
+);
+
+doctorRouter.patch(
+  "/appointment/cancel/:appointmentId",
+  authRole(["doctor", "user"]),
+  slotLockController.cancelAppointment.bind(slotLockController)
 );
 
 doctorRouter.get("/top", doctorController.getTopDoctors.bind(doctorController));

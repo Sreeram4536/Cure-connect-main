@@ -17,12 +17,15 @@ export interface IAdminRepository {
   findAdminById(id: string): Promise<AdminDocument | null>;
   saveDoctor(data: DoctorData): Promise<void>;
   getAllDoctors(): Promise<Omit<DoctorData, "password">[]>;
-  getDoctorsPaginated(page: number, limit: number): Promise<PaginationResult<Omit<DoctorData, "password">>>;
-  getAllUsers(): Promise<Omit<userData, "password">[]>;
-  getUsersPaginated(page: number, limit: number): Promise<PaginationResult<Omit<userData, "password">>>;
+  getDoctorsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<Omit<DoctorData, "password">>>;
+  getAllUsers(search?:string): Promise<Omit<userData, "password">[]>;
+  getUsersPaginated(page: number, limit: number,search?:string): Promise<PaginationResult<Omit<userData, "password">>>;
   toggleUserBlock(userId: string,block:boolean): Promise<string>;
   toggleDoctorBlock(doctorId: string, block: boolean): Promise<string>;
   getAllAppointments():Promise<AppointmentDocument[]>;
-  getAppointmentsPaginated(page: number, limit: number): Promise<PaginationResult<AppointmentTypes>>;
+  getAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>>;
   cancelAppointment(appointmentId: string): Promise<void>;
+  getAppointmentById(appointmentId: string): Promise<AppointmentDocument | null>;
+  findPayableAppointment(appointmentId: string): Promise<AppointmentDocument>;
+  findFirstAdmin(): Promise<AdminDocument | null>;
 }

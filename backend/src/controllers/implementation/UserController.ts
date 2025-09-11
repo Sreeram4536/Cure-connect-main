@@ -12,6 +12,7 @@ import {
   isValidPassword,
 } from "../../utils/validator";
 import { PaymentService } from "../../services/implementation/PaymentService";
+import { IPaymentService } from "../../services/interface/IPaymentService";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -22,11 +23,12 @@ import { use } from "passport";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../../models/appointmentModel";
+import { AuthRequest, JwtPayloadExt } from "../../types/customRequest";
 
 export class UserController implements IUserController {
   constructor(
     private _userService: IUserService,
-    private _paymentService: PaymentService
+    private _paymentService: IPaymentService
   ) {}
 
   async registerUser(req: Request, res: Response): Promise<void> {
@@ -110,9 +112,9 @@ export class UserController implements IUserController {
 
   res.cookie("refreshToken_user", refreshToken, {
     httpOnly: true,
-    path: "/api/user/refresh-token",
+    path: "/",
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -265,9 +267,9 @@ export class UserController implements IUserController {
 
       res.cookie("refreshToken_user", refreshToken, {
         httpOnly: true,
-        path: "/api/user/refresh-token",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -308,13 +310,13 @@ export class UserController implements IUserController {
 
 const user = await this._userService.getUserById(decoded.id);
 const newAccessToken = generateAccessToken(user._id, user.email, "user");
-const newRefreshToken = generateRefreshToken(user._id);
+const newRefreshToken = generateRefreshToken(user._id, "user");
 
       res.cookie("refreshToken_user", newRefreshToken, {
         httpOnly: true,
-        path: "/api/user/refresh-token",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -332,7 +334,7 @@ const newRefreshToken = generateRefreshToken(user._id);
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
       try {
-        const decoded: any = jwt.decode(token);
+        const decoded = jwt.decode(token) as JwtPayloadExt | null;
         if (decoded && decoded.exp) {
           const expiresAt = new Date(decoded.exp * 1000);
           await addTokenToBlacklist(token, expiresAt);
@@ -343,9 +345,9 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
     res.clearCookie("refreshToken_user", {
       httpOnly: true,
-      path: "/api/user/refresh-token",
+      path: "/",
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     });
     res.status(HttpStatus.OK).json({
       success: true,
@@ -355,7 +357,11 @@ const newRefreshToken = generateRefreshToken(user._id);
 
   async getProfile(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User ID not found" });
+        return;
+      }
       const userData = await this._userService.getProfile(userId);
       if (!userData) {
         res
@@ -421,8 +427,19 @@ const newRefreshToken = generateRefreshToken(user._id);
       const dateFrom = req.query.dateFrom as string;
       const dateTo = req.query.dateTo as string;
 
+      console.log(`ListAppointmentPaginated called with:`, {
+        userId,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        status,
+        dateFrom,
+        dateTo
+      });
+
       if (page && limit) {
-       
+        console.log(`Calling paginated appointments`);
         const result = await this._userService.listUserAppointmentsPaginated(
           userId,
           page,
@@ -433,13 +450,23 @@ const newRefreshToken = generateRefreshToken(user._id);
           dateFrom,
           dateTo
         );
+        console.log(`Paginated result:`, { 
+          totalCount: result.totalCount, 
+          dataLength: result.data.length,
+          currentPage: result.currentPage,
+          totalPages: result.totalPages
+        });
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
-        
+        console.log(`Calling non-paginated appointments`);
         const appointments = await this._userService.listUserAppointments(userId);
+        console.log(`Non-paginated result:`, { 
+          appointmentsLength: appointments.length 
+        });
         res.status(HttpStatus.OK).json({ success: true, data: appointments });
       }
     } catch (error) {
+      console.error(`Error in listAppointmentPaginated:`, error);
       res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: (error as Error).message });
@@ -449,9 +476,9 @@ const newRefreshToken = generateRefreshToken(user._id);
   async cancelAppointment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      // console.log(userId)
+     
       const { appointmentId } = req.params;
-      // console.log(appointmentId);
+      
       await this._userService.cancelAppointment(userId, appointmentId);
       res
         .status(HttpStatus.OK)
@@ -512,7 +539,7 @@ const newRefreshToken = generateRefreshToken(user._id);
   async initiatePayment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      const { docId, slotDate, slotTime } = req.body;
+      const { docId, slotDate, slotTime, appointmentId } = req.body;
       console.log('initiatePayment received:', { userId, docId, slotDate, slotTime });
       
       const doctor = await this._userService.getDoctorById(docId);
@@ -522,9 +549,12 @@ const newRefreshToken = generateRefreshToken(user._id);
       }
       
       const amount = doctor.fees;
-      
-      const shortReceipt = `${userId.toString().slice(-6)}-${docId.slice(-6)}-${Date.now()}`;
-      const order = await this._paymentService.createOrder(amount * 100, shortReceipt);
+      // Use appointmentId as receipt so verifyPayment can match order.receipt === appointmentId
+      if (!appointmentId) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'appointmentId is required' });
+        return;
+      }
+      const order = await this._paymentService.createOrder(amount * 100, appointmentId);
       res.status(HttpStatus.OK).json({ success: true, order });
     } catch (error) {
       console.error('initiatePayment error:', error);
@@ -665,117 +695,177 @@ const newRefreshToken = generateRefreshToken(user._id);
     }
   }
 
-  
-  async lockSlot(req: Request, res: Response): Promise<void> {
+  async getWalletBalance(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      const { docId, slotDate, slotTime } = req.body;
-      const now = new Date();
-      
-      const blocking = await appointmentModel.findOne({
-        docId,
-        slotDate,
-        slotTime,
-        $or: [
-          { status: 'confirmed' },
-          { status: 'pending', lockExpiresAt: { $gt: now } }
-        ]
-      });
-      if (blocking) {
-        res.status(HttpStatus.CONFLICT).json({ success: false, message: 'Slot already locked or booked by another user' });
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
         return;
       }
+
+      const balance = await this._userService.getWalletBalance(userId);
       
-      let appointment = await appointmentModel.findOne({
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: { balance },
+        message: "Wallet balance retrieved successfully"
+      });
+    } catch (error) {
+      console.error("Error getting wallet balance:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to get wallet balance"
+      });
+    }
+  }
+
+  async getWalletTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      if (!userId) {
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
+        return;
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const sortBy = req.query.sortBy as string || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+
+      const transactions = await this._userService.getWalletTransactions(
+        userId,
+        page,
+        limit,
+        sortBy,
+        sortOrder
+      );
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: transactions,
+        message: "Wallet transactions retrieved successfully"
+      });
+    } catch (error) {
+      console.error("Error getting wallet transactions:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to get wallet transactions"
+      });
+    }
+  }
+
+  async getWalletDetails(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const walletDetails = await this._userService.getWalletDetails(userId);
+      res.status(HttpStatus.OK).json({
+        success: true,
+        data: walletDetails,
+      });
+    } catch (error) {
+      console.error("Error getting wallet details:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
+    }
+  }
+
+  async processWalletPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { docId, slotDate, slotTime, amount, appointmentId } = req.body;
+
+      if (!docId || !slotDate || !slotTime || !amount || !appointmentId) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
+        return;
+      }
+
+      const paymentData = {
         userId,
         docId,
         slotDate,
         slotTime,
-        $or: [
-          { status: 'cancelled' },
-          { status: 'pending', lockExpiresAt: { $lt: now } }
-        ]
-      });
-      const user = await this._userService.getUserById(userId);
-      const doctor = await this._userService.getDoctorById(docId);
-      if (!user || !doctor) {
-        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'User or doctor not found' });
-        return;
-      }
-      if (appointment) {
-        
-        appointment.status = 'pending';
-        appointment.cancelled = false;
-        appointment.lockExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
-        appointment.date = new Date();
-        appointment.userData = {
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-        };
-        appointment.docData = {
-          name: doctor.name,
-          speciality: doctor.speciality,
-          image: doctor.image,
-        };
-        appointment.amount = doctor.fees;
-        await appointment.save();
+        amount,
+        appointmentId,
+      };
+
+      const result = await this._userService.processWalletPayment(paymentData);
+      
+      if (result.success) {
+        res.status(HttpStatus.OK).json(result);
       } else {
-        
-        appointment = new appointmentModel({
-          userId,
-          docId,
-          slotDate,
-          slotTime,
-          status: 'pending',
-          lockExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
-          date: new Date(),
-          userData: {
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-          },
-          docData: {
-            name: doctor.name,
-            speciality: doctor.speciality,
-            image: doctor.image,
-          },
-          amount: doctor.fees,
-        });
-        await appointment.save();
+        res.status(HttpStatus.BAD_REQUEST).json(result);
       }
-      res.status(HttpStatus.OK).json({ success: true, message: 'Slot locked for payment', appointmentId: appointment._id });
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
+      console.error("Error processing wallet payment:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
     }
   }
 
-  
-  async cancelLock(req: Request, res: Response): Promise<void> {
+  async finalizeWalletPayment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      const { appointmentId } = req.params;
-      const appointment = await appointmentModel.findById(appointmentId);
-      if (!appointment) {
-        res.status(404).json({ success: false, message: 'Appointment not found' });
+      const { appointmentId, amount } = req.body;
+
+      if (!appointmentId || !amount) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
         return;
       }
-      if (appointment.userId.toString() !== userId.toString()) {
-        res.status(403).json({ success: false, message: 'Unauthorized' });
-        return;
-      }
-      if (appointment.status !== 'pending' || appointment.cancelled) {
-        res.status(400).json({ success: false, message: 'Cannot cancel: appointment is not pending or already cancelled' });
-        return;
-      }
+
+      const result = await this._userService.finalizeWalletPayment(appointmentId, userId, amount);
       
-      appointment.cancelled = true;
-      appointment.status = 'cancelled';
-      await appointment.save();
-      res.status(200).json({ success: true, message: 'Appointment lock cancelled' });
+      if (result.success) {
+        res.status(HttpStatus.OK).json(result);
+      } else {
+        res.status(HttpStatus.BAD_REQUEST).json(result);
+      }
     } catch (error) {
-      res.status(500).json({ success: false, message: (error as Error).message });
+      console.error("Error finalizing wallet payment:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
     }
   }
 
+  async validateWalletBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).userId;
+      const { amount } = req.body;
+
+      if (!amount) {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: HttpResponse.FIELDS_REQUIRED,
+        });
+        return;
+      }
+
+      const hasSufficientBalance = await this._userService.validateWalletBalance(userId, amount);
+      
+      res.status(HttpStatus.OK).json({
+        success: true,
+        hasSufficientBalance,
+        message: hasSufficientBalance 
+          ? "Sufficient balance available" 
+          : HttpResponse.WALLET_INSUFFICIENT_BALANCE,
+      });
+    } catch (error) {
+      console.error("Error validating wallet balance:", error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: HttpResponse.SERVER_ERROR,
+      });
+    }
+  }
 }

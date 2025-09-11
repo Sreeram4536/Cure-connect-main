@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -19,20 +19,46 @@ const AdminDoctorList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // const [totalCount, setTotalCount] = useState(0); 
   const [loading, setLoading] = useState(false);
-  const itemsPerPage = 6;
+  const itemsPerPage = 2;
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetDoctor, setTargetDoctor] = useState<any>(null);
   const [targetAction, setTargetAction] = useState<"block" | "unblock" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  
+  const isSearching = useRef(false);
+
+
+  const fetchDoctors = async () => {
+    try {
+      setLoading(true);
+      const result = await getDoctorsPaginated(currentPage, itemsPerPage, searchQuery);
+      setDoctors(result.data);
+      setTotalPages(result.totalPages);
+    } catch (error) {
+      console.error("Failed to fetch doctors:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
   useEffect(() => {
     if (aToken) {
       fetchDoctors();
     }
   }, [aToken, currentPage]);
+
+ 
+  useEffect(() => {
+    if (aToken && searchQuery !== "") {
+      setCurrentPage(1); 
+      fetchDoctors();
+    }
+  }, [aToken, searchQuery]);
 
   useEffect(() => {
     if (!aToken) {
@@ -44,24 +70,10 @@ const AdminDoctorList = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
-  const fetchDoctors = async () => {
-    try {
-      setLoading(true);
-      const result = await getDoctorsPaginated(currentPage, itemsPerPage);
-      setDoctors(result.data);
-      setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
-    } catch (error) {
-      console.error("Failed to fetch doctors:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleChangeAvailability = async (docId: string) => {
     try {
       await changeAvailability(docId);
-      // Refresh current page after changing availability
+      
       fetchDoctors();
     } catch (error) {
       console.error("Failed to change availability:", error);
@@ -96,12 +108,20 @@ const AdminDoctorList = () => {
     setTargetAction(null);
   };
 
-  const filteredDoctors = doctors
-    .filter((doctor) => doctor.status === "approved")
-    .filter((doctor) =>
-      doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.speciality?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+
+  // Only filter by status client-side (search is server-side)
+  const filteredDoctors = doctors.filter((doctor) => doctor.status === "approved");
+
+  // Debounce search
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const handleSearch = (query: string) => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearchQuery(query);
+    }, 300);
+  };
 
   return (
     <div className="m-5 max-h-[90vh] overflow-y-scroll">
@@ -111,7 +131,7 @@ const AdminDoctorList = () => {
       <div className="mb-5 max-w-sm">
         <SearchBar
           placeholder="Search by name or speciality"
-          onSearch={(query) => setSearchQuery(query)}
+          onSearch={handleSearch}
         />
       </div>
 
@@ -228,3 +248,4 @@ const AdminDoctorList = () => {
 };
 
 export default AdminDoctorList;
+

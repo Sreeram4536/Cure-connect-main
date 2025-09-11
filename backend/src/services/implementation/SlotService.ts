@@ -1,11 +1,39 @@
 import { SlotRepository } from "../../repositories/implementation/SlotRepository";
 import { SlotRuleRepository } from "../../repositories/implementation/SlotRuleRepository";
 import appointmentModel from "../../models/appointmentModel";
+import { ISlotRepository } from "../../repositories/interface/ISlotRepository";
+import { ISlotRuleRepository } from "../../repositories/interface/ISlotRuleRepository";
+import { DaySlot } from "../../types/slotRule";
+
+// Define proper types for slots
+interface TimeSlot {
+  date: string;
+  start: string;
+  end: string;
+  baseDuration?: number;
+  customDuration?: number;
+  isBooked: boolean;
+  isPast: boolean;
+}
+
+interface BreakTime {
+  start: string;
+  end: string;
+}
+
+// Use the correct break type that matches the data structure
+interface CustomDayWithSlots {
+  date: string;
+  leaveType: "full" | "break" | "custom";
+  breaks?: BreakTime[];
+  reason?: string;
+  slots?: DaySlot[];
+}
 
 export class DoctorSlotService {
   constructor(
-    private readonly _slotRepo: SlotRepository,
-    private readonly _ruleRepo = new SlotRuleRepository()
+    private readonly _slotRepo: ISlotRepository,
+    private readonly _ruleRepo :ISlotRuleRepository
   ) {}
 
   // Helper method to format date as YYYY-MM-DD
@@ -76,11 +104,11 @@ export class DoctorSlotService {
       const dateStr = this.formatDate(dateObj);
       
       // Check for custom day
-      const customDay = (rule.customDays || []).find((cd: any) => cd.date === dateStr);
+      const customDay = (rule.customDays || []).find((cd: CustomDayWithSlots) => cd.date === dateStr);
       
       // --- MERGE LOGIC: Merge customDay.slots with default slots ---
       // 1. Generate default slots for the day
-      let defaultSlots: any[] = [];
+      let defaultSlots: TimeSlot[] = [];
       if (!customDay || customDay.leaveType !== 'full') {
         const [startHour, startMinute] = rule.startTime.split(":").map(Number);
         const [endHour, endMinute] = rule.endTime.split(":").map(Number);
@@ -94,7 +122,7 @@ export class DoctorSlotService {
         while (current < end) {
           // Use custom breaks for partial leave, else rule breaks
           const breaks = (customDay && customDay.leaveType === 'break') ? (customDay.breaks || []) : (rule.breaks || []);
-          const inBreak = breaks.some((b: any) => {
+          const inBreak = breaks.some((b: BreakTime) => {
             const [breakStartHour, breakStartMinute] = b.start.split(":").map(Number);
             const [breakEndHour, breakEndMinute] = b.end.split(":").map(Number);
             
@@ -128,7 +156,7 @@ export class DoctorSlotService {
       // 2. If customDay.slots exists, merge
       if (customDay && Array.isArray(customDay.slots) && customDay.slots.length > 0) {
         // Map custom slots by start time
-        const customSlotMap: Record<string, any> = {};
+        const customSlotMap: Record<string, DaySlot> = {};
         for (const slot of customDay.slots) {
           customSlotMap[slot.start] = slot;
         }
@@ -198,7 +226,7 @@ export class DoctorSlotService {
   }
 
   // Get slots for a specific date with validation
-  async getSlotsForDate(doctorId: string, dateStr: string): Promise<any[]> {
+  async getSlotsForDate(doctorId: string, dateStr: string): Promise<TimeSlot[]> {
     // Get the year and month for the date
     const [year, month, day] = dateStr.split('-').map(Number);
     const dateObj = new Date(year, month - 1, day);

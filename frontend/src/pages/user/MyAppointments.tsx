@@ -43,7 +43,7 @@ const MyAppointments = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const navigate = useNavigate();
-  const itemsPerPage = 1;
+  const itemsPerPage = 2;
 
   if (!token) {
     toast.error("Please login to continue...");
@@ -53,8 +53,7 @@ const MyAppointments = () => {
   const getUserAppointments = async () => {
     try {
       setLoading(true);
-      const { data } = await getAppointmentsPaginatedAPI(
-        token,
+      console.log(`Fetching appointments with params:`, {
         currentPage,
         itemsPerPage,
         sortBy,
@@ -62,14 +61,35 @@ const MyAppointments = () => {
         statusFilter,
         dateFrom,
         dateTo
+      });
+      
+      const { data } = await getAppointmentsPaginatedAPI(
+        currentPage,
+        itemsPerPage,
+        statusFilter === 'all' ? undefined : statusFilter,
+        dateFrom || undefined,
+        dateTo || undefined,
+        token,
+        sortBy,
+        sortOrder
       );
+
+      console.log(`Received appointment data:`, data);
 
       if (data.success) {
         setAppointments(data.data);
         setTotalPages(data.totalPages);
         setTotalCount(data.totalCount);
+        console.log(`Set appointments:`, {
+          appointmentsLength: data.data.length,
+          totalPages: data.totalPages,
+          totalCount: data.totalCount
+        });
+      } else {
+        console.error(`API returned error:`, data);
       }
     } catch (error) {
+      console.error(`Error fetching appointments:`, error);
       showErrorToast(error);
     } finally {
       setLoading(false);
@@ -196,6 +216,14 @@ const MyAppointments = () => {
     const endWindow = new Date(slotDateTime.getTime() + 30 * 60 * 1000); // 30 min after
     return now >= startWindow && now <= endWindow;
   };
+
+  console.log(`Rendering appointments:`, { 
+    appointmentsLength: appointments.length, 
+    appointments: appointments,
+    loading,
+    totalCount,
+    totalPages
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
@@ -363,32 +391,44 @@ const MyAppointments = () => {
 
                             <p className="text-primary font-semibold mb-3">{item.docData?.speciality || ''}</p>
                             
-                            <div className="space-y-2 text-sm text-gray-600">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-gray-500" />
-                                <span>{item.docData?.address?.line1 || 'No address'}</span>
-                              </div>
-                              {item.docData?.address?.line2 && (
-                                <div className="flex items-center gap-2 ml-6">
-                                  <span>{item.docData.address.line2}</span>
+                              <div className="space-y-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-4 h-4 text-gray-500" />
+                                  <span>{item.docData?.address?.line1 || 'No address'}</span>
                                 </div>
-                              )}
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                <span className="font-medium">{slotDateFormat(item.slotDate)}</span>
+                                {item.docData?.address?.line2 && (
+                                  <div className="flex items-center gap-2 ml-6">
+                                    <span>{item.docData.address.line2}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-gray-500" />
+                                  <span className="font-medium">{slotDateFormat(item.slotDate)}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-gray-500" />
+                                  <span className="font-medium">{item.slotTime}</span>
+                                </div>
+                               
+                                {item.payment && (
+                                  <div className="flex items-center gap-2">
+                                    <CreditCard className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Fees: ₹{item.amount}</span>
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-gray-500" />
-                                <span className="font-medium">{item.slotTime}</span>
-                              </div>
-                            </div>
                           </div>
 
                           {/* Action Buttons */}
                           <div className="flex flex-col gap-3 sm:items-end">
-                            {!item.cancelled && item.payment && isConsultationTime(item) && (
+                            {!item.cancelled && item.payment  && (item.docId || item.docData?._id) && (
                               <button
-                                onClick={() => navigate(`/consultation/${item.docData._id}`)}
+                                onClick={() => {
+                                  console.log("Appointment item:", item);
+                                  const doctorId = item.docId || item.docData?._id;
+                                  console.log("Navigating to consultation with doctorId:", doctorId);
+                                  navigate(`/consultation/${doctorId}`);
+                                }}
                                 className="flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
                               >
                                 <Video className="w-4 h-4" />
@@ -398,7 +438,7 @@ const MyAppointments = () => {
 
                             {!item.cancelled && (
                               <button
-                                onClick={() => cancelAppointment(item._id!)}
+                                onClick={() => cancelAppointment((item._id || (item as any).id) as string)}
                                 className="flex items-center gap-2 bg-white border-2 border-red-500 text-red-500 px-6 py-3 rounded-xl font-semibold hover:bg-red-500 hover:text-white transition-all duration-300"
                               >
                                 <X className="w-4 h-4" />

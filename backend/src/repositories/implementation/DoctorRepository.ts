@@ -4,6 +4,8 @@ import doctorModel from "../../models/doctorModel";
 import { AppointmentTypes } from "../../types/appointment";
 import { DoctorData, DoctorDocument } from "../../types/doctor";
 import { IDoctorRepository, PaginationResult } from "../interface/IDoctorRepository";
+import { releaseSlotLock } from "../../utils/slot.util";
+import mongoose from "mongoose";
 
 export class DoctorRepository
   extends BaseRepository<DoctorDocument>
@@ -41,12 +43,60 @@ export class DoctorRepository
     return appointmentModel.findById(id);
   }
 
+  async findPayableAppointment(
+    docId: string,
+    appointmentId: string
+  ): Promise<AppointmentTypes> {
+    try {
+      console.log(`Finding payable appointment: ${appointmentId} for doctor: ${docId}`);
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+        console.log(`Invalid ObjectId: ${appointmentId}`);
+        throw new Error("Invalid appointment ID");
+      }
+      const appointment = await appointmentModel.findById<AppointmentTypes>(appointmentId);
+      if (!appointment) {
+        console.log(`Appointment not found: ${appointmentId}`);
+        throw new Error("Appointment not found");
+      }
+      console.log(`Found appointment:`, {
+        appointmentId: (appointment as any)._id,
+        docId: appointment.docId,
+        requestedDocId: docId,
+        cancelled: appointment.cancelled,
+        payment: appointment.payment,
+        amount: appointment.amount
+      });
+      if (appointment.docId.toString() !== docId.toString()) {
+        console.log(`Unauthorized access attempt`);
+        throw new Error("Unauthorized");
+      }
+      if (appointment.cancelled) {
+        console.log(`Appointment already cancelled`);
+        throw new Error("Appointment cancelled");
+      }
+      return appointment;
+    } catch (error) {
+      console.error(`Error in findPayableAppointment:`, error);
+      throw error;
+    }
+  }
+
   async markAppointmentAsConfirmed(id: string): Promise<void> {
     await appointmentModel.findByIdAndUpdate(id, { isConfirmed: true });
   }
 
   async cancelAppointment(id: string): Promise<void> {
-    await appointmentModel.findByIdAndUpdate(id, { cancelled: true });
+    const appointment = await appointmentModel.findById(id);
+    if (!appointment) throw new Error("Appointment not found");
+    appointment.cancelled = true;
+    await appointment.save();
+    // Release the lock from doctor's slots_booked using utility
+    const { docId, slotDate, slotTime } = appointment;
+    const doctor = await doctorModel.findById(docId);
+    if (doctor) {
+      await releaseSlotLock(doctor, slotDate, slotTime);
+    }
   }
 
    async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<Partial<DoctorData>>> {
@@ -78,19 +128,24 @@ export class DoctorRepository
   }
 
 
- async getAppointmentsPaginated(docId: string, page: number, limit: number): Promise<PaginationResult<AppointmentTypes>> {
+ async getAppointmentsPaginated(docId: string, page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>> {
     const skip = (page - 1) * limit;
-    const totalCount = await appointmentModel.countDocuments({ docId });
-    const data = await appointmentModel.find({ docId })
+    const query: any = { docId };
+    if (search) {
+      // Find user IDs matching the search
+      const userModel = (await import("../../models/userModel")).default;
+      const userIds = await userModel.find({ name: { $regex: search, $options: "i" } }).select("_id");
+      query.userId = { $in: userIds.map((u: any) => u._id) };
+    }
+    const totalCount = await appointmentModel.countDocuments(query);
+    const data = await appointmentModel.find(query)
       .populate({ path: 'userId', select: 'name email image dob', model: 'user' })
       .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
-    
     data.forEach((appt: any) => {
       if (appt.userId) {
-        
         if (!appt.userData) {
           appt.userData = {
             name: appt.userId.name,
@@ -140,5 +195,9 @@ export class DoctorRepository
 
   async getDoctorsByStatusAndLimit(status: string, limit: number): Promise<Partial<DoctorData>[]> {
     return doctorModel.find({ status }).limit(limit).select("-password -email");
+  }
+
+  async updateById(id: string, updateData: Partial<DoctorData>): Promise<void> {
+    await doctorModel.findByIdAndUpdate(id, updateData);
   }
 }

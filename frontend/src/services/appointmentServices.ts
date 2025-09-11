@@ -1,4 +1,5 @@
-import { api } from "../axios/axiosInstance";
+import { getApi } from "../axios/axiosInstance";
+const api = getApi("user");
 import { APPOINTMENT_API } from "../constants/apiRoutes";
 
 // Book an appointment
@@ -11,75 +12,67 @@ export const appointmentBookingAPI = async (
   return api.post(
     APPOINTMENT_API.BASE,
     { docId, slotDate, slotTime },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
-// Get paginated appointments
-export const getAppointmentsPaginatedAPI = async (
-  token: string,
-  page: number,
-  limit: number,
-  sortBy?: string,
-  sortOrder?: 'asc' | 'desc',
-  status?: string,
-  dateFrom?: string,
-  dateTo?: string
+// Get available slots for a doctor
+export const getAvailableSlotsAPI = async (
+  docId: string,
+  year: number,
+  month: number
 ) => {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-  });
-  
-  if (sortBy) params.append('sortBy', sortBy);
-  if (sortOrder) params.append('sortOrder', sortOrder);
-  if (status) params.append('status', status);
-  if (dateFrom) params.append('dateFrom', dateFrom);
-  if (dateTo) params.append('dateTo', dateTo);
-
-  return api.get(`${APPOINTMENT_API.BASE}?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  return api.get(`/api/user/doctor/${docId}/slots?year=${year}&month=${month}`);
 };
 
-// Cancel an appointment
-export const cancelAppointmentAPI = async (
+// Get available slots for a specific date
+export const getAvailableSlotsForDateAPI = async (
+  docId: string,
+  dateStr: string,
+  token: string
+) => {
+  return api.get(`/api/user/doctor/${docId}/slots/date?date=${dateStr}`);
+};
+
+// Lock appointment slot
+export const lockAppointmentSlotAPI = async ({
+  docId,
+  slotDate,
+  slotTime,
+  token,
+}: {
+  docId: string;
+  slotDate: string;
+  slotTime: string;
+  token: string;
+}) => {
+  return api.post(
+    "/api/user/appointments/lock",
+    { docId, slotDate, slotTime },
+    {}
+  );
+};
+
+// Cancel appointment lock
+export const cancelAppointmentLockAPI = async (
   appointmentId: string,
   token: string
 ) => {
   return api.patch(
-    APPOINTMENT_API.CANCEL(appointmentId),
+    `/api/user/appointments/${appointmentId}/cancel-lock`,
     {},
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
-
-export const getAvailableSlotsAPI = async (
-  doctorId: string,
-  year: number,
-  month: number
-) => {
-  const response = await api.get(`/api/user/doctor/${doctorId}/slots`, {
-    params: { year, month },
-  });
-  return response.data.slots;
-};
-
-export const getAvailableSlotsForDateAPI = async (
-  doctorId: string,
-  date: string,
-  token: string
-) => {
-  const response = await api.get(`/api/user/doctor/${doctorId}/slots/date`, {
-    params: { date },
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-// Finalize appointment after payment
-export const finalizeAppointmentAPI = async ({ docId, slotDate, slotTime, payment, token }: {
+// Finalize appointment
+export const finalizeAppointmentAPI = async ({
+  docId,
+  slotDate,
+  slotTime,
+  payment,
+  token,
+}: {
   docId: string;
   slotDate: string;
   slotTime: string;
@@ -87,28 +80,84 @@ export const finalizeAppointmentAPI = async ({ docId, slotDate, slotTime, paymen
   token: string;
 }) => {
   return api.post(
-    APPOINTMENT_API.FINALIZE,
+    "/api/user/appointments/finalize",
     { docId, slotDate, slotTime, payment },
-    { headers: { Authorization: `Bearer ${token}` } }
+    {}
   );
 };
 
-// Lock a slot before payment
-export const lockAppointmentSlotAPI = async ({ docId, slotDate, slotTime, token }: {
-  docId: string;
-  slotDate: string;
-  slotTime: string;
-  token: string;
-}) => {
-  return api.post(
-    '/api/user/appointments/lock',
-    { docId, slotDate, slotTime },
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-};
-
-export const cancelAppointmentLockAPI = async (appointmentId: string, token: string) => {
-  return api.patch(`/api/user/appointments/${appointmentId}/cancel-lock`, {}, {
-    headers: { Authorization: `Bearer ${token}` }
+// Get appointments with pagination
+export const getAppointmentsPaginatedAPI = async (
+  page: number = 1,
+  limit: number = 10,
+  status?: string,
+  dateFrom?: string,
+  dateTo?: string,
+  token?: string,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc'
+) => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
   });
+
+  if (status) params.append("status", status);
+  if (dateFrom) params.append("dateFrom", dateFrom);
+  if (dateTo) params.append("dateTo", dateTo);
+  if (sortBy) params.append("sortBy", sortBy);
+  if (sortOrder) params.append("sortOrder", sortOrder);
+
+  return api.get(`/api/user/appointments?${params.toString()}`);
+};
+
+// Cancel appointment
+export const cancelAppointmentAPI = async (
+  appointmentId: string,
+  token: string
+) => {
+  return api.patch(
+    `/api/user/appointments/${appointmentId}/cancel`,
+    {},
+    {}
+  );
+};
+
+// Wallet payment methods
+export const processWalletPaymentAPI = async (
+  docId: string,
+  slotDate: string,
+  slotTime: string,
+  amount: number,
+  appointmentId: string,
+  token: string
+) => {
+  return api.post(
+    "/api/user/appointments/wallet/payment",
+    { docId, slotDate, slotTime, amount, appointmentId },
+    {}
+  );
+};
+
+export const finalizeWalletPaymentAPI = async (
+  appointmentId: string,
+  amount: number,
+  token: string
+) => {
+  return api.post(
+    "/api/user/appointments/wallet/finalize",
+    { appointmentId, amount },
+    {}
+  );
+};
+
+export const validateWalletBalanceAPI = async (
+  amount: number,
+  token: string
+) => {
+  return api.post(
+    "/api/user/wallet/validate-balance",
+    { amount },
+    {}
+  );
 };

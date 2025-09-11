@@ -23,9 +23,9 @@ const VideoCallCard = () => {
             <img className='h-10 w-10' src={assets.videocall_icon} alt="" />
           </span>
         </div>
-        <p className="text-gray-600 text-sm font-normal opacity-75 leading-relaxed">
+        {/* <p className="text-gray-600 text-sm font-normal opacity-75 leading-relaxed">
           No consultation available now.
-        </p>
+        </p> */}
       </div>
       
       {/* Card Footer */}

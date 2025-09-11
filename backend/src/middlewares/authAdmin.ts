@@ -21,7 +21,7 @@ const authAdmin = async (
 
     const token = authHeader.split(" ")[1];
 
-    // Check if token is blacklisted
+    
     if (await isTokenBlacklisted(token)) {
       res.status(HttpStatus.UNAUTHORIZED).json({
         success: false,
@@ -32,7 +32,7 @@ const authAdmin = async (
 
     const decoded = verifyAccessToken(token);
 
-    // Attach decoded admin ID to the request
+    
     (req as any).adminId = decoded.id;
 
     next();
