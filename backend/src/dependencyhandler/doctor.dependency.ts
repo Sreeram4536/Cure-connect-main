@@ -14,6 +14,8 @@ import { WalletService } from "../services/implementation/WalletService";
 import { WalletRepository } from "../repositories/implementation/WalletRepository";
 import { LeaveManagementService } from "../services/implementation/LeaveManagementService";
 import { LeaveManagementRepository } from "../repositories/implementation/LeaveManagementRepository";
+import { MetricsService } from "../services/implementation/MetricsService";
+import { AdminRepository } from "../repositories/implementation/AdminRepository";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
@@ -28,6 +30,9 @@ const slotLockService = new SlotLockService(appointmentRepository, userRepositor
 const doctorService = new DoctorService(doctorRepository,walletService,slotLockService);
 const slotService = new DoctorSlotService(slotRepository,slotRuleRepository);
 const slotRuleService = new SlotRuleService(slotRuleRepository);
+const adminRepository = new AdminRepository();
+const doctorMetricsService = new MetricsService(walletRepository, appointmentRepository, adminRepository);
 export const doctorController = new DoctorController(doctorService, slotService);
 export const slotRuleController = new SlotRuleController(slotRuleService);
 export const slotLockController = new SlotLockController(slotLockService);
+export { doctorMetricsService };

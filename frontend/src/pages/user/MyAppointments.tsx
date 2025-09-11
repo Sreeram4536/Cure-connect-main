@@ -391,25 +391,32 @@ const MyAppointments = () => {
 
                             <p className="text-primary font-semibold mb-3">{item.docData?.speciality || ''}</p>
                             
-                            <div className="space-y-2 text-sm text-gray-600">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-gray-500" />
-                                <span>{item.docData?.address?.line1 || 'No address'}</span>
-                              </div>
-                              {item.docData?.address?.line2 && (
-                                <div className="flex items-center gap-2 ml-6">
-                                  <span>{item.docData.address.line2}</span>
+                              <div className="space-y-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-4 h-4 text-gray-500" />
+                                  <span>{item.docData?.address?.line1 || 'No address'}</span>
                                 </div>
-                              )}
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                <span className="font-medium">{slotDateFormat(item.slotDate)}</span>
+                                {item.docData?.address?.line2 && (
+                                  <div className="flex items-center gap-2 ml-6">
+                                    <span>{item.docData.address.line2}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-gray-500" />
+                                  <span className="font-medium">{slotDateFormat(item.slotDate)}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-gray-500" />
+                                  <span className="font-medium">{item.slotTime}</span>
+                                </div>
+                               
+                                {item.payment && (
+                                  <div className="flex items-center gap-2">
+                                    <CreditCard className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Fees: ₹{item.amount}</span>
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-gray-500" />
-                                <span className="font-medium">{item.slotTime}</span>
-                              </div>
-                            </div>
                           </div>
 
                           {/* Action Buttons */}

@@ -2,9 +2,11 @@ import express, { NextFunction, Request, Response } from "express";
 import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
 import {doctorController,slotLockController,slotRuleController} from "../dependencyhandler/doctor.dependency"
-
+import { DoctorMetricsController } from "../controllers/implementation/DoctorMetricsController";
+import { doctorMetricsService } from "../dependencyhandler/doctor.dependency";
 
 const doctorRouter = express.Router();
+const doctorMetricsController = new DoctorMetricsController(doctorMetricsService);
 
 function asyncHandler(fn: any) {
   return function(req: Request, res: Response, next: NextFunction) {
@@ -65,6 +67,12 @@ doctorRouter.get(
   "/dashboard",
   authRole(["doctor"]),
   doctorController.doctorDashboard.bind(doctorController)
+);
+
+doctorRouter.get(
+  "/dashboard/metrics",
+  authRole(["doctor"]),
+  doctorMetricsController.getMetrics.bind(doctorMetricsController)
 );
 
 doctorRouter.patch(

@@ -30,4 +30,11 @@ export interface IWalletRepository {
   refundToWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, description: string): Promise<void>;
   deductFromWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, description: string): Promise<boolean>;
   getWalletsByRole(userRole: UserRole, page?: number, limit?: number): Promise<PaginationResult<WalletDocument>>;
+  getWalletTransactionsByDateRange(
+    userId: string, 
+    userRole: UserRole, 
+    startDate: Date, 
+    endDate: Date, 
+    transactionType?: 'credit' | 'debit'
+  ): Promise<WalletTransaction[]>;
 } 

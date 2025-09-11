@@ -18,4 +18,12 @@ export class AppointmentRepository implements IAppointmentRepository {
   async updateAppointment(id: string, data: Partial<AppointmentTypes>): Promise<AppointmentDocument | null> {
     return appointmentModel.findByIdAndUpdate(id, data, { new: true }).lean() as any;
   }
+  
+  async countPaidAppointments(): Promise<number> {
+    return appointmentModel.countDocuments({ payment: true });
+  }
+  
+  async countPaidAppointmentsByDoctor(docId: string): Promise<number> {
+    return appointmentModel.countDocuments({ docId, payment: true });
+  }
 } 

@@ -291,7 +291,9 @@ export class UserService implements IUserService {
       if (appointment.payment && appointment.amount > 0) {
         console.log(`Processing refund with revenue reversal: ${appointment.amount}`);
         const walletRepository = new WalletRepository();
-        const revenueShare = new RevenueShareService(this._walletService, walletRepository);
+        const adminRepository = require("../../repositories/implementation/AdminRepository").default;
+        const adminRepo = new adminRepository();
+        const revenueShare = new RevenueShareService(this._walletService, walletRepository, adminRepo);
         await revenueShare.reverseRevenueShare({
           totalAmount: appointment.amount,
           doctorId: String(appointment.docId),
@@ -362,7 +364,9 @@ export class UserService implements IUserService {
       const docId = String(appointment.docId);
       // Ensure doctor/admin wallets exist and credit shares via WalletPaymentService pattern
       const walletRepository = new WalletRepository();
-      const revenueShare = new RevenueShareService(this._walletService, walletRepository);
+      const adminRepository = require("../../repositories/implementation/AdminRepository").default;
+      const adminRepo = new adminRepository();
+      const revenueShare = new RevenueShareService(this._walletService, walletRepository, adminRepo);
       await revenueShare.processRevenueShare({
         totalAmount: amount,
         doctorAmount: 0,

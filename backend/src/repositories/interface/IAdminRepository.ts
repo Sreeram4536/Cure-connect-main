@@ -27,4 +27,5 @@ export interface IAdminRepository {
   cancelAppointment(appointmentId: string): Promise<void>;
   getAppointmentById(appointmentId: string): Promise<AppointmentDocument | null>;
   findPayableAppointment(appointmentId: string): Promise<AppointmentDocument>;
+  findFirstAdmin(): Promise<AdminDocument | null>;
 }

@@ -2,6 +2,7 @@ import { IRevenueShareService } from "../interface/IRevenueShareService";
 import { RevenueShareData, RevenueShareDTO } from "../../types/wallet";
 import { IWalletService } from "../interface/IWalletService";
 import { IWalletRepository } from "../../repositories/interface/IWalletRepository";
+import { IAdminRepository } from "../../repositories/interface/IAdminRepository";
 
 export class RevenueShareService implements IRevenueShareService {
   private readonly DOCTOR_PERCENTAGE = 0.8; // 80%
@@ -9,7 +10,8 @@ export class RevenueShareService implements IRevenueShareService {
 
   constructor(
     private walletService: IWalletService,
-    private walletRepository: IWalletRepository
+    private walletRepository: IWalletRepository,
+    private adminRepository: IAdminRepository
   ) {}
 
   calculateRevenueShare(totalAmount: number): { doctorAmount: number; adminAmount: number } {
@@ -28,7 +30,18 @@ export class RevenueShareService implements IRevenueShareService {
       await this.walletService.ensureWalletExists(doctorId, 'doctor');
       
       // Ensure admin wallet exists (using a system admin ID)
-      const adminId = process.env.ADMIN_WALLET_ID || 'default-admin';
+      let adminId = process.env.ADMIN_WALLET_ID;
+      
+      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      if (!adminId) {
+        const admin = await this.adminRepository.findFirstAdmin();
+        if (admin) {
+          adminId = admin._id.toString();
+          console.log('Using admin ID for revenue share:', adminId);
+        } else {
+          throw new Error('No admin found and ADMIN_WALLET_ID not configured');
+        }
+      }
       await this.walletService.ensureWalletExists(adminId, 'admin');
 
       // Add credit transaction to doctor wallet
@@ -74,7 +87,18 @@ export class RevenueShareService implements IRevenueShareService {
       const { totalAmount, doctorId, userId, appointmentId } = revenueData;
       const { doctorAmount, adminAmount } = this.calculateRevenueShare(totalAmount);
 
-      const adminId = process.env.ADMIN_WALLET_ID || 'default-admin';
+      let adminId = process.env.ADMIN_WALLET_ID;
+      
+      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      if (!adminId) {
+        const admin = await this.adminRepository.findFirstAdmin();
+        if (admin) {
+          adminId = admin._id.toString();
+          console.log('Using admin ID for revenue share reversal:', adminId);
+        } else {
+          throw new Error('No admin found and ADMIN_WALLET_ID not configured');
+        }
+      }
 
       // Ensure wallets exist
       await this.walletService.ensureWalletExists(doctorId, 'doctor');

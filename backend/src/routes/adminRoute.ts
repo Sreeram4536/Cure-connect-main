@@ -2,9 +2,11 @@ import express from "express";
 import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
 import {adminController,doctorController} from "../dependencyhandler/admin.dependency"
-
+import { AdminMetricsController } from "../controllers/implementation/AdminMetricsController";
+import { metricsService } from "../dependencyhandler/admin.dependency";
 
 const adminRouter = express.Router();
+const adminMetricsController = new AdminMetricsController(metricsService);
 
 adminRouter.post("/login", adminController.loginAdmin.bind(adminController));
 adminRouter.post(
@@ -77,6 +79,12 @@ adminRouter.get(
   "/dashboard",
   authRole(["admin"]),
   adminController.adminDashboard.bind(adminController)
+);
+
+adminRouter.get(
+  "/dashboard/metrics",
+  authRole(["admin"]),
+  adminMetricsController.getMetrics.bind(adminMetricsController)
 );
 
 export default adminRouter;

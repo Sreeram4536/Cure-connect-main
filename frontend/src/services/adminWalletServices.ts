@@ -8,11 +8,13 @@ export const getAdminWalletBalanceAPI = () => {
 };
 
 // Get admin wallet transactions
-export const getAdminWalletTransactionsAPI = (page: number = 1, limit: number = 10, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
+export const getAdminWalletTransactionsAPI = (page: number = 1, limit: number = 10, token?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
   let url = `/api/admin-wallet/transactions?page=${page}&limit=${limit}`;
   if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
   if (sortOrder) url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
-  return api.get(url);
+  return api.get(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
 };
 
 // Get admin wallet details

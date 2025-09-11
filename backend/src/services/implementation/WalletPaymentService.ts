@@ -12,6 +12,7 @@ import { IDoctorRepository } from "../../repositories/interface/IDoctorRepositor
 import { IRevenueShareService } from "../interface/IRevenueShareService";
 import { RevenueShareService } from "./RevenueShareService";
 import { WalletRepository } from "../../repositories/implementation/WalletRepository";
+import { AdminRepository } from "../../repositories/implementation/AdminRepository";
 
 export class WalletPaymentService implements IWalletPaymentService {
   private revenueShareService: IRevenueShareService;
@@ -21,7 +22,9 @@ export class WalletPaymentService implements IWalletPaymentService {
     private appointmentRepository: IAppointmentRepository,
     ) {
     const walletRepository = new WalletRepository();
-    this.revenueShareService = new RevenueShareService(walletService, walletRepository);
+    // const adminRepository = require("../../repositories/implementation/AdminRepository").default;
+    const adminRepo = new AdminRepository();
+    this.revenueShareService = new RevenueShareService(walletService, walletRepository, adminRepo);
   }
 
   async validateWalletBalance(userId: string, amount: number): Promise<boolean> {

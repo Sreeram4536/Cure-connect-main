@@ -11,6 +11,8 @@ import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck } from 'react-icon
 // import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
 
 const DoctorAppointments = () => {
+  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const context = useContext(DoctorContext);
   const appContext = useContext(AppContext);
   const navigate = useNavigate();
@@ -175,7 +177,17 @@ const DoctorAppointments = () => {
       header: "Action",
       width: "1fr",
       render: (item: any) => (
-        <>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedAppointment(item);
+              setShowModal(true);
+            }}
+            className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-indigo-200 transition"
+          >
+            Info
+          </button>
           {item.cancelled ? (
             <p className="text-red-500">Cancelled</p>
           ) : item.isConfirmed ? (
@@ -189,7 +201,7 @@ const DoctorAppointments = () => {
               Consultation
             </button>
           ) : (
-            <div className="flex gap-2">
+            <>
               <img
                 onClick={(e) => {
                   e.stopPropagation();
@@ -208,9 +220,9 @@ const DoctorAppointments = () => {
                 src={assets.tick_icon}
                 alt="Confirm"
               />
-            </div>
+            </>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -291,13 +303,64 @@ const DoctorAppointments = () => {
             gridCols="grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr]"
             containerClassName="max-h-[80vh] min-h-[50vh]"
           />
-
           {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={(page) => setCurrentPage(page)}
             />
+          )}
+          {/* Modal for appointment details */}
+          {showModal && selectedAppointment && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-fade-in">
+                <button
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                  onClick={() => setShowModal(false)}
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
+                <h2 className="text-2xl font-bold mb-4 text-indigo-700">Appointment Details</h2>
+                <div className="space-y-4 text-gray-700">
+                  <div>
+                    <span className="font-semibold">Patient:</span> {selectedAppointment.userData?.name || '-'}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Email:</span> {selectedAppointment.userData?.email || '-'}
+                  </div>
+                  {selectedAppointment.userData?.phone && (
+                    <div>
+                      <span className="font-semibold">Phone:</span> {selectedAppointment.userData.phone}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold">Date & Time:</span> {slotDateFormat(selectedAppointment.slotDate)}, {selectedAppointment.slotTime}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Payment Method:</span> {selectedAppointment.payment?.method || 'Not Paid'}
+                  </div>
+                  {selectedAppointment.payment && (
+                    <div>
+                      <span className="font-semibold">Amount Paid:</span> ₹{selectedAppointment.payment.amount}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold">Booking Date:</span> {selectedAppointment.createdAt ? slotDateFormat(selectedAppointment.createdAt) : '-'}
+                  </div>
+                  {selectedAppointment.notes && (
+                    <div>
+                      <span className="font-semibold">Notes/Symptoms:</span> {selectedAppointment.notes}
+                    </div>
+                  )}
+                  {selectedAppointment.cancelled && selectedAppointment.cancellationReason && (
+                    <div>
+                      <span className="font-semibold text-red-600">Cancellation Reason:</span> {selectedAppointment.cancellationReason}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </>
       ) : (

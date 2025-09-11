@@ -78,6 +78,13 @@ export const doctorDashboardAPI = () => {
   return api.get("/api/doctor/dashboard");
 };
 
+// Doctor metrics (daily | weekly | monthly)
+export const getDoctorMetricsAPI = (range: 'daily' | 'weekly' | 'monthly' = 'monthly', token?: string) => {
+  return api.get(`/api/doctor/dashboard/metrics?range=${encodeURIComponent(range)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+};
+
 // Update doctor profile
 export const updateDoctorProfileAPI = (
   formData: any,

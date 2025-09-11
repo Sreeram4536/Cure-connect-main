@@ -231,4 +231,28 @@ export class WalletRepository extends BaseRepository<WalletDocumentWithId> imple
       hasPrevPage: page > 1
     };
   }
+
+  async getWalletTransactionsByDateRange(
+    userId: string, 
+    userRole: UserRole, 
+    startDate: Date, 
+    endDate: Date, 
+    transactionType?: 'credit' | 'debit'
+  ): Promise<WalletTransaction[]> {
+    const wallet = await this.getWalletByUserId(userId, userRole);
+    if (!wallet) {
+      return [];
+    }
+
+    let transactions = wallet.transactions.filter(tx => {
+      const txDate = new Date(tx.createdAt);
+      return txDate >= startDate && txDate < endDate;
+    });
+
+    if (transactionType) {
+      transactions = transactions.filter(tx => tx.type === transactionType);
+    }
+
+    return transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
 } 

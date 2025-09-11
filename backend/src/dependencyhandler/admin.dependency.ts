@@ -14,6 +14,7 @@ import { LeaveManagementService } from "../services/implementation/LeaveManageme
 import { SlotLockService } from "../services/implementation/SlotLockService";
 import { DoctorSlotService } from "../services/implementation/SlotService";
 import { WalletService } from "../services/implementation/WalletService";
+import { MetricsService } from "../services/implementation/MetricsService";
 
 const adminRepository = new AdminRepository();
 const doctorRepository = new DoctorRepository();
@@ -27,10 +28,12 @@ const slotLockService = new SlotLockService(
   userRepository,
   doctorRepository
 );
+const metricsService = new MetricsService(walletRepository, appointmentRepository, adminRepository);
 const adminService = new AdminService(adminRepository, doctorRepository,  walletService,
   userRepository,
   slotLockService);
 export const adminController = new AdminController(adminService);
+export { metricsService };
 
 // Doctor Layer
 const leaveManagementRepository = new LeaveManagementRepository

@@ -267,4 +267,8 @@ export class AdminRepository extends BaseRepository<AdminDocument> implements IA
       throw error;
     }
   }
+
+  async findFirstAdmin(): Promise<AdminDocument | null> {
+    return adminModel.findOne().lean() as any;
+  }
 }

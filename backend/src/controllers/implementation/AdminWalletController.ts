@@ -17,7 +17,20 @@ export class AdminWalletController {
         res.status(401).json({ success: false, message: "Admin not authenticated" });
         return;
       }
-      const adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      let adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      
+      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      if (!adminId) {
+        const adminModel = require('../../models/adminModel').default;
+        const admin = await adminModel.findOne().lean();
+        if (admin) {
+          adminId = admin._id.toString();
+          console.log('Using admin ID for wallet:', adminId);
+        } else {
+          res.status(400).json({ success: false, message: 'No admin found and ADMIN_WALLET_ID not configured' });
+          return;
+        }
+      }
       const balance = await this.walletService.getWalletBalance(adminId, 'admin');
       
       res.status(200).json({
@@ -47,7 +60,20 @@ export class AdminWalletController {
       const sortBy = req.query.sortBy as string || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
 
-      const adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      let adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      
+      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      if (!adminId) {
+        const adminModel = require('../../models/adminModel').default;
+        const admin = await adminModel.findOne().lean();
+        if (admin) {
+          adminId = admin._id.toString();
+          console.log('Using admin ID for wallet:', adminId);
+        } else {
+          res.status(400).json({ success: false, message: 'No admin found and ADMIN_WALLET_ID not configured' });
+          return;
+        }
+      }
       const transactions = await this.walletService.getWalletTransactions(
         adminId,
         'admin',
@@ -78,7 +104,20 @@ export class AdminWalletController {
         res.status(401).json({ success: false, message: "Admin not authenticated" });
         return;
       }
-      const adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      let adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      
+      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      if (!adminId) {
+        const adminModel = require('../../models/adminModel').default;
+        const admin = await adminModel.findOne().lean();
+        if (admin) {
+          adminId = admin._id.toString();
+          console.log('Using admin ID for wallet:', adminId);
+        } else {
+          res.status(400).json({ success: false, message: 'No admin found and ADMIN_WALLET_ID not configured' });
+          return;
+        }
+      }
       const walletDetails = await this.walletService.getWalletDetails(adminId, 'admin');
 
       res.status(200).json({
@@ -102,7 +141,20 @@ export class AdminWalletController {
         res.status(401).json({ success: false, message: "Admin not authenticated" });
         return;
       }
-      const adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      let adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
+      
+      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      if (!adminId) {
+        const adminModel = require('../../models/adminModel').default;
+        const admin = await adminModel.findOne().lean();
+        if (admin) {
+          adminId = admin._id.toString();
+          console.log('Using admin ID for wallet:', adminId);
+        } else {
+          res.status(400).json({ success: false, message: 'No admin found and ADMIN_WALLET_ID not configured' });
+          return;
+        }
+      }
       const walletDTO = await this.walletService.getWalletDTO(adminId, 'admin');
 
       res.status(200).json({

@@ -161,6 +161,14 @@ export const adminDashboardAPI = async (token: string) => {
   });
 };
 
+// Admin metrics (daily | weekly | monthly)
+export const getAdminMetricsAPI = async (range: 'daily' | 'weekly' | 'monthly' = 'monthly', token?: string) => {
+  const url = `/api/admin/dashboard/metrics?range=${encodeURIComponent(range)}`;
+  return await api.get(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+};
+
 export const toggleDoctorBlockAPI = async (
   doctorId: string,
   block: boolean,

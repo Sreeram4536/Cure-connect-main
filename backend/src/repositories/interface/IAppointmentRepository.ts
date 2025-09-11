@@ -7,4 +7,6 @@ export interface IAppointmentRepository {
   findUserDoctor(userId: string, docId: string, slotDate: string, slotTime: string): Promise<AppointmentDocument | null>;
   createAppointment(data: Partial<AppointmentTypes>): Promise<AppointmentDocument>;
   updateAppointment(id: string, data: Partial<AppointmentTypes>): Promise<AppointmentDocument | null>;
+  countPaidAppointments(): Promise<number>;
+  countPaidAppointmentsByDoctor(docId: string): Promise<number>;
 } 
