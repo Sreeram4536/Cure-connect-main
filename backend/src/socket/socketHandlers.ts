@@ -26,84 +26,79 @@ interface MessageActionData {
 }
 
 export const setupSocketHandlers = (io: Server) => {
-  // Authentication middleware
+  
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace("Bearer ", "");
       
-      console.log("Socket auth - Token received:", token ? "Yes" : "No");
-      console.log("Socket auth - JWT_SECRET exists:", !!process.env.JWT_SECRET);
+      console.log('Socket auth - Token received:', !!token);
       
       if (!token) {
-        console.log("Socket auth - No token provided");
+        console.log('Socket auth - No token provided');
         return next(new Error("Authentication error"));
       }
 
       if (!process.env.JWT_SECRET) {
-        console.log("Socket auth - JWT_SECRET not configured");
+        console.log('Socket auth - JWT_SECRET not configured');
         return next(new Error("Authentication error"));
       }
 
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-        console.log("Socket auth - Decoded token:", { id: decoded.id, role: decoded.role });
+        console.log('Socket auth - Token verified for user:', decoded.id, 'role:', decoded.role);
         
-        socket.userId = decoded.id; // JWT uses 'id' field
-        socket.userType = decoded.role; // JWT uses 'role' field
+        socket.userId = decoded.id; 
+        socket.userType = decoded.role; 
         
-        console.log("Socket auth - User authenticated:", { userId: socket.userId, userType: socket.userType });
         next();
       } catch (jwtError: any) {
+        console.log('Socket auth - JWT verification failed:', jwtError.name);
         if (jwtError.name === 'TokenExpiredError') {
-          console.log("Socket auth - Token expired, but allowing connection for debugging");
-          console.log("Socket auth - Expired token payload:", jwtError.payload);
-          
-          
+          console.log('Socket auth - Token expired, checking payload');
           if (jwtError.payload) {
             socket.userId = jwtError.payload.id;
             socket.userType = jwtError.payload.role;
-            console.log("Socket auth - Allowing connection with expired token:", { userId: socket.userId, userType: socket.userType });
+            console.log('Socket auth - Using expired token payload');
             next();
           } else {
-            console.log("Socket auth - No payload in expired token");
+            console.log('Socket auth - No payload in expired token');
             next(new Error("Authentication error"));
           }
         } else {
-          console.error("Socket auth - JWT verification error:", jwtError);
+          console.log('Socket auth - JWT error:', jwtError.message);
           next(new Error("Authentication error"));
         }
       }
     } catch (error) {
-      console.error("Socket auth - Error:", error);
+      console.log('Socket auth - Unexpected error:', error);
       next(new Error("Authentication error"));
     }
   });
 
   io.on("connection", (socket: AuthenticatedSocket) => {
-    console.log(`User connected: ${socket.userId} (${socket.userType})`);
+    
 
-    // Join user to their personal room
+    
     if (socket.userId) {
       socket.join(`user_${socket.userId}`);
     }
 
-    // Handle joining a conversation
+    
     socket.on("join_conversation", (data: JoinConversationData) => {
       const { conversationId } = data;
       const roomName = `conversation_${conversationId}`;
       socket.join(roomName);
-      console.log(`User ${socket.userId} (${socket.userType}) joined conversation ${conversationId} (room: ${roomName})`);
-      console.log(`Users in room ${roomName}:`, io.sockets.adapter.rooms.get(roomName)?.size || 0);
+      
     });
 
-    // Handle leaving a conversation
+    
     socket.on("leave_conversation", (data: JoinConversationData) => {
       const { conversationId } = data;
       socket.leave(`conversation_${conversationId}`);
-      console.log(`User ${socket.userId} left conversation ${conversationId}`);
+      
     });
 
-    // Handle sending a message
+    
     socket.on("send_message", async (data: MessageData) => {
       try {
         console.log("Received send_message event:", data);
@@ -111,7 +106,7 @@ export const setupSocketHandlers = (io: Server) => {
 
         console.log(`Processing message from ${socket.userType} ${socket.userId} to conversation ${conversationId}`);
 
-        // Create new message in database
+        
         const attachmentUrls = (attachments as any[]).map((a) => (typeof a === "string" ? a : a?.filePath)).filter(Boolean);
 
         const newMessage = new ChatMessage({
@@ -129,7 +124,7 @@ export const setupSocketHandlers = (io: Server) => {
         await newMessage.save();
         console.log("Message saved to database:", newMessage._id);
 
-        // Update conversation's last message
+        
         const lastMessagePreview = message || `${attachments.length} file(s)`;
         await Conversation.findByIdAndUpdate(conversationId, {
           lastMessage: lastMessagePreview,
@@ -137,7 +132,7 @@ export const setupSocketHandlers = (io: Server) => {
           $inc: { unreadCount: 1 },
         });
 
-        // Emit message to all users in the conversation
+        
         console.log(`Emitting new message to conversation ${conversationId}:`, {
           messageId: newMessage._id,
           senderId: newMessage.senderId,
@@ -207,6 +202,8 @@ export const setupSocketHandlers = (io: Server) => {
         }
 
         let updatedMessage;
+        const roomName = `conversation_${conversationId}`;
+        
         switch (action) {
           case "delete":
             updatedMessage = await ChatMessage.findByIdAndUpdate(
@@ -218,7 +215,8 @@ export const setupSocketHandlers = (io: Server) => {
               },
               { new: true }
             );
-            io.emit("message deleted",{ messageId: messageId })
+            // Emit to specific conversation room instead of all clients
+            io.to(roomName).emit("message deleted", { messageId: messageId });
             break;
           
           case "restore":
@@ -238,8 +236,6 @@ export const setupSocketHandlers = (io: Server) => {
             break;
         }
 
-        const roomName = `conversation_${conversationId}`;
-        
         if (action === "permanent_delete") {
           // Emit permanent deletion event
           io.to(roomName).emit("message_permanently_deleted", {

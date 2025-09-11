@@ -18,6 +18,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { setupSocketHandlers } from "./socket/socketHandlers";
 import { setIO } from "./utils/socketManager";
+import morgan from "morgan"
 dotenv.config();
 
 // app config
@@ -36,15 +37,16 @@ const PORT = process.env.PORT || 4000;
 connectDB();
 connectCloudinary();
 
-// Setup Socket.IO handlers
+
 setupSocketHandlers(io);
 
 // middlewares
 app.use(express.json());
+app.use(morgan("dev"))
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin:"http://localhost:5173",
     credentials: true,
   })
 );

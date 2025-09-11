@@ -17,36 +17,23 @@ export const logoutAdminAPI = () => {
 };
 
 export const approveDoctorAPI = async (doctorId: string, token: string) => {
-  return await api.patch(ADMIN_API.APPROVE_DOCTOR(doctorId), {}, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.patch(ADMIN_API.APPROVE_DOCTOR(doctorId), {});
 };
 
 export const rejectDoctorAPI = async (doctorId: string, token: string) => {
-  return await api.patch(ADMIN_API.REJECT_DOCTOR(doctorId), {}, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.patch(ADMIN_API.REJECT_DOCTOR(doctorId), {});
 };
 
 export const adminAddDoctorAPI = async (formData: FormData, token: string) => {
   return await api.post(ADMIN_API.DOCTORS, formData, {
-   headers: {
-  Authorization: `Bearer ${token}`,
+    headers: {
       "Content-Type": "multipart/form-data",
     },
   });
 };
 
 export const getAllDoctorsAPI = async (token: string) => {
-  return await api.get(ADMIN_API.DOCTORS, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.get(ADMIN_API.DOCTORS);
 };
 
 export const getDoctorsPaginatedAPI = async (page: number, limit: number, token: string, searchQuery: string = "") => {
@@ -57,11 +44,7 @@ export const getDoctorsPaginatedAPI = async (page: number, limit: number, token:
   if (searchQuery.trim()) {
     params.append('search', searchQuery.trim());
   }
-  return await api.get(`${ADMIN_API.DOCTORS}?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return await api.get(`${ADMIN_API.DOCTORS}?${params.toString()}`);
 };
 
 export const changeAvailabilityAPI = async (
@@ -69,19 +52,11 @@ export const changeAvailabilityAPI = async (
   isAvailable: boolean,
   token: string
 ) => {
-  return await api.patch(ADMIN_API.CHANGE_AVAILABILITY(docId), { isAvailable }, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.patch(ADMIN_API.CHANGE_AVAILABILITY(docId), { isAvailable });
 };
 
 export const getAllUsersAPI = async (token: string) => {
-  return await api.get(ADMIN_API.USERS, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.get(ADMIN_API.USERS);
 };
 
 export const getUsersPaginatedAPI = async (page: number, limit: number, token: string,searchQuery: string = "") => {
@@ -100,11 +75,7 @@ export const getUsersPaginatedAPI = async (page: number, limit: number, token: s
     params.append('search', searchQuery.trim());
   }
 
-  return await api.get(`${ADMIN_API.USERS}?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return await api.get(`${ADMIN_API.USERS}?${params.toString()}`);
 };
 
 export const toggleUserBlockAPI = async (
@@ -112,19 +83,11 @@ export const toggleUserBlockAPI = async (
   block: boolean,
   token: string
 ) => {
-  return await api.patch(ADMIN_API.BLOCK_USER(userId), { block }, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.patch(ADMIN_API.BLOCK_USER(userId), { block });
 };
 
 export const getAllAppointmentsAPI = async (token: string) => {
-  return await api.get(ADMIN_API.APPOINTMENTS, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.get(ADMIN_API.APPOINTMENTS);
 };
 
 export const getAppointmentsPaginatedAPI = async (page: number, limit: number, token: string, searchQuery: string = "") => {
@@ -135,30 +98,18 @@ export const getAppointmentsPaginatedAPI = async (page: number, limit: number, t
   if (searchQuery.trim()) {
     params.append('search', searchQuery.trim());
   }
-  return await api.get(`${ADMIN_API.APPOINTMENTS}?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return await api.get(`${ADMIN_API.APPOINTMENTS}?${params.toString()}`);
 };
 
 export const adminCancelAppointmentAPI = async (
   appointmentId: string,
   token: string
 ) => {
-  return await api.patch(ADMIN_API.CANCEL_APPOINTMENT(appointmentId), {}, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.patch(ADMIN_API.CANCEL_APPOINTMENT(appointmentId), {});
 };
 
 export const adminDashboardAPI = async (token: string) => {
-  return await api.get(ADMIN_API.DASHBOARD, {
-    headers: {
-  Authorization: `Bearer ${token}`,
-},
-  });
+  return await api.get(ADMIN_API.DASHBOARD);
 };
 
 // Admin metrics (daily | weekly | monthly)
@@ -174,9 +125,5 @@ export const toggleDoctorBlockAPI = async (
   block: boolean,
   token: string
 ) => {
-  return await api.patch(ADMIN_API.BLOCK_DOCTOR(doctorId), { block }, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return await api.patch(ADMIN_API.BLOCK_DOCTOR(doctorId), { block });
 };

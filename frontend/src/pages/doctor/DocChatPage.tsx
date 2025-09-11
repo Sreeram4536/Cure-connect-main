@@ -149,6 +149,7 @@ const DocChatPage: React.FC = () => {
     });
 
     socket.on("message deleted", (data: { messageId: string }) => {
+      console.log("Received message deleted event:", data);
       setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
     });
 
@@ -343,8 +344,8 @@ const DocChatPage: React.FC = () => {
         return;
       }
       await doctorDeleteMessageAPI(messageId);
-      // Remove the message from the state
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      // Don't update UI here - let the socket event handle it for real-time updates
+      // The socket event will automatically remove the message from the UI
       toast.success("Message deleted successfully");
     } catch (error) {
       console.error("Error deleting message:", error);

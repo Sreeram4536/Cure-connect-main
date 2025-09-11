@@ -185,7 +185,7 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
 
   private toAppointmentDTO(a: AppointmentTypes): AppointmentDTO {
     return {
-      id: "", // AppointmentTypes doesn't have _id, so we'll use empty string
+      id: "", 
       userId: String(a.userId),
       docId: String(a.docId),
       slotDate: a.slotDate,

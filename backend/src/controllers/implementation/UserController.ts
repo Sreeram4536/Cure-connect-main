@@ -476,9 +476,9 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
   async cancelAppointment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      // console.log(userId)
+     
       const { appointmentId } = req.params;
-      // console.log(appointmentId);
+      
       await this._userService.cancelAppointment(userId, appointmentId);
       res
         .status(HttpStatus.OK)

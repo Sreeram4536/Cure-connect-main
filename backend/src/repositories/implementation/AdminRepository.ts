@@ -59,27 +59,7 @@ export class AdminRepository extends BaseRepository<AdminDocument> implements IA
     };
   }
 
-  // async getAllUsers(): Promise<Omit<userData, "password">[]> {
-  //   return userModel.find({}).select("-password");
-  // }
-
-  // async getUsersPaginated(page: number, limit: number): Promise<PaginationResult<Omit<userData, "password">>> {
-  //   const skip = (page - 1) * limit;
-  //   const totalCount = await userModel.countDocuments({});
-  //   const data = await userModel.find({}).select("-password").skip(skip).limit(limit);
-    
-  //   const totalPages = Math.ceil(totalCount / limit);
-    
-  //   return {
-  //     data,
-  //     totalCount,
-  //     currentPage: page,
-  //     totalPages,
-  //     hasNextPage: page < totalPages,
-  //     hasPrevPage: page > 1
-  //   };
-  // }
-
+  
    async getAllUsers(search?: string): Promise<Omit<userData, "password">[]> {
     let query = {};
     

@@ -82,13 +82,13 @@ export class SlotRuleController {
     res.json({ success: true, slot: updated });
   }
 
-  // New method to set a day as leave
+  
   async setDayAsLeave(req: Request, res: Response) {
     try {
       const doctorId = (req as any).docId;
       const { date, leaveType, slots } = req.body;
       
-      // Validate required fields
+      
       if (!date || !leaveType) {
         return res.status(400).json({ 
           success: false, 
@@ -96,7 +96,7 @@ export class SlotRuleController {
         });
       }
 
-      // Validate leaveType
+      
       if (!['full', 'break', 'custom'].includes(leaveType)) {
         return res.status(400).json({ 
           success: false, 
@@ -104,7 +104,7 @@ export class SlotRuleController {
         });
       }
 
-      // Validate date format (YYYY-MM-DD)
+    
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
         return res.status(400).json({ 
@@ -113,7 +113,7 @@ export class SlotRuleController {
         });
       }
 
-      // Check if date is in the past
+    
       const now = new Date();
       const leaveDate = new Date(date);
       if (leaveDate < now) {
@@ -140,7 +140,7 @@ export class SlotRuleController {
     }
   }
 
-  // New method to remove leave for a day
+  
   async removeDayLeave(req: Request, res: Response) {
     try {
       const doctorId = (req as any).docId;

@@ -184,7 +184,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
   }
 
   async logoutDoctor(req: Request, res: Response): Promise<void> {
-    // Blacklist the access token if present
+   
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
@@ -267,7 +267,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
 
       await this._doctorService.cancelAppointment(docId, appointmentId);
 
-      // After cancellation, return updated appointments (paginated if page/limit provided)
+      
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const search = req.query.search as string | undefined;
@@ -378,7 +378,7 @@ async getSlotsForDate(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Validate date format (YYYY-MM-DD)
+    
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(String(date))) {
       res.status(400).json({ success: false, message: "Invalid date format. Use YYYY-MM-DD" });

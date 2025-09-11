@@ -78,13 +78,13 @@ export const refreshToken = async (): Promise<string | null> => {
     let endpoint: string;
     switch (role) {
       case 'user':
-        endpoint = 'http://localhost:4000/api/user/refresh-token';
+        endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/user/refresh-token`;
         break;
       case 'doctor':
-        endpoint = 'http://localhost:4000/api/doctor/refresh-token';
+        endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/doctor/refresh-token`;
         break;
       case 'admin':
-        endpoint = 'http://localhost:4000/api/admin/refresh-token';
+        endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/admin/refresh-token`;
         break;
       default:
         console.log('Unknown role, cannot refresh token');

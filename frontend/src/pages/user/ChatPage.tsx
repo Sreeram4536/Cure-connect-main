@@ -113,6 +113,7 @@ const ChatPage: React.FC = () => {
     });
 
     socket.on("message deleted", (data: { messageId: string }) => {
+      console.log("Received message deleted event:", data);
       setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
     });
 
@@ -228,7 +229,7 @@ const ChatPage: React.FC = () => {
               clearInterval(checkConnection);
             }
           }, 1000);
-          // Clear interval after 10 seconds
+          
           setTimeout(() => clearInterval(checkConnection), 10000);
         }
         
@@ -248,7 +249,7 @@ const ChatPage: React.FC = () => {
       const response = await getMessagesAPI(conversationId, 1, 50);
       console.log("Messages response:", response.data);
       if (response.data.success) {
-        setMessages(response.data.messages.reverse()); // Reverse to show oldest first
+        setMessages(response.data.messages.reverse()); 
       }
     } catch (error: any) {
       console.error("Error loading messages:", error);
@@ -270,7 +271,7 @@ const ChatPage: React.FC = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const url = res.data.url;
-      // Determine messageType and stage for send
+      
       let messageType: "image" | "file" = file.type.startsWith("image/") ? "image" : "file";
       setPendingAttachments([url]);
       setPendingType(messageType);
@@ -283,20 +284,7 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Removed immediate file send; staged attachments will be sent with handleSendMessage
-
-  // const handleDeleteMessage = async (messageId: string) => {
-  //   try {
-  //     await deleteMessageAPI(messageId);
-  //     // Remove the message from the state
-  //     setMessages(prev => prev.filter(msg => msg.id !== messageId));
-  //     toast.success("Message deleted successfully");
-  //   } catch (error) {
-  //     console.error("Error deleting message:", error);
-  //     toast.error("Failed to delete message");
-  //   }
-  // };
-
+ 
   const handleSendMessage = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
     if (!conversation) return;
@@ -306,7 +294,7 @@ const ChatPage: React.FC = () => {
     try {
       console.log("Sending message:", newMessage.trim(), "to conversation:", conversation.id);
       
-      // Prepare reply data if replying
+      
       const replyData = replyToMessage ? {
         messageId: replyToMessage.id,
         message: replyToMessage.message,
@@ -314,9 +302,9 @@ const ChatPage: React.FC = () => {
         messageType: replyToMessage.messageType,
       } : undefined;
       
-      // Send message via Socket.IO for real-time delivery
+      
       if (isConnected) {
-        // Add temporary message to show it's being sent
+        
         const tempMsg: ChatMessage = {
           id: `temp-${Date.now()}`,
           conversationId: conversation.id,
@@ -349,7 +337,7 @@ const ChatPage: React.FC = () => {
         setShowReplyPreview(false);
         setIsSending(false);
       } else {
-        // Fallback to REST API if socket is not connected
+        
         const response = await sendMessageAPI(
           conversation.id,
           newMessage.trim() || (pendingType === "image" ? "[Image]" : "[File]"),
@@ -381,7 +369,8 @@ const ChatPage: React.FC = () => {
 
     try {
       await deleteMessageAPI(messageId);
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      // Don't update UI here - let the socket event handle it for real-time updates
+      // The socket event will automatically remove the message from the UI
       toast.success("Message deleted successfully!");
     } catch (error: any) {
       console.error("Error deleting message:", error);
@@ -395,16 +384,16 @@ const ChatPage: React.FC = () => {
     setShowEmojiPicker(false);
   };
 
-  // Handle reply to message
+  
   const handleReplyToMessage = (message: ChatMessage) => {
     setReplyToMessage(message);
     setShowReplyPreview(true);
-    // Focus on input
+    
     const input = document.querySelector('input[type="text"]') as HTMLInputElement;
     if (input) input.focus();
   };
 
-  // Cancel reply
+  
   const cancelReply = () => {
     setReplyToMessage(null);
     setShowReplyPreview(false);
@@ -418,7 +407,7 @@ const ChatPage: React.FC = () => {
     });
   };
 
-  // Handle back navigation
+ 
   const handleBackToConsultation = () => {
     navigate(`/consultation/${doctorId}`);
   };
@@ -731,17 +720,17 @@ const ChatPage: React.FC = () => {
                     onChange={(e) => {
                       setNewMessage(e.target.value);
                       
-                      // Handle typing indicators
+                      
                       if (isConnected && conversation) {
                         // Clear existing timeout
                         if (typingTimeout) {
                           clearTimeout(typingTimeout);
                         }
                         
-                        // Start typing indicator
+                        
                         startTyping(conversation.id);
                         
-                        // Set timeout to stop typing indicator
+                        
                         const timeout = setTimeout(() => {
                           stopTyping(conversation.id);
                         }, 2000);
@@ -798,6 +787,3 @@ const ChatPage: React.FC = () => {
 
 export default ChatPage;
 
-// Image preview modal
-// Place after component to avoid indentation noise
-// Rendered within component return using state

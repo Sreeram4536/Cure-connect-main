@@ -31,19 +31,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const connect = async () => {
     try {
-
-  // const token = await getValidToken();
-  
-  // console.log('Socket connection - Token found:', !!token);
-  //   if (token) {
-  //     console.log('Socket connection - Token length:', token.length);
-  //     console.log('Socket connection - Token starts with:', token.substring(0, 20) + '...');
-  //   }
-    
-  //   if (!token) {
-  //     console.log('No valid token found, skipping socket connection');
-  //     return;
-  //   }
+      console.log('Socket connection - Starting connection process...');
+      console.log('Socket connection - Environment check:', {
+        VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
+        NODE_ENV: import.meta.env.NODE_ENV
+      });
 
       const token = await getValidToken();
       
@@ -68,32 +60,60 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       }
 
 
-      const newSocket = io('http://localhost:4000', {
+      // Get backend URL from environment or use default
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+      console.log('Socket connecting to:', backendUrl);
+      
+      // Validate backend URL
+      if (!backendUrl || backendUrl === 'undefined') {
+        console.error('Invalid backend URL:', backendUrl);
+        toast.error('Invalid server configuration');
+        return;
+      }
+      
+      const newSocket = io(backendUrl, {
         auth: {
           token: token,
         },
-        transports: ['polling', 'websocket'], // Try polling first, then websocket
+        transports: ['websocket', 'polling'], 
         timeout: 20000,
         forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
       });
 
       newSocket.on('connect', () => {
-        console.log('Socket connected');
+        console.log('Socket connected successfully');
         setIsConnected(true);
-        setRetryCount(0); // Reset retry count on successful connection
-        
+        setRetryCount(0);
       });
 
-      newSocket.on('disconnect', () => {
-        console.log('Socket disconnected');
+      newSocket.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
         setIsConnected(false);
-        
+        if (reason === 'io server disconnect') {
+          // Server disconnected, try to reconnect
+          setTimeout(() => {
+            connect();
+          }, 1000);
+        }
+      });
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('Socket reconnected after', attemptNumber, 'attempts');
+        setIsConnected(true);
+        setRetryCount(0);
+      });
+
+      newSocket.on('reconnect_error', (error) => {
+        console.log('Socket reconnection error:', error);
       });
 
       newSocket.on('connect_error', async (error) => {
         console.error('Socket connection error:', error);
         
-        // If it's an authentication error, try to refresh the token
+       
         if (error.message === 'Authentication error') {
           console.log('Authentication error, attempting token refresh...');
           const newToken = await getValidToken();
@@ -186,7 +206,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     // Auto-connect when component mounts with a small delay
     const timer = setTimeout(() => {
       connect();
-    }, 2000); // Increased delay to ensure backend is ready
+    }, 1000); // Reduced delay for better responsiveness
 
     // Cleanup on unmount
     return () => {

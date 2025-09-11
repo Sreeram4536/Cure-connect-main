@@ -56,11 +56,11 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // Admin Refresh Token
+  
   async refreshAdminToken(req: Request, res: Response): Promise<void> {
     try {
-      console.log('🔍 Admin refresh token request received');
-      console.log('🔍 Cookies:', req.cookies);
+      console.log('Admin refresh token request received');
+      console.log('Cookies:', req.cookies);
 
       const refreshToken = req.cookies?.refreshToken_admin;
       if (!refreshToken) {
@@ -120,9 +120,9 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // Admin Logout
+  
   async logoutAdmin(req: Request, res: Response): Promise<void> {
-    // Blacklist the access token if present
+    
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
@@ -134,7 +134,6 @@ export class AdminController implements IAdminController {
           await addTokenToBlacklist(token, expiresAt);
         }
       } catch (e) {
-
       }
     }
     res.clearCookie("refreshToken_admin", {
@@ -151,7 +150,7 @@ export class AdminController implements IAdminController {
   }
 
 
-  // To add doctor
+  
   async addDoctor(req: CustomRequest, res: Response): Promise<void> {
     try {
       const {
@@ -190,7 +189,7 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // To get all the doctors
+  
   async getDoctors(req: Request, res: Response): Promise<void> {
     try {
       const doctors = await this._adminService.getDoctors();
@@ -202,7 +201,7 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // To get paginated doctors (with search)
+  
   async getDoctorsPaginated(req: Request, res: Response): Promise<void> {
     try {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
@@ -220,7 +219,7 @@ export class AdminController implements IAdminController {
     }
   }
 
-  // To get all users
+ 
   async getAllUsers(req: Request, res: Response): Promise<void> {
     const search = req.query.search ? (req.query.search as string).trim() : "";
     try {
