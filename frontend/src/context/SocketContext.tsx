@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'react-toastify';
-import { getValidToken, getRoleSpecificToken } from '../utils/tokenRefresh';
+import { getValidToken } from '../utils/tokenRefresh';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -15,6 +15,11 @@ interface SocketContextType {
   startTyping: (conversationId: string) => void;
   stopTyping: (conversationId: string) => void;
   markAsRead: (conversationId: string, messageIds: string[]) => void;
+  // WebRTC signaling helpers
+  sendCallInvite: (conversationId: string, offer: any) => void;
+  sendCallAnswer: (conversationId: string, answer: any) => void;
+  sendCallCandidate: (conversationId: string, candidate: any) => void;
+  sendCallEnd: (conversationId: string, reason?: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -141,6 +146,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         }
       });
 
+      // Remove global call_invite UI handling. Doctor-specific UI handled in DoctorLayout.
+
       setSocket(newSocket);
     } catch (error) {
       console.error('Error connecting to socket:', error);
@@ -202,6 +209,33 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
   };
 
+  // ---------------------------
+  // WebRTC signaling emitters
+  // ---------------------------
+  const sendCallInvite = (conversationId: string, offer: any, target?: { id: string; type: 'user' | 'doctor' }) => {
+    if (socket && isConnected) {
+      socket.emit('call_invite', { conversationId, offer, targetId: target?.id, targetType: target?.type });
+    }
+  };
+
+  const sendCallAnswer = (conversationId: string, answer: any) => {
+    if (socket && isConnected) {
+      socket.emit('call_answer', { conversationId, answer });
+    }
+  };
+
+  const sendCallCandidate = (conversationId: string, candidate: any) => {
+    if (socket && isConnected) {
+      socket.emit('call_candidate', { conversationId, candidate });
+    }
+  };
+
+  const sendCallEnd = (conversationId: string, reason?: string) => {
+    if (socket && isConnected) {
+      socket.emit('call_end', { conversationId, reason });
+    }
+  };
+
   useEffect(() => {
     // Auto-connect when component mounts with a small delay
     const timer = setTimeout(() => {
@@ -226,6 +260,10 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     startTyping,
     stopTyping,
     markAsRead,
+    sendCallInvite,
+    sendCallAnswer,
+    sendCallCandidate,
+    sendCallEnd,
   };
 
   return (

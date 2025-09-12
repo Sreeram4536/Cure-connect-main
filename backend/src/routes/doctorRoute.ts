@@ -3,7 +3,7 @@ import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
 import {doctorController,slotLockController,slotRuleController} from "../dependencyhandler/doctor.dependency"
 import { DoctorMetricsController } from "../controllers/implementation/DoctorMetricsController";
-import { doctorMetricsService } from "../dependencyhandler/doctor.dependency";
+import { doctorMetricsService, prescriptionController, appointmentCompletionController } from "../dependencyhandler/doctor.dependency";
 
 const doctorRouter = express.Router();
 const doctorMetricsController = new DoctorMetricsController(doctorMetricsService);
@@ -161,3 +161,20 @@ doctorRouter.patch(
 doctorRouter.get("/top", doctorController.getTopDoctors.bind(doctorController));
 
 export default doctorRouter;
+// Prescription & complete routes (doctor)
+doctorRouter.post(
+  "/appointments/:appointmentId/prescription",
+  authRole(["doctor"]),
+  prescriptionController.create.bind(prescriptionController)
+);
+doctorRouter.patch(
+  "/appointments/:appointmentId/complete",
+  authRole(["doctor"]),
+  asyncHandler(appointmentCompletionController.complete.bind(appointmentCompletionController))
+);
+
+doctorRouter.get(
+  "/patients/:userId/history",
+  authRole(["doctor"]),
+  prescriptionController.listByDoctor.bind(prescriptionController)
+);

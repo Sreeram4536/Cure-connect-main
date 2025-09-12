@@ -16,6 +16,14 @@ import { LeaveManagementService } from "../services/implementation/LeaveManageme
 import { LeaveManagementRepository } from "../repositories/implementation/LeaveManagementRepository";
 import { MetricsService } from "../services/implementation/MetricsService";
 import { AdminRepository } from "../repositories/implementation/AdminRepository";
+import { PrescriptionRepository } from "../repositories/implementation/PrescriptionRepository";
+import { FeedbackRepository } from "../repositories/implementation/FeedbackRepository";
+import { PrescriptionService } from "../services/implementation/PrescriptionService";
+import { FeedbackService } from "../services/implementation/FeedbackService";
+import { PrescriptionController } from "../controllers/implementation/PrescriptionController";
+import { FeedbackController } from "../controllers/implementation/FeedbackController";
+import { AppointmentCompletionService } from "../services/implementation/AppointmentCompletionService";
+import { AppointmentCompletionController } from "../controllers/implementation/AppointmentCompletionController";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
@@ -36,3 +44,12 @@ export const doctorController = new DoctorController(doctorService, slotService)
 export const slotRuleController = new SlotRuleController(slotRuleService);
 export const slotLockController = new SlotLockController(slotLockService);
 export { doctorMetricsService };
+// New DI
+const prescriptionRepository = new PrescriptionRepository();
+const feedbackRepository = new FeedbackRepository();
+const prescriptionService = new PrescriptionService(prescriptionRepository);
+const feedbackService = new FeedbackService(feedbackRepository);
+export const prescriptionController = new PrescriptionController(prescriptionService);
+export const feedbackController = new FeedbackController(feedbackService);
+const appointmentCompletionService = new AppointmentCompletionService(appointmentRepository, prescriptionRepository);
+export const appointmentCompletionController = new AppointmentCompletionController(appointmentCompletionService);

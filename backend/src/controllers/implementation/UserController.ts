@@ -11,7 +11,6 @@ import {
   isValidEmail,
   isValidPassword,
 } from "../../utils/validator";
-import { PaymentService } from "../../services/implementation/PaymentService";
 import { IPaymentService } from "../../services/interface/IPaymentService";
 import {
   generateAccessToken,
@@ -501,7 +500,7 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
       // console.log(appointmentId)
           if (!appointmentId) {
             console.log("Ap id reqrd")
-       res.status(400).json({ success: false, message: "Appointment ID is required" });
+       res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "Appointment ID is required" });
        return
     }
 

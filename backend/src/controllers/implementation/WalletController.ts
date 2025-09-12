@@ -6,10 +6,10 @@ import { AuthRequest } from "../../types/customRequest";
 import { HttpStatus } from "../../constants/status.constants";
 
 export class WalletController implements IWalletController {
-  private walletService: IWalletService;
+  private _walletService: IWalletService;
 
   constructor(walletService: IWalletService) {
-    this.walletService =  walletService;
+    this._walletService =  walletService;
   }
 
   async getWalletBalance(req: Request, res: Response): Promise<void> {
@@ -20,7 +20,7 @@ export class WalletController implements IWalletController {
         return;
       }
 
-      const balance = await this.walletService.getWalletBalance(userId, 'user');
+      const balance = await this._walletService.getWalletBalance(userId, 'user');
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -49,7 +49,7 @@ export class WalletController implements IWalletController {
       const sortBy = req.query.sortBy as string || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
 
-      const transactions = await this.walletService.getWalletTransactions(
+      const transactions = await this._walletService.getWalletTransactions(
         userId,
         'user',
         page,
@@ -80,7 +80,7 @@ export class WalletController implements IWalletController {
         return;
       }
 
-      const walletDetails = await this.walletService.getWalletDetails(userId, 'user');
+      const walletDetails = await this._walletService.getWalletDetails(userId, 'user');
 
       res.status(HttpStatus.OK).json({
         success: true,

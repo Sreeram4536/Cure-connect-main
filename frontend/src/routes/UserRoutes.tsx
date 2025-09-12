@@ -20,6 +20,8 @@ import GoogleCallback from "../pages/user/GoogleCallback";
 import Consultation from "../pages/user/Consultation";
 import ChatPage from "../pages/user/ChatPage";
 import UserLandingPage from "../pages/user/LandingPage";
+import VideoCall from "../pages/user/VideoCall";
+import Prescriptions from "../pages/user/Prescriptions";
 
 const UserRoutes = () => {
   return (
@@ -116,6 +118,15 @@ const UserRoutes = () => {
         }
       />
       <Route path="/chats/:doctorId" element={<ChatPage />} />
+      <Route path="/call/:conversationId" element={<VideoCall />} />
+      <Route
+        path="/my-prescriptions"
+        element={
+          <UserLayout>
+            <Prescriptions />
+          </UserLayout>
+        }
+      />
     </>
   );
 };

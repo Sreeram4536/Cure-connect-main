@@ -5,7 +5,7 @@ import { AuthRequest } from "../../types/customRequest";
 import { HttpStatus } from "../../constants/status.constants";
 
 class SlotLockController implements ISlotLockController {
-  constructor(private slotLockService: ISlotLockService) {}
+  constructor(private _slotLockService: ISlotLockService) {}
 
   async lockSlot(req: Request, res: Response) {
     const userId = (req as AuthRequest).userId; 
@@ -14,7 +14,7 @@ class SlotLockController implements ISlotLockController {
       return;
     }
     const { docId, slotDate, slotTime } = req.body;
-    const result = await this.slotLockService.lockSlot({ userId, docId, slotDate, slotTime });
+    const result = await this._slotLockService.lockSlot({ userId, docId, slotDate, slotTime });
     if (result.success) {
       res.status(HttpStatus.OK).json({ success: true, appointmentId: result.appointmentId });
     } else {
@@ -24,7 +24,7 @@ class SlotLockController implements ISlotLockController {
 
   async releaseSlot(req: Request, res: Response) {
     const { appointmentId } = req.params;
-    const result = await this.slotLockService.releaseSlot({ appointmentId });
+    const result = await this._slotLockService.releaseSlot({ appointmentId });
     if (result.success) {
       res.status(HttpStatus.OK).json({ success: true, message: result.message });
     } else {
@@ -34,7 +34,7 @@ class SlotLockController implements ISlotLockController {
 
   async confirmAppointment(req: Request, res: Response) {
     const { appointmentId } = req.params;
-    const result = await this.slotLockService.confirmAppointment({ appointmentId });
+    const result = await this._slotLockService.confirmAppointment({ appointmentId });
     if (result.success) {
       res.status(HttpStatus.OK).json({ success: true, message: result.message });
     } else {
@@ -44,7 +44,7 @@ class SlotLockController implements ISlotLockController {
 
   async cancelAppointment(req: Request, res: Response) {
     const { appointmentId } = req.params;
-    const result = await this.slotLockService.cancelAppointment({ appointmentId });
+    const result = await this._slotLockService.cancelAppointment({ appointmentId });
     if (result.success) {
       res.status(HttpStatus.OK).json({ success: true, message: result.message });
     } else {

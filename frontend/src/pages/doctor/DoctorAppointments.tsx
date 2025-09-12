@@ -8,6 +8,7 @@ import SearchBar from "../../components/common/SearchBar";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
 import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck } from 'react-icons/fa';
+import { getPrescriptionByAppointmentAPI } from "../../services/appointmentServices";
 // import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
 
 const DoctorAppointments = () => {
@@ -27,6 +28,8 @@ const DoctorAppointments = () => {
   const itemsPerPage = 6;
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // default: newest first
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [rxOpen, setRxOpen] = useState(false);
+  const [rx, setRx] = useState<any | null>(null);
 
   if (!appContext) {
     throw new Error("AppContext must be used within AppContextProvider");
@@ -194,7 +197,16 @@ const DoctorAppointments = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate("/doctor/consultation");
+                try { sessionStorage.setItem('activeAppointmentId', String(item._id || item.appointmentId)); } catch {}
+                try { sessionStorage.setItem('roleForCall', 'doctor'); } catch {}
+                // Navigate to call page using conversation/appointment identifier if available
+                if (item.conversationId) {
+                  navigate(`/call/${item.conversationId}`);
+                } else if (item.appointmentId) {
+                  navigate(`/call/${item.appointmentId}`);
+                } else {
+                  navigate("/doctor/consultation");
+                }
               }}
               className="bg-primary px-4 py-1.5 text-sm rounded-lg font-medium text-white shadow transition duration-200"
             >
@@ -202,6 +214,21 @@ const DoctorAppointments = () => {
             </button>
           ) : (
             <>
+              {item.isCompleted && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      const { data } = await getPrescriptionByAppointmentAPI(item._id || item.appointmentId);
+                      setRx(data.prescription || null);
+                      setRxOpen(true);
+                    } catch {}
+                  }}
+                  className="bg-white border px-4 py-1.5 text-sm rounded-lg font-medium text-gray-700 shadow"
+                >
+                  View Prescription
+                </button>
+              )}
               <img
                 onClick={(e) => {
                   e.stopPropagation();
@@ -366,6 +393,41 @@ const DoctorAppointments = () => {
       ) : (
         <div className="text-gray-500 mt-6 text-center w-full">
           No appointments found.
+        </div>
+      )}
+      {rxOpen && rx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xl font-bold">Prescription</h3>
+              <button onClick={()=>setRxOpen(false)} className="text-gray-500">✕</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="py-2">Medicine</th>
+                    <th className="py-2">Dosage</th>
+                    <th className="py-2">Instructions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(rx.items||[]).map((it:any, idx:number)=> (
+                    <tr key={idx} className="border-t">
+                      <td className="py-2">{it.name}</td>
+                      <td className="py-2">{it.dosage}</td>
+                      <td className="py-2">{it.instructions || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {rx.notes && <div className="mt-3 text-sm text-gray-700">Notes: {rx.notes}</div>}
+            <div className="mt-4 flex gap-2 justify-end">
+              <button onClick={()=>window.print()} className="px-3 py-2 rounded-lg bg-primary text-white">Print</button>
+              <button onClick={()=>setRxOpen(false)} className="px-3 py-2 rounded-lg border">Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

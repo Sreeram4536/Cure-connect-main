@@ -1,7 +1,9 @@
+
 import axios from "axios";
 import { getUserAccessToken, updateUserAccessToken } from "../context/tokenManagerUser";
 import { getAdminAccessToken, updateAdminAccessToken } from "../context/tokenManagerAdmin";
 import { getDoctorAccessToken, updateDoctorAccessToken } from "../context/tokenManagerDoctor";
+import { showErrorToast } from "../utils/errorHandler";
 
 export type ApiRole = "user" | "admin" | "doctor";
 
@@ -80,9 +82,13 @@ export const getApi = (role: ApiRole) => {
           return instance(originalRequest);
         } catch (refreshErr) {
           roleTokenMap[role].set(null);
+         
+          showErrorToast(refreshErr);
           return Promise.reject(refreshErr);
         }
       }
+      
+      // showErrorToast(err);
       return Promise.reject(err);
     }
   );

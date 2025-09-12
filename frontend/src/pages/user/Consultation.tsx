@@ -10,7 +10,7 @@ const Consultation = () => {
 
   return (
     <div className="flex place-items-center justify-center gap-6 p-8">
-      <VideoCallCard />
+      <VideoCallCard doctorId={doctorId} />
       <ChatCard doctorId={doctorId} />
     </div>
   );

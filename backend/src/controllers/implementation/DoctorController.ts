@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-// import { DoctorService } from "../../services/implementation/DoctorService";
 import { IDoctorService } from "../../services/interface/IDoctorService";
 import { ISlotService } from "../../services/interface/ISlotService";
 import { IDoctorController } from "../interface/IdoctorController.interface";
@@ -11,7 +10,6 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.utils";
-import { DoctorSlotService } from "../../services/implementation/SlotService";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import { AuthRequest, JwtPayloadExt } from "../../types/customRequest";
@@ -273,13 +271,13 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
       const search = req.query.search as string | undefined;
       if (page && limit) {
         const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit,search);
-        res.status(200).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, ...result });
+        res.status(HttpStatus.OK).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, ...result });
       } else {
         const appointments = await this._doctorService.getDoctorAppointments(docId);
-        res.status(200).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, appointments });
+        res.status(HttpStatus.OK).json({ success: true, message: HttpResponse.APPOINTMENT_CANCELLED, appointments });
       }
     } catch (error) {
-      res.status(500).json({ success: false, message: (error as Error).message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
     }
   }
 
@@ -294,7 +292,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
       res.json({ success: true, profileData });
     } catch (error) {
       res
-        .status(500)
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: (error as Error).message });
     }
   }
@@ -316,7 +314,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
       } catch (err) {
         console.error("Address parsing error:", err);
         res
-          .status(400)
+          .status(HttpStatus.BAD_REQUEST)
           .json({ success: false, message: "Invalid address format" });
         return;
       }
@@ -339,7 +337,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
       });
     } catch (error) {
       console.error("Doctor profile update failed:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: (error as Error).message,
         error: (error as Error).stack,
@@ -360,7 +358,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
     const data = await this._slotService.getMonthlySlots(doctorId, +year!, +month!);
     res.json({ success: true, slots:data });
   } catch (error) {
-    res.status(500).json({ success: false, message: (error as Error).message });
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
   }
 }
 
@@ -374,21 +372,21 @@ async getSlotsForDate(req: Request, res: Response): Promise<void> {
     const { date } = req.query;
     
     if (!date) {
-      res.status(400).json({ success: false, message: "Date parameter is required" });
+      res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "Date parameter is required" });
       return;
     }
 
     
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(String(date))) {
-      res.status(400).json({ success: false, message: "Invalid date format. Use YYYY-MM-DD" });
+      res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "Invalid date format. Use YYYY-MM-DD" });
       return;
     }
 
     const data = await this._slotService.getSlotsForDate(doctorId, String(date));
     res.json({ success: true, slots: data });
   } catch (error) {
-    res.status(500).json({ success: false, message: (error as Error).message });
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
   }
 }
 
@@ -403,7 +401,7 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
     const data = await this._slotService.updateDaySlot(doctorId, date, slots, isCancelled);
     res.json({ success: true, slots:data });
   } catch (error) {
-    res.status(500).json({ success: false, message: (error as Error).message });
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
   }
 }
 
@@ -414,9 +412,9 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
       const limit = parseInt(req.query.limit as string) || 10;
       
       const doctors = await this._doctorService.getDoctorsByStatusAndLimit(status, limit);
-      res.status(200).json({ success: true, doctors });
+      res.status(HttpStatus.OK).json({ success: true, doctors });
     } catch (error) {
-      res.status(500).json({ success: false, message: (error as Error).message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
     }
   }
 

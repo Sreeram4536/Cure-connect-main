@@ -342,6 +342,82 @@ export const setupSocketHandlers = (io: Server) => {
       });
     });
 
+    socket.on("call_invite", async (data: { conversationId: string; offer: any; targetId?: string; targetType?: "user" | "doctor" }) => {
+      try {
+        const roomName = `conversation_${data.conversationId}`;
+
+        // Emit to conversation room (for peers already in room)
+        socket.to(roomName).emit("call_invite", {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          offer: data.offer,
+        });
+
+        
+        const convo = await Conversation.findById(data.conversationId).lean();
+        if (convo) {
+          const explicitTargetId = data.targetId;
+          const targetId = explicitTargetId || (socket.userType === "user" ? convo.doctorId : convo.userId);
+          if (targetId) {
+            io.to(`user_${targetId}`).emit("call_invite", {
+              fromId: socket.userId,
+              fromType: socket.userType,
+              conversationId: data.conversationId,
+              offer: data.offer,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error in call_invite:", error);
+      }
+    });
+
+   
+    socket.on("call_answer", (data: { conversationId: string; answer: any }) => {
+      try {
+        const roomName = `conversation_${data.conversationId}`;
+        socket.to(roomName).emit("call_answer", {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          answer: data.answer,
+        });
+      } catch (error) {
+        console.error("Error in call_answer:", error);
+      }
+    });
+
+    
+    socket.on("call_candidate", (data: { conversationId: string; candidate: any }) => {
+      try {
+        const roomName = `conversation_${data.conversationId}`;
+        socket.to(roomName).emit("call_candidate", {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          candidate: data.candidate,
+        });
+      } catch (error) {
+        console.error("Error in call_candidate:", error);
+      }
+    });
+
+    
+    socket.on("call_end", (data: { conversationId: string; reason?: string }) => {
+      try {
+        const roomName = `conversation_${data.conversationId}`;
+        io.to(roomName).emit("call_end", {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          reason: data.reason ?? "ended",
+        });
+      } catch (error) {
+        console.error("Error in call_end:", error);
+      }
+    });
+
     // Handle online status
     socket.on("set_online_status", (data: { isOnline: boolean }) => {
       if (socket.userId) {

@@ -4,12 +4,11 @@ import fs from "fs";
 import { IChatController } from "../interface/IChatController.interface";
 import { IChatService } from "../../services/interface/IChatService";
 import { HttpStatus } from "../../constants/status.constants";
-import { HttpResponse } from "../../constants/responseMessage.constants";
 import { ChatMessageDTO } from "../../types/chat";
 import { AuthRequest } from "../../types/customRequest";
 
 export class ChatController implements IChatController {
-  constructor(private chatService: IChatService) {}
+  constructor(private _chatService: IChatService) {}
 
   // Conversation methods
   async createConversation(req: Request, res: Response): Promise<void> {
@@ -34,7 +33,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const conversation = await this.chatService.createConversation(userId, doctorId);
+      const conversation = await this._chatService.createConversation(userId, doctorId);
       console.log("Created conversation:", conversation);
       
       res.status(HttpStatus.OK).json({
@@ -69,11 +68,11 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const conversation = await this.chatService.getConversation(userId, doctorId);
+      const conversation = await this._chatService.getConversation(userId, doctorId);
       console.log("Found conversation:", conversation);
       
       // Get doctor information
-      const doctorInfo = await this.chatService.getDoctorInfo(doctorId);
+      const doctorInfo = await this._chatService.getDoctorInfo(doctorId);
       console.log("Doctor info:", doctorInfo);
       
       res.status(HttpStatus.OK).json({
@@ -100,7 +99,7 @@ export class ChatController implements IChatController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const conversations = await this.chatService.getUserConversations(userId, page, limit);
+      const conversations = await this._chatService.getUserConversations(userId, page, limit);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -124,7 +123,7 @@ export class ChatController implements IChatController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const conversations = await this.chatService.getDoctorConversations(doctorId, page, limit);
+      const conversations = await this._chatService.getDoctorConversations(doctorId, page, limit);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -155,7 +154,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const deleted = await this.chatService.deleteConversation(conversationId, userId);
+      const deleted = await this._chatService.deleteConversation(conversationId, userId);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -206,7 +205,7 @@ export class ChatController implements IChatController {
         attachments,
       };
 
-      const sentMessage = await this.chatService.sendMessage(messageData, senderId);
+      const sentMessage = await this._chatService.sendMessage(messageData, senderId);
       res.status(HttpStatus.OK).json({
         success: true,
         message: sentMessage,
@@ -231,7 +230,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const sent = await this.chatService.sendMessageWithFiles(conversationId, userId, "user", message, files);
+      const sent = await this._chatService.sendMessageWithFiles(conversationId, userId, "user", message, files);
       res.status(HttpStatus.OK).json({ success: true, message: sent });
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
@@ -262,7 +261,7 @@ export class ChatController implements IChatController {
         attachments,
       };
 
-      const sentMessage = await this.chatService.sendMessage(messageData, doctorId);
+      const sentMessage = await this._chatService.sendMessage(messageData, doctorId);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -285,7 +284,7 @@ export class ChatController implements IChatController {
         res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "No files uploaded" });
         return;
       }
-      const [attachment] = await this.chatService.processUploadedFiles(files);
+      const [attachment] = await this._chatService.processUploadedFiles(files);
       res.status(HttpStatus.OK).json({ success: true, url: attachment.filePath });
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
@@ -299,7 +298,7 @@ export class ChatController implements IChatController {
         res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: "No files uploaded" });
         return;
       }
-      const [attachment] = await this.chatService.processUploadedFiles(files);
+      const [attachment] = await this._chatService.processUploadedFiles(files);
       res.status(HttpStatus.OK).json({ success: true, url: attachment.filePath });
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
@@ -316,7 +315,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const sent = await this.chatService.sendMessageWithFiles(conversationId, doctorId, "doctor", message, files);
+      const sent = await this._chatService.sendMessageWithFiles(conversationId, doctorId, "doctor", message, files);
       res.status(HttpStatus.OK).json({ success: true, message: sent });
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: (error as Error).message });
@@ -340,7 +339,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const messages = await this.chatService.getMessages(conversationId, page, limit);
+      const messages = await this._chatService.getMessages(conversationId, page, limit);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -370,7 +369,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const conversation = await this.chatService.getConversationById(conversationId);
+      const conversation = await this._chatService.getConversationById(conversationId);
       if (!conversation) {
         res.status(HttpStatus.NOT_FOUND).json({
           success: false,
@@ -380,7 +379,7 @@ export class ChatController implements IChatController {
       }
 
       
-      const userInfo = await this.chatService.getUserInfo(conversation.userId);
+      const userInfo = await this._chatService.getUserInfo(conversation.userId);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -412,7 +411,7 @@ export class ChatController implements IChatController {
       }
 
       
-      const conversation = await this.chatService.getConversation(userId, doctorId);
+      const conversation = await this._chatService.getConversation(userId, doctorId);
       if (!conversation) {
         res.status(HttpStatus.NOT_FOUND).json({
           success: false,
@@ -422,7 +421,7 @@ export class ChatController implements IChatController {
       }
 
       
-      const messages = await this.chatService.getMessages(conversation.id, page, limit);
+      const messages = await this._chatService.getMessages(conversation.id, page, limit);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -451,7 +450,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const marked = await this.chatService.markConversationAsRead(conversationId, userId);
+      const marked = await this._chatService.markConversationAsRead(conversationId, userId);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -479,7 +478,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const count = await this.chatService.getUnreadCount(conversationId, userId);
+      const count = await this._chatService.getUnreadCount(conversationId, userId);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -506,7 +505,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const deleted = await this.chatService.deleteMessage(messageId, userId);
+      const deleted = await this._chatService.deleteMessage(messageId, userId);
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -533,7 +532,7 @@ export class ChatController implements IChatController {
         return;
       }
 
-      const deleted = await this.chatService.softDeleteMessage(messageId, userId);
+      const deleted = await this._chatService.softDeleteMessage(messageId, userId);
       
       res.status(HttpStatus.OK).json({
         success: true,
