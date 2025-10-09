@@ -39,15 +39,20 @@ const extractTokenFromRefreshResponse = (role: ApiRole, data: any): string | nul
 
 export const getApi = (role: ApiRole) => {
   const instance = axios.create({
-    baseURL: import.meta.env.VITE_BACKEND_URL,
+    baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000',
     withCredentials: true,
   });
 
   instance.interceptors.request.use(
     (config) => {
       const token = roleTokenMap[role].get();
+      console.log(`Axios ${role} interceptor: Token retrieved:`, token ? 'Present' : 'Missing');
+      console.log(`Axios ${role} interceptor: Making request to:`, config.url);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log(`Axios ${role} interceptor: Authorization header set`);
+      } else {
+        console.log(`Axios ${role} interceptor: No token available, request will be unauthenticated`);
       }
       return config;
     },

@@ -16,6 +16,7 @@ import DoctorInbox from "../pages/doctor/DoctorInbox";
 import DoctorWallet from "../pages/doctor/DoctorWallet";
 import PatientHistory from "../pages/doctor/PatientHistory";
 
+
 const DoctorRoutes = () => {
   return (
     <>
@@ -93,6 +94,14 @@ const DoctorRoutes = () => {
           </DoctorLayout>
         }
       />
+      {/* <Route
+        path="/doctor/patient-history-test"
+        element={
+          <DoctorLayout>
+            <PatientHistoryTest />
+          </DoctorLayout>
+        }
+      /> */}
     </>
   );
 };

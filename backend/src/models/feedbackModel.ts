@@ -1,9 +1,10 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { Document, Model, Schema,Types } from "mongoose";
 
 export interface FeedbackDocument extends Document {
+  _id: Types.ObjectId; 
   appointmentId: string;
   userId: string;
-  rating: number; // 1-5
+  rating: number; 
   comment?: string;
   createdAt: Date;
 }

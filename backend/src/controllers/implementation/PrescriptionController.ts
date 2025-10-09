@@ -7,7 +7,7 @@ export class PrescriptionController {
   async create(req: Request, res: Response) {
     try {
       const { appointmentId } = req.params as any;
-      const doctorId = (req as any).userId as string;
+      const doctorId = (req as any).docId as string;
       const { userId, items, notes } = req.body;
       const saved = await this.service.addPrescription(appointmentId, doctorId, userId, items, notes);
       res.json({ success: true, prescription: saved });

@@ -7,16 +7,21 @@ import { useNavigate } from "react-router-dom";
 const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
   const { socket } = useSocket();
   const navigate = useNavigate();
-  const [incomingCall, setIncomingCall] = useState<{ open: boolean; conversationId: string | null; fromType?: string; offer?: any }>(
-    { open: false, conversationId: null }
-  );
+  const [incomingCall, setIncomingCall] = useState<{ 
+    open: boolean; 
+    conversationId: string | null; 
+    fromType?: string; 
+    offer?: any;
+    appointmentId?: string;
+    userId?: string;
+  }>({ open: false, conversationId: null });
 
   useEffect(() => {
     if (!socket) return;
     const handler = (payload: any) => {
-      const { conversationId, fromType, offer } = payload || {};
+      const { conversationId, fromType, offer, appointmentId, userId } = payload || {};
       if (!conversationId) return;
-      setIncomingCall({ open: true, conversationId, fromType, offer });
+      setIncomingCall({ open: true, conversationId, fromType, offer, appointmentId, userId });
     };
     socket.on('call_invite', handler);
     return () => {
@@ -48,6 +53,14 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
                 className="px-4 py-2 rounded-lg bg-primary text-white"
                 onClick={() => {
                   if (incomingCall.conversationId) {
+                    // Store appointment ID and user ID in session storage for prescription functionality
+                    if (incomingCall.appointmentId) {
+                      sessionStorage.setItem('activeAppointmentId', incomingCall.appointmentId);
+                    }
+                    if (incomingCall.userId) {
+                      sessionStorage.setItem('callUserId', incomingCall.userId);
+                    }
+                    
                     // Persist the incoming offer so call page can answer immediately
                     try {
                       sessionStorage.setItem(

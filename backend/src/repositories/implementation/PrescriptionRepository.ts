@@ -1,6 +1,7 @@
 import prescriptionModel, { PrescriptionDocument } from "../../models/prescriptionModel";
+import { IPrescriptionRepository } from "../interface/IPrescriptionRepository";
 
-export class PrescriptionRepository {
+export class PrescriptionRepository implements IPrescriptionRepository {
   async create(data: Omit<PrescriptionDocument, keyof Document | "_id" | "createdAt"> & { items: any[] }): Promise<PrescriptionDocument> {
     const doc = await prescriptionModel.create(data as any);
     return doc;

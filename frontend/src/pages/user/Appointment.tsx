@@ -4,33 +4,35 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { AppContext } from "../../context/AppContext";
 import { assets, type Doctor } from "../../assets/user/assets";
-import RelatedDoctors from "../../components/user/RelatedDoctors";
+// import RelatedDoctors from "../../components/user/RelatedDoctors";
 import { toast } from "react-toastify";
 import {
-  appointmentBookingAPI,
+  // appointmentBookingAPI,
   getAvailableSlotsAPI,
   getAvailableSlotsForDateAPI,
   processWalletPaymentAPI,
-  finalizeWalletPaymentAPI,
+  // finalizeWalletPaymentAPI,
   validateWalletBalanceAPI,
 } from "../../services/appointmentServices";
 import { PaymentRazorpayAPI, VerifyRazorpayAPI } from "../../services/paymentServices";
 import { finalizeAppointmentAPI } from "../../services/appointmentServices";
 import { showErrorToast } from "../../utils/errorHandler";
-import { Star, Clock, MapPin, Users, Calendar, CheckCircle, Wallet, CreditCard } from "lucide-react";
+import { Star, Clock, Users, Calendar, CheckCircle, Wallet, CreditCard } from "lucide-react";
 import { lockAppointmentSlotAPI } from "../../services/appointmentServices";
 import { cancelAppointmentLockAPI } from '../../services/appointmentServices';
 import { api } from "../../axios/axiosInstance";
+import { getDoctorFeedbacksAPI } from "../../services/appointmentServices";
+import { MessageCircle } from "lucide-react";
 
-function parse12HourTime(timeStr: string): { hour: number; minute: number } {
-  const [time, modifier] = timeStr.split(" ");
-  const [hourStr, minuteStr] = time.split(":");
-  let hour = parseInt(hourStr, 10);
-  const minute = parseInt(minuteStr, 10);
-  if (modifier.toUpperCase() === "PM" && hour !== 12) hour += 12;
-  if (modifier.toUpperCase() === "AM" && hour === 12) hour = 0;
-  return { hour, minute };
-}
+// function parse12HourTime(timeStr: string): { hour: number; minute: number } {
+//   const [time, modifier] = timeStr.split(" ");
+//   const [hourStr, minuteStr] = time.split(":");
+//   let hour = parseInt(hourStr, 10);
+//   const minute = parseInt(minuteStr, 10);
+//   if (modifier.toUpperCase() === "PM" && hour !== 12) hour += 12;
+//   if (modifier.toUpperCase() === "AM" && hour === 12) hour = 0;
+//   return { hour, minute };
+// }
 
 // Helper to format date as YYYY-MM-DD in local time
 function formatLocalDate(date: Date) {
@@ -73,6 +75,11 @@ const Appointment = () => {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'wallet'>('razorpay');
   const [isCheckingWallet, setIsCheckingWallet] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<{ id: string; rating: number; comment?: string; createdAt: string }[]>([]);
+  const [feedbackPage, setFeedbackPage] = useState(1);
+  const [feedbackTotal, setFeedbackTotal] = useState(0);
+  const [feedbackAvg, setFeedbackAvg] = useState(0);
+  const FEEDBACK_PAGE_SIZE = 3;
   
 
   const fetchDocInfo = () => {
@@ -420,6 +427,27 @@ const Appointment = () => {
     getAvailableSlots();
   }, [docInfo]);
 
+  useEffect(() => {
+    const loadFeedbacks = async () => {
+      if (!docId) return;
+      try {
+        const { data } = await getDoctorFeedbacksAPI(docId, feedbackPage, FEEDBACK_PAGE_SIZE);
+        if (data.success) {
+          if (feedbackPage === 1) {
+            setFeedbacks(data.items || []);
+          } else {
+            setFeedbacks((prev) => [...prev, ...(data.items || [])]);
+          }
+          setFeedbackTotal(data.total || 0);
+          setFeedbackAvg(data.averageRating || 0);
+        }
+      } catch (e) {
+        
+      }
+    };
+    loadFeedbacks();
+  }, [docId, feedbackPage]);
+
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -728,6 +756,47 @@ const Appointment = () => {
             Book Appointment
           </button>
         </div>
+      </div>
+
+      {/* Reviews & Feedback Section */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 mb-8">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-6 h-6 text-primary" />
+            <h3 className="text-xl font-bold text-gray-900">Patient Reviews</h3>
+          </div>
+          <div className="text-sm text-gray-600">
+            Avg Rating: <span className="font-semibold text-primary">{feedbackAvg.toFixed(1)}</span>
+          </div>
+        </div>
+        {feedbacks.length === 0 ? (
+          <p className="text-gray-500">No reviews yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {feedbacks.map((fb, idx) => (
+              <div key={fb.id + idx} className="p-4 rounded-xl border border-gray-200 bg-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                    <span className="font-semibold">{fb.rating}/5</span>
+                  </div>
+                  <span className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleDateString()}</span>
+                </div>
+                {fb.comment && <p className="mt-2 text-gray-700">{fb.comment}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        {feedbacks.length < feedbackTotal && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setFeedbackPage((p) => p + 1)}
+              className="px-4 py-2 rounded-lg border-2 border-gray-200 hover:border-primary/50 transition-colors"
+            >
+              Load more
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import EmojiPicker from 'emoji-picker-react';
 import {
-  getDoctorConversationsAPI,
+  // w
   getDoctorMessagesAPI,
   sendDoctorMessageAPI,
   markConversationAsReadAPI,

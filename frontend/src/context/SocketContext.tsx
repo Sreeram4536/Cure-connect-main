@@ -16,8 +16,8 @@ interface SocketContextType {
   stopTyping: (conversationId: string) => void;
   markAsRead: (conversationId: string, messageIds: string[]) => void;
   // WebRTC signaling helpers
-  sendCallInvite: (conversationId: string, offer: any) => void;
-  sendCallAnswer: (conversationId: string, answer: any) => void;
+  sendCallInvite: (conversationId: string, offer: any,target:any,appointmentId:string|null,userId:string | null) => void;
+  sendCallAnswer: (conversationId: string, answer: any,apptId:string|null,uId:string|null) => void;
   sendCallCandidate: (conversationId: string, candidate: any) => void;
   sendCallEnd: (conversationId: string, reason?: string) => void;
 }
@@ -212,17 +212,29 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   // ---------------------------
   // WebRTC signaling emitters
   // ---------------------------
-  const sendCallInvite = (conversationId: string, offer: any, target?: { id: string; type: 'user' | 'doctor' }) => {
+  const sendCallInvite = (conversationId: string, offer: any, target?: { id: string; type: 'user' | 'doctor' },appointmentId?: string|null,userId?:string|null) => {
     if (socket && isConnected) {
-      socket.emit('call_invite', { conversationId, offer, targetId: target?.id, targetType: target?.type });
+      socket.emit('call_invite', { conversationId, offer, targetId: target?.id, targetType: target?.type,appointmentId,userId });
     }
   };
 
-  const sendCallAnswer = (conversationId: string, answer: any) => {
-    if (socket && isConnected) {
-      socket.emit('call_answer', { conversationId, answer });
-    }
-  };
+  // const sendCallAnswer = (conversationId: string, answer: any) => {
+  //   if (socket && isConnected) {
+  //     socket.emit('call_answer', { conversationId, answer });
+  //   }
+  // };
+
+  const sendCallAnswer = (
+  conversationId: string,
+  answer: any,
+  appointmentId?: string | null,
+  userId?: string | null
+) => {
+  if (socket && isConnected) {
+    socket.emit("call_answer", { conversationId, answer, appointmentId, userId });
+  }
+};
+
 
   const sendCallCandidate = (conversationId: string, candidate: any) => {
     if (socket && isConnected) {

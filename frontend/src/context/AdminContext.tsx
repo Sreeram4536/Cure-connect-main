@@ -520,7 +520,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getAllDoctors = async (): Promise<void> => {
     try {
-      const { data } = await getAllDoctorsAPI(aToken);
+      const { data } = await getAllDoctorsAPI();
       if (data.success) {
         setDoctors(data.doctors);
         console.log(data.doctors);
@@ -534,7 +534,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getDoctorsPaginated = async (page: number, limit: number, searchQuery: string = ""): Promise<PaginationData<Doctor>> => {
     try {
-      const { data } = await getDoctorsPaginatedAPI(page, limit, aToken, searchQuery);
+      const { data } = await getDoctorsPaginatedAPI(page, limit, searchQuery);
       if (data.success) {
         return {
           data: data.data,
@@ -556,7 +556,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const approveDoctor = async (doctorId: string): Promise<void> => {
     try {
-      const { data } = await approveDoctorAPI(doctorId, aToken);
+      const { data } = await approveDoctorAPI(doctorId);
       if (data.success) {
         toast.success(data.message);
         
@@ -577,7 +577,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const rejectDoctor = async (doctorId: string): Promise<void> => {
     try {
-      const { data } = await rejectDoctorAPI(doctorId, aToken);
+      const { data } = await rejectDoctorAPI(doctorId);
       if (data.success) {
         toast.success(data.message);
         
@@ -605,7 +605,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
       const { data } = await changeAvailabilityAPI(
         docId,
         newAvailability,
-        aToken
+        
       );
       if (data.success) {
         toast.success(data.message);
@@ -627,7 +627,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getAllUsers = async (): Promise<void> => {
     try {
-      const { data } = await getAllUsersAPI(aToken);
+      const { data } = await getAllUsersAPI();
       if (data.success) {
         setUsers(data.users);
       } else {
@@ -640,7 +640,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getUsersPaginated = async (page: number, limit: number, searchQuery: string): Promise<PaginationData<userData>> => {
     try {
-      const { data } = await getUsersPaginatedAPI(page, limit, aToken, searchQuery);
+      const { data } = await getUsersPaginatedAPI(page, limit, searchQuery);
       if (data.success) {
         return {
           data: data.data,
@@ -662,7 +662,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const toggleBlockUser = async (userId: string, block: boolean): Promise<void> => {
     try {
-      const { data } = await toggleUserBlockAPI(userId, block, aToken);
+      const { data } = await toggleUserBlockAPI(userId, block);
       if (data.success) {
         toast.success(data.message);
         
@@ -683,7 +683,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const toggleBlockDoctor = async (doctorId: string, block: boolean): Promise<void> => {
     try {
-      const { data } = await toggleDoctorBlockAPI(doctorId, block, aToken);
+      const { data } = await toggleDoctorBlockAPI(doctorId, block);
       if (data.success) {
         toast.success(data.message);
         
@@ -704,7 +704,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getAllAppointments = async (): Promise<void> => {
     try {
-      const { data } = await getAllAppointmentsAPI(aToken);
+      const { data } = await getAllAppointmentsAPI();
 
       if (data.success) {
         setAppointments(data.appointments.reverse());
@@ -718,7 +718,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getAppointmentsPaginated = async (page: number, limit: number, searchQuery: string = ""): Promise<PaginationData<AppointmentTypes>> => {
     try {
-      const { data } = await getAppointmentsPaginatedAPI(page, limit, aToken, searchQuery);
+      const { data } = await getAppointmentsPaginatedAPI(page, limit, searchQuery);
       if (data.success) {
         return {
           data: data.data,
@@ -740,7 +740,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const cancelAppointment = async (appointmentId: string): Promise<void> => {
     try {
-      const { data } = await adminCancelAppointmentAPI(appointmentId, aToken);
+      const { data } = await adminCancelAppointmentAPI(appointmentId);
 
       if (data.success) {
         toast.success(data.message);
@@ -755,7 +755,7 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
 
   const getDashData = async (): Promise<void> => {
     try {
-      const { data } = await adminDashboardAPI(aToken);
+      const { data } = await adminDashboardAPI();
 
       if (data.success) {
         setDashData(data.dashData);

@@ -94,6 +94,12 @@ userRouter.get(
   userController.getAvailableSlotsForDate.bind(userController)
 );
 
+userRouter.get(
+  "/doctor/:doctorId/feedbacks",
+  authRole(["user"]),
+  feedbackController.listByDoctor.bind(feedbackController)
+);
+
 // Wallet routes
 userRouter.get(
   "/wallet/balance",

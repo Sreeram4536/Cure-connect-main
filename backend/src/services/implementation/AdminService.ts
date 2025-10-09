@@ -135,7 +135,8 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
       throw new Error("Doctor already approved");
 
     doctor.status = "approved";
-    await this._doctorRepository.save(doctor);
+    // await this._doctorRepository.save(doctor);
+    await this._doctorRepository.updateById(doctorId,{status:"approved"})
     return "Doctor approved successfully";
   }
 

@@ -182,3 +182,13 @@ export const validateWalletBalanceAPI = async (
     {}
   );
 };
+
+// Doctor feedbacks
+export const getDoctorFeedbacksAPI = async (
+  doctorId: string,
+  page: number = 1,
+  limit: number = 5
+) => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  return api.get(`/api/user/doctor/${doctorId}/feedbacks?${params.toString()}`);
+};

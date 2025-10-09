@@ -21,29 +21,44 @@ const VideoCall = () => {
   const screenShareTrackRef = useRef<MediaStreamTrack | null>(null);
   const callTimerRef = useRef<number | null>(null);
 
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+
+  const [showRx, setShowRx] = useState(false);
+  const [rxItems, setRxItems] = useState<{ name: string; dosage: string; instructions?: string }[]>([
+    { name: "", dosage: "", instructions: "" },
+  ]);
+  const [rxNotes, setRxNotes] = useState("");
+
   useEffect(() => {
     if (!conversationId) return;
+
     joinConversation(conversationId);
+
     // If doctor accepted via modal, an incoming offer may be present
     try {
       const raw = sessionStorage.getItem('incomingOffer');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed?.conversationId === conversationId && parsed?.offer) {
-          // Simulate receiving invite to proceed as callee
           (async () => {
             await ensureConnection();
             await ensureLocalMedia();
             await pcRef.current?.setRemoteDescription(new RTCSessionDescription(parsed.offer));
             const answer = await pcRef.current?.createAnswer();
             await pcRef.current?.setLocalDescription(answer!);
-            sendCallAnswer(conversationId, answer);
+            const apptId = sessionStorage.getItem("activeAppointmentId");
+            const uId = sessionStorage.getItem("callUserId");
+            sendCallAnswer(conversationId, answer, apptId, uId);
             setInCall(true);
+            // ✅ CORRECTED: Doctor receiving an offer should be 'doctor'
+            sessionStorage.setItem('roleForCall', 'doctor');
             sessionStorage.removeItem('incomingOffer');
           })();
         }
       }
-    } catch {}
+    } catch { }
     return () => {
       leaveConversation(conversationId);
       cleanup();
@@ -54,17 +69,30 @@ const VideoCall = () => {
     if (!socket) return;
     const onInvite = async (payload: any) => {
       if (payload.conversationId !== conversationId) return;
-      // If this client initiated the call, ignore the mirrored invite
-      const initiator = sessionStorage.getItem('callInitiator');
-      if (initiator === 'self') return;
+
+      const apptId = payload.appointmentId || sessionStorage.getItem("activeAppointmentId") || null;
+      const uId = payload.userId || sessionStorage.getItem("callUserId") || null;
+
+      if (apptId) {
+        sessionStorage.setItem('activeAppointmentId', apptId);
+      }
+      if (uId) {
+        sessionStorage.setItem('callUserId', uId);
+      }
+
       await ensureConnection();
       await ensureLocalMedia();
-      await pcRef.current?.setRemoteDescription(new RTCSessionDescription(payload.offer));
+
+      // await pcRef.current?.setRemoteDescription(new RTCSessionDescription(payload.offer));
       const answer = await pcRef.current?.createAnswer();
       await pcRef.current?.setLocalDescription(answer!);
-      sendCallAnswer(payload.conversationId, answer);
+
+      sendCallAnswer(payload.conversationId, answer, payload.appointmentId, payload.userId);
       setInCall(true);
+      // ✅ CORRECTED: A client receiving an invite is the callee (doctor)
+      sessionStorage.setItem('roleForCall', 'doctor');
     };
+
     const onAnswer = async (payload: any) => {
       if (payload.conversationId !== conversationId) return;
       await pcRef.current?.setRemoteDescription(new RTCSessionDescription(payload.answer));
@@ -84,12 +112,13 @@ const VideoCall = () => {
       toast.info("Call ended");
       cleanup();
       setInCall(false);
-      try {
-        const roleHint = sessionStorage.getItem('roleForCall');
-        if (roleHint === 'doctor') setShowRx(true);
-        else setShowFeedback(true);
-      } catch {
+      const role = sessionStorage.getItem("roleForCall");
+      if (role === "doctor") {
+        setShowRx(true);
+        setShowFeedback(false);
+      } else if (role === "user") {
         setShowFeedback(true);
+        setShowRx(false);
       }
     };
 
@@ -133,22 +162,40 @@ const VideoCall = () => {
 
   const startCall = async () => {
     try {
+      const appointmentId = sessionStorage.getItem('activeAppointmentId');
+
       if (!conversationId) return;
       await ensureConnection();
       await ensureLocalMedia();
+
       const offer = await pcRef.current?.createOffer();
       await pcRef.current?.setLocalDescription(offer!);
-      // Read optional target from session (doctor/user) to ensure personal room delivery
+
       let target: { id: string; type: 'user' | 'doctor' } | undefined = undefined;
       try {
         const raw = sessionStorage.getItem("callTarget");
         if (raw) target = JSON.parse(raw);
-      } catch {}
-      // Mark this client as initiator to avoid handling their own invite
+      } catch { }
+
       sessionStorage.setItem('callInitiator', 'self');
-      sendCallInvite(conversationId, offer, target);
+      const token = localStorage.getItem('userAccessToken');
+      let userId: string | null = null;
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          userId = payload.id;
+          // Store user ID in session storage for prescription functionality
+          if (userId) {
+            sessionStorage.setItem('callUserId', userId);
+          }
+        } catch { }
+      }
+
+      sendCallInvite(conversationId, offer, target, appointmentId, userId);
       if (callTimerRef.current) window.clearInterval(callTimerRef.current);
       callTimerRef.current = window.setInterval(() => setCallSeconds((s) => s + 1), 1000);
+      // ✅ CORRECTED: A client starting the call is the caller (user)
+      sessionStorage.setItem('roleForCall', 'user');
     } catch (e: any) {
       toast.error(e?.message || "Failed to start call");
     }
@@ -158,14 +205,18 @@ const VideoCall = () => {
     if (conversationId) sendCallEnd(conversationId, "hangup");
     cleanup();
     setInCall(false);
-    try {
-      sessionStorage.removeItem('callInitiator');
-      sessionStorage.removeItem('incomingOffer');
-      sessionStorage.removeItem('callTarget');
-      // keep roleForCall for post-call modal decision
-    } catch {}
-    const roleHint = sessionStorage.getItem('roleForCall');
-    if (roleHint === 'doctor') setShowRx(true); else setShowFeedback(true);
+    sessionStorage.removeItem("callInitiator");
+    sessionStorage.removeItem("incomingOffer");
+    sessionStorage.removeItem("callTarget");
+
+    const role = sessionStorage.getItem("roleForCall");
+    if (role === "doctor") {
+      setShowRx(true);
+      setShowFeedback(false);
+    } else if (role === "user") {
+      setShowFeedback(true);
+      setShowRx(false);
+    }
   };
 
   const toggleMute = () => {
@@ -217,12 +268,12 @@ const VideoCall = () => {
   const cleanup = () => {
     try {
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
-    } catch {}
+    } catch { }
     localStreamRef.current = null;
     try {
       pcRef.current?.getSenders().forEach((s) => pcRef.current?.removeTrack(s));
       pcRef.current?.close();
-    } catch {}
+    } catch { }
     pcRef.current = null;
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -235,27 +286,6 @@ const VideoCall = () => {
     setIsCamOff(false);
     setIsScreenSharing(false);
   };
-
-  // Feedback (user) & Prescription (doctor) modals
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-
-  const [showRx, setShowRx] = useState(false);
-  const [rxItems, setRxItems] = useState<{ name: string; dosage: string; instructions?: string }[]>([
-    { name: "", dosage: "", instructions: "" },
-  ]);
-  const [rxNotes, setRxNotes] = useState("");
-
-  useEffect(() => {
-    // Decide which modal to show based on role stored in token payload
-    try {
-      const token = localStorage.getItem('doctorAccessToken');
-      if (token) {
-        setShowRx(false); // open after endCall on doctor side manually
-      }
-    } catch {}
-  }, []);
 
 
   return (
@@ -306,54 +336,80 @@ const VideoCall = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-xl font-semibold mb-4">Rate your consultation</h3>
             <div className="flex gap-2 mb-4">
-              {[1,2,3,4,5].map((s) => (
+              {[1, 2, 3, 4, 5].map((s) => (
                 <button key={s} onClick={() => setRating(s)} className={s <= rating ? 'text-amber-500 text-2xl' : 'text-gray-300 text-2xl'}>★</button>
               ))}
             </div>
-            <textarea value={comment} onChange={(e)=>setComment(e.target.value)} className="w-full border rounded-lg p-3 h-28 mb-4" placeholder="Your feedback"/>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="w-full border rounded-lg p-3 h-28 mb-4" placeholder="Your feedback" />
             <div className="flex justify-end gap-2">
-              <button className="px-4 py-2 rounded-lg border" onClick={()=>setShowFeedback(false)}>Close</button>
-              <button className="px-4 py-2 rounded-lg bg-primary text-white" onClick={async()=>{
-                try{
+              <button className="px-4 py-2 rounded-lg border" onClick={() => setShowFeedback(false)}>Close</button>
+              <button className="px-4 py-2 rounded-lg bg-primary text-white" onClick={async () => {
+                try {
                   const apptId = sessionStorage.getItem('activeAppointmentId') || '';
                   if (!apptId) throw new Error('Appointment not found');
                   await submitFeedbackAPI(apptId, rating, comment);
                   toast.success('Feedback submitted');
                   setShowFeedback(false);
-                }catch(e:any){toast.error(e?.response?.data?.message||'Failed');}
+                  navigate("/my-appointments")
+                } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed'); }
               }}>Submit</button>
             </div>
           </div>
         </div>
       )}
 
+
       {showRx && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
             <h3 className="text-xl font-semibold mb-4">Add Prescription</h3>
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {rxItems.map((it,idx)=> (
+              {rxItems.map((it, idx) => (
                 <div key={idx} className="grid grid-cols-3 gap-2">
-                  <input value={it.name} onChange={(e)=>{const n=[...rxItems]; n[idx].name=e.target.value; setRxItems(n);}} className="border rounded p-2" placeholder="Medicine"/>
-                  <input value={it.dosage} onChange={(e)=>{const n=[...rxItems]; n[idx].dosage=e.target.value; setRxItems(n);}} className="border rounded p-2" placeholder="Dosage"/>
-                  <input value={it.instructions} onChange={(e)=>{const n=[...rxItems]; n[idx].instructions=e.target.value; setRxItems(n);}} className="border rounded p-2" placeholder="Instructions"/>
+                  <input value={it.name} onChange={(e) => { const n = [...rxItems]; n[idx].name = e.target.value; setRxItems(n); }} className="border rounded p-2" placeholder="Medicine" />
+                  <input value={it.dosage} onChange={(e) => { const n = [...rxItems]; n[idx].dosage = e.target.value; setRxItems(n); }} className="border rounded p-2" placeholder="Dosage" />
+                  <input value={it.instructions} onChange={(e) => { const n = [...rxItems]; n[idx].instructions = e.target.value; setRxItems(n); }} className="border rounded p-2" placeholder="Instructions" />
                 </div>
               ))}
-              <button className="text-sm text-blue-600" onClick={()=>setRxItems([...rxItems,{name:'',dosage:'',instructions:''}])}>+ Add item</button>
-              <textarea value={rxNotes} onChange={(e)=>setRxNotes(e.target.value)} className="w-full border rounded-lg p-3 h-24" placeholder="Notes"/>
+              <button className="text-sm text-blue-600" onClick={() => setRxItems([...rxItems, { name: '', dosage: '', instructions: '' }])}>+ Add item</button>
+              <textarea value={rxNotes} onChange={(e) => setRxNotes(e.target.value)} className="w-full border rounded-lg p-3 h-24" placeholder="Notes" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button className="px-4 py-2 rounded-lg border" onClick={()=>setShowRx(false)}>Close</button>
-              <button className="px-4 py-2 rounded-lg bg-primary text-white" onClick={async()=>{
-                try{
-                  const apptId = sessionStorage.getItem('activeAppointmentId') || '';
-                  if (!apptId) throw new Error('Appointment not found');
-                  await createPrescriptionAPI(apptId, '', rxItems, rxNotes);
-                  await completeAppointmentAPI(apptId);
-                  toast.success('Prescription saved and appointment completed');
-                  setShowRx(false);
-                }catch(e:any){toast.error(e?.response?.data?.message||'Failed');}
-              }}>Save & Complete</button>
+              <button className="px-4 py-2 rounded-lg border" onClick={() => setShowRx(false)}>Close</button>
+              <button
+                className="px-4 py-2 rounded-lg bg-primary text-white"
+                onClick={async () => {
+                  try {
+                    const apptId = sessionStorage.getItem('activeAppointmentId') || '';
+                    if (!apptId) throw new Error('Appointment not found');
+
+                    const uId = sessionStorage.getItem('callUserId') || '';
+                    if (!uId) throw new Error('user not found');
+
+
+                    const sanitizedRxItems = rxItems.filter((item) => item.name.trim() !== '' && item.dosage.trim() !== '');
+                    if (sanitizedRxItems.length === 0) {
+                      toast.error('Add at least one medicine with name and dosage');
+                      return;
+                    }
+
+                    await createPrescriptionAPI(apptId, uId, sanitizedRxItems, rxNotes);
+                    await completeAppointmentAPI(apptId);
+
+                    toast.success('Prescription saved and appointment completed');
+
+                    setShowRx(false);
+                    setRxItems([{ name: '', dosage: '', instructions: '' }]);
+                    setRxNotes('');
+                    navigate("/doctor/appointments")
+                  } catch (e: any) {
+                    console.error(e);
+                    toast.error(e?.response?.data?.message || e?.message || 'Failed to save prescription');
+                  }
+                }}
+              >
+                Save & Complete
+              </button>
             </div>
           </div>
         </div>
@@ -363,5 +419,3 @@ const VideoCall = () => {
 };
 
 export default VideoCall;
-
-

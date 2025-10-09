@@ -24,6 +24,9 @@ import { PrescriptionController } from "../controllers/implementation/Prescripti
 import { FeedbackController } from "../controllers/implementation/FeedbackController";
 import { AppointmentCompletionService } from "../services/implementation/AppointmentCompletionService";
 import { AppointmentCompletionController } from "../controllers/implementation/AppointmentCompletionController";
+import { PatientHistoryRepository } from "../repositories/implementation/PatientHistoryRepository";
+import { PatientHistoryService } from "../services/implementation/PatientHistoryService";
+import { PatientHistoryController } from "../controllers/implementation/PatientHistoryController";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
@@ -47,9 +50,21 @@ export { doctorMetricsService };
 // New DI
 const prescriptionRepository = new PrescriptionRepository();
 const feedbackRepository = new FeedbackRepository();
+
+// Patient History DI
+const patientHistoryRepository = new PatientHistoryRepository();
+export const patientHistoryService = new PatientHistoryService(patientHistoryRepository);
+export const patientHistoryController = new PatientHistoryController(
+  patientHistoryService,
+  appointmentRepository,
+  prescriptionRepository,
+  doctorRepository,
+  userRepository
+);
+
 const prescriptionService = new PrescriptionService(prescriptionRepository);
-const feedbackService = new FeedbackService(feedbackRepository);
+const feedbackService = new FeedbackService(feedbackRepository,appointmentRepository);
 export const prescriptionController = new PrescriptionController(prescriptionService);
 export const feedbackController = new FeedbackController(feedbackService);
-const appointmentCompletionService = new AppointmentCompletionService(appointmentRepository, prescriptionRepository);
+const appointmentCompletionService = new AppointmentCompletionService(appointmentRepository, prescriptionRepository, patientHistoryService, doctorRepository);
 export const appointmentCompletionController = new AppointmentCompletionController(appointmentCompletionService);

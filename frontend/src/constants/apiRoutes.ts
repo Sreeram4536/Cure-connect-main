@@ -18,9 +18,10 @@ export const ADMIN_API = {
     `/api/admin/appointments/${appointmentId}/cancel`,
   DASHBOARD: "/api/admin/dashboard",
   BLOCK_DOCTOR: (doctorId: string) => `/api/admin/doctors/${doctorId}/block`,
+  ADMIN_METRICS:(range: 'daily' | 'weekly' | 'monthly' = 'monthly')=>`/api/admin/dashboard/metrics?range=${encodeURIComponent(range)}`
 };
 
-// src/constants/apiRoutes.ts
+
 
 export const APPOINTMENT_API = {
   BASE: "/api/user/appointments",
@@ -30,7 +31,7 @@ export const APPOINTMENT_API = {
   FINALIZE: "/api/user/appointments/finalize",
 };
 
-// src/constants/apiRoutes.ts
+
 
 export const AUTH_API = {
   REGISTER: "/api/user/register",
@@ -75,7 +76,7 @@ export const PAYMENT_API = {
   RAZORPAY_VERIFY: "/api/user/payments/razorpay/verify",
 };
 
-// src/constants/apiRoutes.ts
+
 
 export const USER_PROFILE_API = {
   GET: "/api/user/profile",
