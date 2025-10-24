@@ -94,7 +94,7 @@ const AdminDoctorList = () => {
       setConfirmOpen(false);
       setTargetDoctor(null);
       setTargetAction(null);
-      fetchDoctors();
+      // fetchDoctors();
     } catch (error) {
       // error handled in context
     } finally {

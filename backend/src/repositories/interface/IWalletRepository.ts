@@ -24,7 +24,10 @@ export interface IWalletRepository {
     page: number,
     limit: number,
     sortBy?: string,
-    sortOrder?: 'asc' | 'desc'
+    sortOrder?: 'asc' | 'desc',
+    type?: 'credit' | 'debit',
+    startDate?: Date,
+    endDate?: Date
   ): Promise<PaginationResult<WalletTransaction>>;
   getWalletBalance(userId: string, userRole: UserRole): Promise<number>;
   refundToWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, description: string): Promise<void>;

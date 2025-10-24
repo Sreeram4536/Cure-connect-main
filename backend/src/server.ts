@@ -13,11 +13,7 @@ import walletRouter from "./routes/walletRoute";
 import adminWalletRouter from "./routes/adminWalletRoute";
 import doctorWalletRouter from "./routes/doctorWalletRoute";
 import { initializePatientHistoryRoutes } from "./routes/patientHistoryRoute";
-import { patientHistoryService } from "./dependencyhandler/doctor.dependency";
-import { AppointmentRepository } from "./repositories/implementation/AppointmentRepository";
-import { PrescriptionRepository } from "./repositories/implementation/PrescriptionRepository";
-import { DoctorRepository } from "./repositories/implementation/DoctorRepository";
-import { UserRepository } from "./repositories/implementation/UserRepository";
+import { patientHistoryService, patientHistoryPopulateService } from "./dependencyhandler/doctor.dependency";
 import "./utils/passport";
 import passport from "passport";
 import { createServer } from "http";
@@ -71,10 +67,7 @@ app.use("/api/admin-wallet", adminWalletRouter);
 app.use("/api/doctor-wallet", doctorWalletRouter);
 app.use("/api/doctor/patient-history", initializePatientHistoryRoutes(
   patientHistoryService,
-  new AppointmentRepository(),
-  new PrescriptionRepository(),
-  new DoctorRepository(),
-  new UserRepository()
+  patientHistoryPopulateService
 ));
 
 app.get("/", (req, res) => {

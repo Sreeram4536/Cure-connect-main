@@ -12,4 +12,5 @@ export interface AppointmentTypes {
   payment?: boolean;
   isConfirmed?: boolean;
   isCompleted?: boolean;
+  
 }

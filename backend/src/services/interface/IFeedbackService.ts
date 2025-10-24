@@ -7,4 +7,10 @@ export interface IFeedbackService {
     rating: number,
     comment?: string
   ): Promise<FeedbackDTO>;
+
+  listByDoctor(
+    doctorId: string,
+    page: number,
+    limit: number
+  ): Promise<{ items: FeedbackDTO[]; total: number; averageRating: number }>;
 }

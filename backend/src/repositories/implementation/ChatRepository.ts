@@ -99,17 +99,17 @@ export class ChatRepository implements IChatRepository {
     console.log("Creating message with data:", messageData);
     
     try {
-      // Check MongoDB connection
+      
       if (mongoose.connection.readyState !== 1) {
         throw new Error("MongoDB not connected. Ready state: " + mongoose.connection.readyState);
       }
       
-      // Validate the data before creating
+      
       if (!messageData.conversationId || !messageData.senderId || !messageData.message) {
         throw new Error("Missing required fields: conversationId, senderId, or message");
       }
       
-      // Normalize attachments to stored string[] (URLs)
+      
       const attachmentUrls = Array.isArray(messageData.attachments)
         ? (messageData.attachments as any[]).map((a) => (typeof a === "string" ? a : a?.filePath)).filter(Boolean)
         : [];
@@ -189,7 +189,7 @@ export class ChatRepository implements IChatRepository {
     console.log("ChatRepository.markConversationAsRead called with:", { conversationId, userId });
     
     try {
-      // Check MongoDB connection
+      
       if (mongoose.connection.readyState !== 1) {
         throw new Error("MongoDB not connected. Ready state: " + mongoose.connection.readyState);
       }

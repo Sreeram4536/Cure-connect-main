@@ -2,79 +2,63 @@ import { Request, Response } from "express";
 import { IPatientHistoryController } from "../interface/IPatientHistoryController";
 import { IPatientHistoryService } from "../../services/interface/IPatientHistoryService";
 import { AuthRequest } from "../../types/customRequest";
-import { PatientHistoryPopulateService } from "../../services/implementation/PatientHistoryPopulateService";
-import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
-import { IPrescriptionRepository } from "../../repositories/interface/IPrescriptionRepository";
-import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
-import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { IPatientHistoryPopulateService } from "../../services/interface/IPatientHistoryPopulateService";
+import { HttpStatus } from "../../constants/status.constants";
 
 export class PatientHistoryController implements IPatientHistoryController {
-  private populateService: PatientHistoryPopulateService;
-
   constructor(
-    private patientHistoryService: IPatientHistoryService,
-    private appointmentRepository: IAppointmentRepository,
-    private prescriptionRepository: IPrescriptionRepository,
-    private doctorRepository: IDoctorRepository,
-    private userRepository: IUserRepository
-  ) {
-    this.populateService = new PatientHistoryPopulateService(
-      patientHistoryService,
-      appointmentRepository,
-      prescriptionRepository,
-      doctorRepository,
-      userRepository
-    );
-  }
+    private _patientHistoryService: IPatientHistoryService,
+    private _populateService: IPatientHistoryPopulateService
+  ) {}
 
   async getPatientHistory(req: Request, res: Response): Promise<void> {
     try {
       const { userId } = req.params;
       const doctorId = (req as AuthRequest).docId;
 
-      console.log("PatientHistoryController - getPatientHistory called");
-      console.log("userId from params:", userId);
-      console.log("doctorId from auth:", doctorId);
-      console.log("req.user:", (req as any).user);
-
       if (!doctorId) {
-        console.log("No doctorId found, returning 401");
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ 
+          success: false, 
+          message: "Doctor not authenticated" 
+        });
         return;
       }
 
       if (!userId) {
-        console.log("No userId found, returning 400");
-        res.status(400).json({ success: false, message: "User ID is required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "User ID is required" 
+        });
         return;
       }
 
-      console.log("Calling patientHistoryService.getPatientHistoryForDoctor with:", { doctorId, userId });
-      let patientHistory = await this.patientHistoryService.getPatientHistoryForDoctor(doctorId, userId);
+      let patientHistory = await this._patientHistoryService.getPatientHistoryForDoctor(doctorId, userId);
 
-      // If no patient history exists, try to populate it from existing appointments
+      
       if (!patientHistory) {
-        console.log("No patient history found, attempting to populate from appointments...");
         try {
-          patientHistory = await this.populateService.populatePatientHistoryFromAppointments(doctorId, userId);
+          patientHistory = await this._populateService.populatePatientHistoryFromAppointments(doctorId, userId);
         } catch (populateError) {
           console.error("Error populating patient history:", populateError);
         }
       }
 
       if (!patientHistory) {
-        res.status(404).json({ success: false, message: "No patient history found for this user" });
+        res.status(HttpStatus.NOT_FOUND).json({ 
+          success: false, 
+          message: "No patient history found for this user" 
+        });
         return;
       }
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: patientHistory,
         message: "Patient history retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting patient history:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -83,19 +67,21 @@ export class PatientHistoryController implements IPatientHistoryController {
 
   async getPatientsByDoctor(req: Request, res: Response): Promise<void> {
     try {
-    //   const doctorId = req.user?.id;
-    const doctorId = (req as AuthRequest).docId;
+      const doctorId = (req as AuthRequest).docId;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
       if (!doctorId) {
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ 
+          success: false, 
+          message: "Doctor not authenticated" 
+        });
         return;
       }
 
-      const result = await this.patientHistoryService.getPatientsByDoctorId(doctorId, page, limit);
+      const result = await this._patientHistoryService.getPatientsByDoctorId(doctorId, page, limit);
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: result.data,
         pagination: {
@@ -109,7 +95,7 @@ export class PatientHistoryController implements IPatientHistoryController {
       });
     } catch (error) {
       console.error("Error getting patients by doctor:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -118,25 +104,30 @@ export class PatientHistoryController implements IPatientHistoryController {
 
   async searchPatients(req: Request, res: Response): Promise<void> {
     try {
-    //   
-    const doctorId = (req as AuthRequest).docId;
+      const doctorId = (req as AuthRequest).docId;
       const { query } = req.query;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
       if (!doctorId) {
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ 
+          success: false, 
+          message: "Doctor not authenticated" 
+        });
         return;
       }
 
       if (!query || typeof query !== 'string') {
-        res.status(400).json({ success: false, message: "Search query is required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "Search query is required" 
+        });
         return;
       }
 
-      const result = await this.patientHistoryService.searchPatients(doctorId, query, page, limit);
+      const result = await this._patientHistoryService.searchPatients(doctorId, query, page, limit);
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: result.data,
         pagination: {
@@ -150,7 +141,7 @@ export class PatientHistoryController implements IPatientHistoryController {
       });
     } catch (error) {
       console.error("Error searching patients:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -162,25 +153,31 @@ export class PatientHistoryController implements IPatientHistoryController {
       const { appointmentId } = req.params;
 
       if (!appointmentId) {
-        res.status(400).json({ success: false, message: "Appointment ID is required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "Appointment ID is required" 
+        });
         return;
       }
 
-      const medicalHistory = await this.patientHistoryService.getMedicalHistoryByAppointmentId(appointmentId);
+      const medicalHistory = await this._patientHistoryService.getMedicalHistoryByAppointmentId(appointmentId);
 
       if (!medicalHistory) {
-        res.status(404).json({ success: false, message: "Medical history not found for this appointment" });
+        res.status(HttpStatus.NOT_FOUND).json({ 
+          success: false, 
+          message: "Medical history not found for this appointment" 
+        });
         return;
       }
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: medicalHistory,
         message: "Medical history retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting medical history by appointment:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -193,25 +190,31 @@ export class PatientHistoryController implements IPatientHistoryController {
       const updateData = req.body;
 
       if (!userId) {
-        res.status(400).json({ success: false, message: "User ID is required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "User ID is required" 
+        });
         return;
       }
 
-      const updatedPatient = await this.patientHistoryService.updatePatientBasicInfo(userId, updateData);
+      const updatedPatient = await this._patientHistoryService.updatePatientBasicInfo(userId, updateData);
 
       if (!updatedPatient) {
-        res.status(404).json({ success: false, message: "Patient not found" });
+        res.status(HttpStatus.NOT_FOUND).json({ 
+          success: false, 
+          message: "Patient not found" 
+        });
         return;
       }
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: updatedPatient,
         message: "Patient information updated successfully"
       });
     } catch (error) {
       console.error("Error updating patient info:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -224,25 +227,31 @@ export class PatientHistoryController implements IPatientHistoryController {
       const updateData = req.body;
 
       if (!userId || !appointmentId) {
-        res.status(400).json({ success: false, message: "User ID and Appointment ID are required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "User ID and Appointment ID are required" 
+        });
         return;
       }
 
-      const updatedHistory = await this.patientHistoryService.updateMedicalHistoryEntry(userId, appointmentId, updateData);
+      const updatedHistory = await this._patientHistoryService.updateMedicalHistoryEntry(userId, appointmentId, updateData);
 
       if (!updatedHistory) {
-        res.status(404).json({ success: false, message: "Medical history entry not found" });
+        res.status(HttpStatus.NOT_FOUND).json({ 
+          success: false, 
+          message: "Medical history entry not found" 
+        });
         return;
       }
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: updatedHistory,
         message: "Medical history entry updated successfully"
       });
     } catch (error) {
       console.error("Error updating medical history entry:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -254,25 +263,31 @@ export class PatientHistoryController implements IPatientHistoryController {
       const { userId, appointmentId } = req.params;
 
       if (!userId || !appointmentId) {
-        res.status(400).json({ success: false, message: "User ID and Appointment ID are required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "User ID and Appointment ID are required" 
+        });
         return;
       }
 
-      const updatedHistory = await this.patientHistoryService.deleteMedicalHistoryEntry(userId, appointmentId);
+      const updatedHistory = await this._patientHistoryService.deleteMedicalHistoryEntry(userId, appointmentId);
 
       if (!updatedHistory) {
-        res.status(404).json({ success: false, message: "Medical history entry not found" });
+        res.status(HttpStatus.NOT_FOUND).json({ 
+          success: false, 
+          message: "Medical history entry not found" 
+        });
         return;
       }
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: updatedHistory,
         message: "Medical history entry deleted successfully"
       });
     } catch (error) {
       console.error("Error deleting medical history entry:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -285,12 +300,18 @@ export class PatientHistoryController implements IPatientHistoryController {
       const { startDate, endDate } = req.query;
 
       if (!userId) {
-        res.status(400).json({ success: false, message: "User ID is required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "User ID is required" 
+        });
         return;
       }
 
       if (!startDate || !endDate) {
-        res.status(400).json({ success: false, message: "Start date and end date are required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "Start date and end date are required" 
+        });
         return;
       }
 
@@ -298,20 +319,23 @@ export class PatientHistoryController implements IPatientHistoryController {
       const end = new Date(endDate as string);
 
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        res.status(400).json({ success: false, message: "Invalid date format" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "Invalid date format" 
+        });
         return;
       }
 
-      const medicalHistory = await this.patientHistoryService.getPatientMedicalHistoryByDateRange(userId, start, end);
+      const medicalHistory = await this._patientHistoryService.getPatientMedicalHistoryByDateRange(userId, start, end);
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: medicalHistory,
         message: "Medical history retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting medical history by date range:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -324,20 +348,23 @@ export class PatientHistoryController implements IPatientHistoryController {
       const limit = parseInt(req.query.limit as string) || 5;
 
       if (!userId) {
-        res.status(400).json({ success: false, message: "User ID is required" });
+        res.status(HttpStatus.BAD_REQUEST).json({ 
+          success: false, 
+          message: "User ID is required" 
+        });
         return;
       }
 
-      const medicalHistory = await this.patientHistoryService.getRecentMedicalHistory(userId, limit);
+      const medicalHistory = await this._patientHistoryService.getRecentMedicalHistory(userId, limit);
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: medicalHistory,
         message: "Recent medical history retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting recent medical history:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });
@@ -353,28 +380,31 @@ export class PatientHistoryController implements IPatientHistoryController {
       const missingFields = requiredFields.filter(field => !appointmentData[field]);
 
       if (missingFields.length > 0) {
-        res.status(400).json({
+        res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
           message: `Missing required fields: ${missingFields.join(', ')}`
         });
         return;
       }
 
-      const result = await this.patientHistoryService.addMedicalHistoryFromAppointment(appointmentData);
+      const result = await this._patientHistoryService.addMedicalHistoryFromAppointment(appointmentData);
 
       if (!result) {
-        res.status(500).json({ success: false, message: "Failed to add medical history entry" });
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ 
+          success: false, 
+          message: "Failed to add medical history entry" 
+        });
         return;
       }
 
-      res.status(201).json({
+      res.status(HttpStatus.CREATED).json({
         success: true,
         data: result,
         message: "Medical history entry added successfully"
       });
     } catch (error) {
       console.error("Error adding medical history from appointment:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Internal server error"
       });

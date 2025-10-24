@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { FeedbackService } from "../../services/implementation/FeedbackService";
 import { HttpStatus } from "../../constants/status.constants";
+import { IFeedbackService } from "../../services/interface/IFeedbackService";
 
 export class FeedbackController {
-  constructor(private _feedbackservice: FeedbackService) {}
+  constructor(private _feedbackservice: IFeedbackService) {}
 
   async create(req: Request, res: Response) {
     try {

@@ -379,7 +379,7 @@ export const setupSocketHandlers = (io: Server) => {
 
     socket.on("call_invite", async (data: { conversationId: string; offer: any; targetId?: string; targetType?: "user" | "doctor"; appointmentId?: string | null; userId?: string | null }) => {
   try {
-    console.log("📩 [call_invite] Received from client:", data);
+    console.log(" Received from client:", data);
 
     const roomName = `conversation_${data.conversationId}`;
 
@@ -457,7 +457,7 @@ export const setupSocketHandlers = (io: Server) => {
 
 socket.on("call_answer", (data: { conversationId: string; answer: any; appointmentId?: string; userId?: string }) => {
   try {
-    console.log("📩 [call_answer] Received from client:", data);
+    console.log(" Received from client:", data);
 
     const roomName = `conversation_${data.conversationId}`;
     const payload = {
@@ -469,7 +469,7 @@ socket.on("call_answer", (data: { conversationId: string; answer: any; appointme
       userId: data.userId || null,
     };
 
-    console.log("➡️ [call_answer] Emitted to room:", roomName, payload);
+    console.log("[call_answer] Emitted to room:", roomName, payload);
 
     socket.to(roomName).emit("call_answer", payload);
   } catch (error) {

@@ -1,15 +1,13 @@
 import { Request, Response } from "express";
 import { IWalletService } from "../../services/interface/IWalletService";
-import { AuthRequest } from "../../types/customRequest";
-import { UserRole } from "../../types/wallet";
 import { IAdminWalletController } from "../interface/IAdminWalletController";
 import { HttpStatus } from "../../constants/status.constants";
 
 export class AdminWalletController implements IAdminWalletController {
-  private walletService: IWalletService;
+  private _walletService: IWalletService;
 
   constructor(walletService: IWalletService) {
-    this.walletService = walletService;
+    this._walletService = walletService;
   }
 
   async getWalletBalance(req: Request, res: Response): Promise<void> {
@@ -33,7 +31,7 @@ export class AdminWalletController implements IAdminWalletController {
           return;
         }
       }
-      const balance = await this.walletService.getWalletBalance(adminId, 'admin');
+      const balance = await this._walletService.getWalletBalance(adminId, 'admin');
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -61,6 +59,13 @@ export class AdminWalletController implements IAdminWalletController {
       const limit = parseInt(req.query.limit as string) || 10;
       const sortBy = req.query.sortBy as string || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const type = req.query.type as 'credit' | 'debit' | undefined;
+      const startDateStr = req.query.startDate as string;
+      const endDateStr = req.query.endDate as string;
+
+      // Parse dates only if present
+      const startDate = startDateStr ? new Date(startDateStr) : undefined;
+      const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
       let adminId = process.env.ADMIN_WALLET_ID || requestedAdminId;
       
@@ -76,13 +81,16 @@ export class AdminWalletController implements IAdminWalletController {
           return;
         }
       }
-      const transactions = await this.walletService.getWalletTransactions(
+      const transactions = await this._walletService.getWalletTransactions(
         adminId,
         'admin',
         page,
         limit,
         sortBy,
-        sortOrder
+        sortOrder,
+        type,
+        startDate,
+        endDate
       );
 
       res.status(HttpStatus.OK).json({
@@ -120,7 +128,7 @@ export class AdminWalletController implements IAdminWalletController {
           return;
         }
       }
-      const walletDetails = await this.walletService.getWalletDetails(adminId, 'admin');
+      const walletDetails = await this._walletService.getWalletDetails(adminId, 'admin');
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -157,7 +165,7 @@ export class AdminWalletController implements IAdminWalletController {
           return;
         }
       }
-      const walletDTO = await this.walletService.getWalletDTO(adminId, 'admin');
+      const walletDTO = await this._walletService.getWalletDTO(adminId, 'admin');
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -178,7 +186,7 @@ export class AdminWalletController implements IAdminWalletController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const wallets = await this.walletService.getWalletsByRole('doctor', page, limit);
+      const wallets = await this._walletService.getWalletsByRole('doctor', page, limit);
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -199,7 +207,7 @@ export class AdminWalletController implements IAdminWalletController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const wallets = await this.walletService.getWalletsByRole('admin', page, limit);
+      const wallets = await this._walletService.getWalletsByRole('admin', page, limit);
 
       res.status(HttpStatus.OK).json({
         success: true,

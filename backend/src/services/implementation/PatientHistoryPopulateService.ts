@@ -3,8 +3,9 @@ import { IAppointmentRepository } from "../../repositories/interface/IAppointmen
 import { IPrescriptionRepository } from "../../repositories/interface/IPrescriptionRepository";
 import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
 import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { IPatientHistoryPopulateService } from "../interface/IPatientHistoryPopulateService";
 
-export class PatientHistoryPopulateService {
+export class PatientHistoryPopulateService implements IPatientHistoryPopulateService {
   constructor(
     private patientHistoryService: IPatientHistoryService,
     private appointmentRepository: IAppointmentRepository,

@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { IWalletService } from "../../services/interface/IWalletService";
+import { IDoctorWalletController } from "../interface/IDoctorWalletController";
 import { AuthRequest } from "../../types/customRequest";
 import { UserRole } from "../../types/wallet";
 import { HttpStatus } from "../../constants/status.constants";
 
-export class DoctorWalletController {
+export class DoctorWalletController implements IDoctorWalletController {
   private _walletService: IWalletService;
 
   constructor(walletService: IWalletService) {
@@ -47,6 +48,13 @@ export class DoctorWalletController {
       const limit = parseInt(req.query.limit as string) || 10;
       const sortBy = req.query.sortBy as string || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const type = req.query.type as 'credit' | 'debit' | undefined;
+      const startDateStr = req.query.startDate as string;
+      const endDateStr = req.query.endDate as string;
+
+      // Parse dates only if present
+      const startDate = startDateStr ? new Date(startDateStr) : undefined;
+      const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
       const transactions = await this._walletService.getWalletTransactions(
         userId,
@@ -54,7 +62,10 @@ export class DoctorWalletController {
         page,
         limit,
         sortBy,
-        sortOrder
+        sortOrder,
+        type,
+        startDate,
+        endDate
       );
 
       res.status(HttpStatus.OK).json({

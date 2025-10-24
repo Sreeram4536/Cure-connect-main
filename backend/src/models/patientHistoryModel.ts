@@ -124,3 +124,5 @@ const patientHistoryModel: Model<PatientHistoryDocument> = mongoose.model<Patien
 
 export default patientHistoryModel;
 
+
+

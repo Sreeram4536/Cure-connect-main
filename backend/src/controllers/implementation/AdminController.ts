@@ -10,6 +10,7 @@ import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import { JwtPayloadExt } from "../../types/customRequest";
 
+
 export class AdminController implements IAdminController {
   constructor(private _adminService: IAdminService) { }
 
@@ -37,7 +38,9 @@ export class AdminController implements IAdminController {
           secure: process.env.NODE_ENV === "production",
           sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
           path: "/",
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          maxAge : Number(process.env.COOKIE_MAX_AGE)
+          
+        
         })
         .status(HttpStatus.OK)
         .json({
@@ -102,7 +105,9 @@ export class AdminController implements IAdminController {
         path: "/",
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        // maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge : Number(process.env.COOKIE_MAX_AGE)
+       
       });
 
       console.log(' Admin refresh successful');

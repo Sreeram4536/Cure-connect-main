@@ -36,6 +36,14 @@ const DoctorWallet = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [filters, setFilters] = useState({
+    type: '' as 'credit' | 'debit' | '',
+    startDate: '',
+    endDate: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc'
+  });
+  const [dateError, setDateError] = useState('');
 
   if (!context) {
     throw new Error("DoctorWallet must be used within a DoctorContextProvider");
@@ -48,7 +56,7 @@ const DoctorWallet = () => {
       fetchWalletDetails();
       fetchTransactions();
     }
-  }, [dToken, currentPage]);
+  }, [dToken, currentPage, filters]);
 
   const fetchWalletDetails = async () => {
     try {
@@ -64,7 +72,16 @@ const DoctorWallet = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const response = await getDoctorWalletTransactionsAPI(currentPage, 10);
+      const response = await getDoctorWalletTransactionsAPI(
+        currentPage, 
+        10, 
+        undefined, 
+        filters.sortBy, 
+        filters.sortOrder,
+        filters.type || undefined,
+        filters.startDate || undefined,
+        filters.endDate || undefined
+      );
       if (response.data.success) {
         setTransactions(response.data.data.data);
         setTotalPages(response.data.data.totalPages);
@@ -99,6 +116,31 @@ const DoctorWallet = () => {
       style: 'currency',
       currency: 'INR'
     }).format(amount);
+  };
+
+  const validateDates = (startDate: string, endDate: string): string => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const today = new Date();
+      
+      if (start > end) {
+        return 'Start date cannot be after end date';
+      }
+      if (start > today) {
+        return 'Start date cannot be in the future';
+      }
+      if (end > today) {
+        return 'End date cannot be in the future';
+      }
+    }
+    return '';
+  };
+
+  const handleFilterChange = (newFilters: typeof filters) => {
+    const error = validateDates(newFilters.startDate, newFilters.endDate);
+    setDateError(error);
+    setFilters(newFilters);
   };
 
   if (!dToken) {
@@ -154,6 +196,97 @@ const DoctorWallet = () => {
                 You receive 80% of appointment fees as revenue share. The remaining 20% goes to the platform.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Filter Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Transactions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+              <select
+                value={filters.type}
+                onChange={(e) => handleFilterChange({ ...filters, type: e.target.value as 'credit' | 'debit' | '' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">All Types</option>
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={filters.startDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => handleFilterChange({ ...filters, startDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="date"
+                value={filters.endDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => handleFilterChange({ ...filters, endDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => handleFilterChange({ ...filters, sortBy: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="createdAt">Date</option>
+                <option value="amount">Amount</option>
+                <option value="type">Type</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+              <select
+                value={filters.sortOrder}
+                onChange={(e) => handleFilterChange({ ...filters, sortOrder: e.target.value as 'asc' | 'desc' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+            </div>
+          </div>
+          {dateError && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{dateError}</p>
+            </div>
+          )}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => {
+                setDateError('');
+                setFilters({
+                  type: '',
+                  startDate: '',
+                  endDate: '',
+                  sortBy: 'createdAt',
+                  sortOrder: 'desc'
+                });
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+            >
+              Clear Filters
+            </button>
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={!!dateError}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Apply Filters
+            </button>
           </div>
         </div>
 
@@ -216,9 +349,9 @@ const DoctorWallet = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {transaction.type === 'credit' ? 'Revenue Share' : 'Debit'}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              {/* <div className="text-sm text-gray-500">
                                 {transaction.description}
-                              </div>
+                              </div> */}
                             </div>
                           </div>
                         </td>

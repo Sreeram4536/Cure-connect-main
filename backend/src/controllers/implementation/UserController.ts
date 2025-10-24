@@ -17,8 +17,6 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.utils";
-import { log } from "console";
-import { use } from "passport";
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../../models/appointmentModel";
@@ -114,7 +112,7 @@ export class UserController implements IUserController {
     path: "/",
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge : Number(process.env.COOKIE_MAX_AGE),
   });
 
   otpStore.delete(email);
@@ -269,7 +267,7 @@ export class UserController implements IUserController {
         path: "/",
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge : Number(process.env.COOKIE_MAX_AGE), // 7 days
       });
 
       res
@@ -316,7 +314,7 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
         path: "/",
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge : Number(process.env.COOKIE_MAX_AGE), // 7 days
       });
 
       res.status(HttpStatus.OK).json({ success: true, token: newAccessToken });

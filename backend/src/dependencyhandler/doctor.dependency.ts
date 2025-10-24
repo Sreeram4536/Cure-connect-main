@@ -27,6 +27,7 @@ import { AppointmentCompletionController } from "../controllers/implementation/A
 import { PatientHistoryRepository } from "../repositories/implementation/PatientHistoryRepository";
 import { PatientHistoryService } from "../services/implementation/PatientHistoryService";
 import { PatientHistoryController } from "../controllers/implementation/PatientHistoryController";
+import { PatientHistoryPopulateService } from "../services/implementation/PatientHistoryPopulateService";
 
 const doctorRepository = new DoctorRepository();
 const slotRepository = new SlotRepository();
@@ -54,15 +55,19 @@ const feedbackRepository = new FeedbackRepository();
 // Patient History DI
 const patientHistoryRepository = new PatientHistoryRepository();
 export const patientHistoryService = new PatientHistoryService(patientHistoryRepository);
-export const patientHistoryController = new PatientHistoryController(
+export const patientHistoryPopulateService = new PatientHistoryPopulateService(
   patientHistoryService,
   appointmentRepository,
   prescriptionRepository,
   doctorRepository,
   userRepository
 );
+export const patientHistoryController = new PatientHistoryController(
+  patientHistoryService,
+  patientHistoryPopulateService
+);
 
-const prescriptionService = new PrescriptionService(prescriptionRepository);
+const prescriptionService = new PrescriptionService(prescriptionRepository, appointmentRepository);
 const feedbackService = new FeedbackService(feedbackRepository,appointmentRepository);
 export const prescriptionController = new PrescriptionController(prescriptionService);
 export const feedbackController = new FeedbackController(feedbackService);

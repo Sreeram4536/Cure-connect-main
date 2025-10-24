@@ -32,3 +32,5 @@ export interface IPatientHistoryController {
   addMedicalHistoryFromAppointment(req: Request, res: Response): Promise<void>;
 }
 
+
+

@@ -22,7 +22,7 @@ export class WalletPaymentService implements IWalletPaymentService {
     private appointmentRepository: IAppointmentRepository,
     ) {
     const walletRepository = new WalletRepository();
-    // const adminRepository = require("../../repositories/implementation/AdminRepository").default;
+   
     const adminRepo = new AdminRepository();
     this.revenueShareService = new RevenueShareService(walletService, walletRepository, adminRepo);
   }
