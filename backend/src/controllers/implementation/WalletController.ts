@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
 import { IWalletController } from "../interface/IWalletController.interface";
-import { WalletService } from "../../services/implementation/WalletService";
 import { IWalletService } from "../../services/interface/IWalletService";
 import { AuthRequest } from "../../types/customRequest";
 import { HttpStatus } from "../../constants/status.constants";
 
 export class WalletController implements IWalletController {
-  private walletService: IWalletService;
+  private _walletService: IWalletService;
 
   constructor(walletService: IWalletService) {
-    this.walletService =  walletService;
+    this._walletService =  walletService;
   }
 
   async getWalletBalance(req: Request, res: Response): Promise<void> {
@@ -20,7 +19,7 @@ export class WalletController implements IWalletController {
         return;
       }
 
-      const balance = await this.walletService.getWalletBalance(userId, 'user');
+      const balance = await this._walletService.getWalletBalance(userId, 'user');
       
       res.status(HttpStatus.OK).json({
         success: true,
@@ -38,6 +37,7 @@ export class WalletController implements IWalletController {
 
   async getWalletTransactions(req: Request, res: Response): Promise<void> {
     try {
+      console.log(`[WalletController] *** NEW CODE VERSION - getWalletTransactions called ***`);
       const userId = (req as AuthRequest).userId;
       if (!userId) {
         res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "User not authenticated" });
@@ -48,15 +48,67 @@ export class WalletController implements IWalletController {
       const limit = parseInt(req.query.limit as string) || 10;
       const sortBy = req.query.sortBy as string || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      console.log(`[WalletController] Raw query object:`, req.query);
+      console.log(`[WalletController] req.query.type:`, req.query.type, typeof req.query.type);
+      
+      // More robust type parsing
+      let type: 'credit' | 'debit' | undefined = undefined;
+      if (req.query.type === 'credit' || req.query.type === 'debit') {
+        type = req.query.type;
+      }
+      
+      // FORCE TEST: If type is still undefined, try to extract from URL
+      if (!type && req.url.includes('type=')) {
+        const urlMatch = req.url.match(/type=([^&]+)/);
+        if (urlMatch && (urlMatch[1] === 'credit' || urlMatch[1] === 'debit')) {
+          type = urlMatch[1];
+          console.log(`[WalletController] *** EXTRACTED TYPE FROM URL: ${type} ***`);
+        }
+      }
+      
+      console.log(`[WalletController] Parsed type:`, type);
+      const startDateStr = req.query.startDate as string;
+      const endDateStr = req.query.endDate as string;
 
-      const transactions = await this.walletService.getWalletTransactions(
-        userId,
-        'user',
+      // Parse dates only if present
+      const startDate = startDateStr ? new Date(startDateStr) : undefined;
+      const endDate = endDateStr ? new Date(endDateStr) : undefined;
+
+      console.log(`[WalletController] *** USER WALLET REQUEST ***`);
+      console.log(`[WalletController] Received query parameters:`, {
         page,
         limit,
         sortBy,
-        sortOrder
-      );
+        sortOrder,
+        type,
+        startDateStr,
+        endDateStr,
+        startDate,
+        endDate
+      });
+      console.log(`[WalletController] *** CALLING SERVICE WITH TYPE: ${type} ***`);
+
+      // const transactions = await this._walletService.getWalletTransactions(
+      //   userId,
+      //   'user',
+      //   page,
+      //   limit,
+      //   sortBy,
+      //   sortOrder,
+        
+      // );
+      const transactions = await this._walletService.getWalletTransactions(
+  userId,
+  'user',
+  page,
+  limit,
+  sortBy,
+  sortOrder,
+  type,
+  startDate,
+  endDate
+);
+
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -80,7 +132,7 @@ export class WalletController implements IWalletController {
         return;
       }
 
-      const walletDetails = await this.walletService.getWalletDetails(userId, 'user');
+      const walletDetails = await this._walletService.getWalletDetails(userId, 'user');
 
       res.status(HttpStatus.OK).json({
         success: true,

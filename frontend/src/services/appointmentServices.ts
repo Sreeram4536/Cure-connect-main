@@ -1,6 +1,8 @@
 import { getApi } from "../axios/axiosInstance";
 const api = getApi("user");
 import { APPOINTMENT_API } from "../constants/apiRoutes";
+import { getApi as getDoctorApi } from "../axios/axiosInstance";
+const doctorApi = getDoctorApi("doctor");
 
 // Book an appointment
 export const appointmentBookingAPI = async (
@@ -123,6 +125,25 @@ export const cancelAppointmentAPI = async (
   );
 };
 
+// Feedback & Prescription
+export const submitFeedbackAPI = (appointmentId: string, rating: number, comment?: string) =>
+  api.post(`/api/user/appointments/${appointmentId}/feedback`, { rating, comment });
+
+export const createPrescriptionAPI = (
+  appointmentId: string,
+  userId: string,
+  items: { name: string; dosage: string; instructions?: string }[],
+  notes?: string
+) => doctorApi.post(`/api/doctor/appointments/${appointmentId}/prescription`, { userId, items, notes });
+
+export const completeAppointmentAPI = (appointmentId: string) =>
+  doctorApi.patch(`/api/doctor/appointments/${appointmentId}/complete`, {});
+
+export const getPrescriptionByAppointmentAPI = (appointmentId: string) =>
+  api.get(`/api/user/appointments/${appointmentId}/prescription`);
+
+export const listUserPrescriptionsAPI = () => api.get(`/api/user/prescriptions`);
+
 // Wallet payment methods
 export const processWalletPaymentAPI = async (
   docId: string,
@@ -160,4 +181,14 @@ export const validateWalletBalanceAPI = async (
     { amount },
     {}
   );
+};
+
+// Doctor feedbacks
+export const getDoctorFeedbacksAPI = async (
+  doctorId: string,
+  page: number = 1,
+  limit: number = 5
+) => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  return api.get(`/api/user/doctor/${doctorId}/feedbacks?${params.toString()}`);
 };

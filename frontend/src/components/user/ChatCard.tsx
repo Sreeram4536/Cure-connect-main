@@ -81,8 +81,8 @@ const ChatCard: React.FC<ChatCardProps> = ({
   };
 
   // Use fetched doctor info or fallback to props
-  const displayName = doctorInfo?.name || propDoctorName || "Dr. Sarah Johnson";
-  const displaySpecialization = doctorInfo?.speciality || propDoctorSpecialization || "Cardiologist";
+  // const displayName = doctorInfo?.name || propDoctorName || "Dr. Sarah Johnson";
+  // const displaySpecialization = doctorInfo?.speciality || propDoctorSpecialization || "Cardiologist";
   const displayImage = doctorInfo?.image || propDoctorImage || assets.contact_image;
 
   return (

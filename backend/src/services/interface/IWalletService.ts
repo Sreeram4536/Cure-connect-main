@@ -10,7 +10,10 @@ export interface IWalletService {
     page: number,
     limit: number,
     sortBy?: string,
-    sortOrder?: 'asc' | 'desc'
+    sortOrder?: 'asc' | 'desc',
+    type?: 'credit' | 'debit',
+    startDate?: Date,
+    endDate?: Date
   ): Promise<PaginationResult<WalletTransaction>>;
   refundToWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, reason: string): Promise<void>;
   deductFromWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, reason: string): Promise<boolean>;

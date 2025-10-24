@@ -3,7 +3,7 @@ import { WalletRepository } from "../../repositories/implementation/WalletReposi
 import { WalletTransaction, WalletDTO, WalletTransactionDTO, UserRole } from "../../types/wallet";
 import { IWalletRepository, PaginationResult, WalletDocument } from "../../repositories/interface/IWalletRepository";
 
-// Extended type for transactions that includes an id field
+
 interface TransactionWithId extends WalletTransaction {
   _id?: string;
 }
@@ -30,15 +30,15 @@ export class WalletService implements IWalletService {
     };
   }
   
-  constructor(private walletRepository: IWalletRepository) {
+  constructor(private _walletRepository: IWalletRepository) {
     
   }
 
   async createWallet(userId: string, userRole: UserRole): Promise<void> {
     try {
-      const existingWallet = await this.walletRepository.getWalletByUserId(userId, userRole);
+      const existingWallet = await this._walletRepository.getWalletByUserId(userId, userRole);
       if (!existingWallet) {
-        await this.walletRepository.createWallet(userId, userRole);
+        await this._walletRepository.createWallet(userId, userRole);
       }
     } catch (error) {
       // Handle duplicate key error gracefully
@@ -52,7 +52,7 @@ export class WalletService implements IWalletService {
 
   async getWalletBalance(userId: string, userRole: UserRole): Promise<number> {
     try {
-      return await this.walletRepository.getWalletBalance(userId, userRole);
+      return await this._walletRepository.getWalletBalance(userId, userRole);
     } catch (error) {
       throw new Error(`Failed to get wallet balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -64,10 +64,36 @@ export class WalletService implements IWalletService {
     page: number,
     limit: number,
     sortBy: string = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc'
+    sortOrder: 'asc' | 'desc' = 'desc',
+    type?: 'credit' | 'debit',
+    startDate?: Date,
+    endDate?: Date
   ): Promise<PaginationResult<WalletTransaction>> {
     try {
-      return await this.walletRepository.getTransactionsByUserId(userId, userRole, page, limit, sortBy, sortOrder);
+      console.log(`[WalletService] getWalletTransactions called with:`, {
+        userId,
+        userRole,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        type,
+        startDate,
+        endDate
+      });
+      
+      return await this._walletRepository.getTransactionsByUserId(
+        userId,
+        userRole,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        type,
+        startDate,
+        endDate
+      );
+
     } catch (error) {
       throw new Error(`Failed to get wallet transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -75,22 +101,22 @@ export class WalletService implements IWalletService {
 
   async refundToWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, description: string): Promise<void> {
     console.log(`[WalletService] refundToWallet called`, { userId, userRole, amount, appointmentId, description });
-    let wallet = await this.walletRepository.getWalletByUserId(userId, userRole);
+    let wallet = await this._walletRepository.getWalletByUserId(userId, userRole);
     if (!wallet) {
       console.log(`[WalletService] No wallet found for user ${userId} with role ${userRole}, creating wallet...`);
-      wallet = await this.walletRepository.createWallet(userId, userRole);
+      wallet = await this._walletRepository.createWallet(userId, userRole);
     }
     console.log(`[WalletService] Wallet found/created:`, { walletId: wallet._id, currentBalance: wallet.balance });
-    const transaction = await this.walletRepository.addTransaction({ userId, userRole, type: 'credit', amount, description, appointmentId });
+    const transaction = await this._walletRepository.addTransaction({ userId, userRole, type: 'credit', amount, description, appointmentId });
     console.log(`[WalletService] Transaction added:`, transaction);
-    await this.walletRepository.updateWalletBalance(userId, userRole, amount, 'credit');
+    await this._walletRepository.updateWalletBalance(userId, userRole, amount, 'credit');
     console.log(`[WalletService] Balance updated successfully`);
   }
 
   async deductFromWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, reason: string): Promise<boolean> {
     try {
       const description = `Payment for appointment - ${reason}`;
-      return await this.walletRepository.deductFromWallet(userId, userRole, amount, appointmentId, description);
+      return await this._walletRepository.deductFromWallet(userId, userRole, amount, appointmentId, description);
     } catch (error) {
       throw new Error(`Failed to deduct from wallet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -110,7 +136,7 @@ export class WalletService implements IWalletService {
 
   async getWalletDetails(userId: string, userRole: UserRole): Promise<{ balance: number; totalTransactions: number }> {
     try {
-      const wallet = await this.walletRepository.getWalletByUserId(userId, userRole);
+      const wallet = await this._walletRepository.getWalletByUserId(userId, userRole);
       if (!wallet) {
         return { balance: 0, totalTransactions: 0 };
       }
@@ -126,9 +152,9 @@ export class WalletService implements IWalletService {
 
   public async ensureWalletExists(userId: string, userRole: UserRole): Promise<void> {
     try {
-      let wallet = await this.walletRepository.getWalletByUserId(userId, userRole);
+      let wallet = await this._walletRepository.getWalletByUserId(userId, userRole);
       if (!wallet) {
-        await this.walletRepository.createWallet(userId, userRole);
+        await this._walletRepository.createWallet(userId, userRole);
       }
     } catch (error) {
       // Handle duplicate key error gracefully
@@ -142,7 +168,7 @@ export class WalletService implements IWalletService {
 
   async getWalletDTO(userId: string, userRole: UserRole): Promise<WalletDTO | null> {
     try {
-      const wallet = await this.walletRepository.getWalletByUserId(userId, userRole);
+      const wallet = await this._walletRepository.getWalletByUserId(userId, userRole);
       return wallet ? this.toWalletDTO(wallet) : null;
     } catch (error) {
       throw new Error(`Failed to get wallet DTO: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -151,7 +177,7 @@ export class WalletService implements IWalletService {
 
   async getWalletsByRole(userRole: UserRole, page: number = 1, limit: number = 10): Promise<PaginationResult<WalletDTO>> {
     try {
-      const result = await this.walletRepository.getWalletsByRole(userRole, page, limit);
+      const result = await this._walletRepository.getWalletsByRole(userRole, page, limit);
       return {
         ...result,
         data: result.data.map(this.toWalletDTO)
@@ -161,3 +187,4 @@ export class WalletService implements IWalletService {
     }
   }
 } 
+

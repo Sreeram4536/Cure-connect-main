@@ -1,5 +1,4 @@
 import { useContext, useEffect, useState } from "react";
-import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
@@ -587,7 +586,9 @@ const DoctorSlotManager = () => {
                   onChange={(date) => date && setSelectedMonth(date)}
                   dateFormat="MMMM yyyy"
                   showMonthYearPicker
+                  minDate={new Date()}
                   className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  
                 />
                 <button
                   onClick={fetchPreviewSlots}
@@ -667,10 +668,13 @@ const DoctorSlotManager = () => {
                       {}
                     );
                     
+                    const todayStr = formatLocalDate(new Date());
+                    
                     for (let d = 1; d <= daysInMonth; d++) {
                       const dateStr = formatLocalDate(new Date(year, month, d));
                       const slots = slotMap[dateStr] || [];
                       const customDay = customDayMap[dateStr];
+                      const isPast = dateStr < todayStr;
                       
                       let dayBg = "bg-white";
                       if (customDay) {
@@ -686,11 +690,17 @@ const DoctorSlotManager = () => {
                       cells.push(
                         <div
                           key={dateStr}
-                          className={`min-h-[80px] border-r border-b border-gray-200 p-2 flex flex-col gap-1 cursor-pointer hover:bg-blue-50 transition-all duration-200 ${dayBg}`}
-                          onClick={() => {
-                            setSelectedDay(dateStr);
-                            fetchSlotsForDate(dateStr);
-                          }}
+                          className={`min-h-[80px] border-r border-b border-gray-200 p-2 flex flex-col gap-1 transition-all duration-200 ${dayBg} ${
+                            isPast ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-blue-50"
+                          }`}
+                          onClick={
+                            isPast
+                              ? undefined
+                              : () => {
+                                  setSelectedDay(dateStr);
+                                  fetchSlotsForDate(dateStr);
+                                }
+                          }
                         >
                           <div className="font-bold text-sm text-gray-700 mb-1 flex items-center justify-between">
                             <span>{d}</span>

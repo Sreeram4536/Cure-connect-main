@@ -342,6 +342,173 @@ export const setupSocketHandlers = (io: Server) => {
       });
     });
 
+    // socket.on("call_invite", async (data: { conversationId: string; offer: any; targetId?: string; targetType?: "user" | "doctor";appointmentId?: string | null; userId?:string|null}) => {
+    //   try {
+    //     const roomName = `conversation_${data.conversationId}`;
+
+    //     // Emit to conversation room (for peers already in room)
+    //     socket.to(roomName).emit("call_invite", {
+    //       fromId: socket.userId,
+    //       fromType: socket.userType,
+    //       conversationId: data.conversationId,
+    //       offer: data.offer,
+    //       appointmentId: data.appointmentId || null,
+    //       userId:data.userId,
+    //     });
+
+        
+    //     const convo = await Conversation.findById(data.conversationId).lean();
+    //     if (convo) {
+    //       const explicitTargetId = data.targetId;
+    //       const targetId = explicitTargetId || (socket.userType === "user" ? convo.doctorId : convo.userId);
+    //       if (targetId) {
+    //         io.to(`user_${targetId}`).emit("call_invite", {
+    //           fromId: socket.userId,
+    //           fromType: socket.userType,
+    //           conversationId: data.conversationId,
+    //           offer: data.offer,
+    //            appointmentId: data.appointmentId || null,
+    //            userId:data.userId,
+    //         });
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.error("Error in call_invite:", error);
+    //   }
+    // });
+
+    socket.on("call_invite", async (data: { conversationId: string; offer: any; targetId?: string; targetType?: "user" | "doctor"; appointmentId?: string | null; userId?: string | null }) => {
+  try {
+    console.log(" Received from client:", data);
+
+    const roomName = `conversation_${data.conversationId}`;
+
+    socket.to(roomName).emit("call_invite", {
+      fromId: socket.userId,
+      fromType: socket.userType,
+      conversationId: data.conversationId,
+      offer: data.offer,
+      appointmentId: data.appointmentId || null,
+      userId: data.userId || null,
+    });
+
+    
+
+    console.log("➡️ [call_invite] Emitted to room:", roomName, {
+      appointmentId: data.appointmentId,
+      userId: data.userId,
+    });
+
+    const convo = await Conversation.findById(data.conversationId).lean();
+    if (convo) {
+      const explicitTargetId = data.targetId;
+      const targetId = explicitTargetId || (socket.userType === "user" ? convo.doctorId : convo.userId);
+      if (targetId) {
+        const payload = {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          offer: data.offer,
+          appointmentId: data.appointmentId || null,
+          userId: data.userId || null,
+        };
+
+        console.log("➡️ [call_invite] Emitted to user socket:", `user_${targetId}`, payload);
+        
+        io.to(`user_${targetId}`).emit("call_invite", payload);
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error in call_invite:", error);
+  }
+});
+
+
+   
+    // socket.on("call_answer", (data: { conversationId: string; answer: any }) => {
+    //   try {
+    //     const roomName = `conversation_${data.conversationId}`;
+    //     socket.to(roomName).emit("call_answer", {
+    //       fromId: socket.userId,
+    //       fromType: socket.userType,
+    //       conversationId: data.conversationId,
+    //       answer: data.answer,
+    //     });
+    //   } catch (error) {
+    //     console.error("Error in call_answer:", error);
+    //   }
+    // });
+
+//     socket.on("call_answer", (data: { conversationId: string; answer: any; appointmentId?: string; userId?: string }) => {
+//   try {
+//     const roomName = `conversation_${data.conversationId}`;
+//     socket.to(roomName).emit("call_answer", {
+//       fromId: socket.userId,
+//       fromType: socket.userType,
+//       conversationId: data.conversationId,
+//       answer: data.answer,
+//       appointmentId: data.appointmentId || null,
+//       userId: data.userId || null,
+//     });
+//   } catch (error) {
+//     console.error("Error in call_answer:", error);
+//   }
+// });
+
+socket.on("call_answer", (data: { conversationId: string; answer: any; appointmentId?: string; userId?: string }) => {
+  try {
+    console.log(" Received from client:", data);
+
+    const roomName = `conversation_${data.conversationId}`;
+    const payload = {
+      fromId: socket.userId,
+      fromType: socket.userType,
+      conversationId: data.conversationId,
+      answer: data.answer,
+      appointmentId: data.appointmentId || null,
+      userId: data.userId || null,
+    };
+
+    console.log("[call_answer] Emitted to room:", roomName, payload);
+
+    socket.to(roomName).emit("call_answer", payload);
+  } catch (error) {
+    console.error(" Error in call_answer:", error);
+  }
+});
+
+
+
+    
+    socket.on("call_candidate", (data: { conversationId: string; candidate: any }) => {
+      try {
+        const roomName = `conversation_${data.conversationId}`;
+        socket.to(roomName).emit("call_candidate", {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          candidate: data.candidate,
+        });
+      } catch (error) {
+        console.error("Error in call_candidate:", error);
+      }
+    });
+
+    
+    socket.on("call_end", (data: { conversationId: string; reason?: string }) => {
+      try {
+        const roomName = `conversation_${data.conversationId}`;
+        io.to(roomName).emit("call_end", {
+          fromId: socket.userId,
+          fromType: socket.userType,
+          conversationId: data.conversationId,
+          reason: data.reason ?? "ended",
+        });
+      } catch (error) {
+        console.error("Error in call_end:", error);
+      }
+    });
+
     // Handle online status
     socket.on("set_online_status", (data: { isOnline: boolean }) => {
       if (socket.userId) {

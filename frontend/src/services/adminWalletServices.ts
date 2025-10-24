@@ -8,10 +8,22 @@ export const getAdminWalletBalanceAPI = () => {
 };
 
 // Get admin wallet transactions
-export const getAdminWalletTransactionsAPI = (page: number = 1, limit: number = 10, token?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
+export const getAdminWalletTransactionsAPI = (
+  page: number = 1, 
+  limit: number = 10, 
+  token?: string, 
+  sortBy?: string, 
+  sortOrder?: 'asc' | 'desc',
+  type?: 'credit' | 'debit',
+  startDate?: string,
+  endDate?: string
+) => {
   let url = `/api/admin-wallet/transactions?page=${page}&limit=${limit}`;
   if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
   if (sortOrder) url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
+  if (type) url += `&type=${encodeURIComponent(type)}`;
+  if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+  if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
   return api.get(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });

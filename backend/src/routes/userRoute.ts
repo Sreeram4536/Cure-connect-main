@@ -2,6 +2,7 @@ import express from "express";
 import upload from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
 import {slotLockController,userController} from "../dependencyhandler/user.dependency"
+import { prescriptionController, feedbackController } from "../dependencyhandler/doctor.dependency";
 
 const userRouter = express.Router();
 
@@ -93,6 +94,12 @@ userRouter.get(
   userController.getAvailableSlotsForDate.bind(userController)
 );
 
+userRouter.get(
+  "/doctor/:doctorId/feedbacks",
+  authRole(["user"]),
+  feedbackController.listByDoctor.bind(feedbackController)
+);
+
 // Wallet routes
 userRouter.get(
   "/wallet/balance",
@@ -132,3 +139,19 @@ userRouter.post(
 );
 
 export default userRouter;
+// Feedback & Prescription (user)
+userRouter.post(
+  "/appointments/:appointmentId/feedback",
+  authRole(["user"]),
+  feedbackController.create.bind(feedbackController)
+);
+userRouter.get(
+  "/appointments/:appointmentId/prescription",
+  authRole(["user"]),
+  prescriptionController.getByAppointment.bind(prescriptionController)
+);
+userRouter.get(
+  "/prescriptions",
+  authRole(["user"]),
+  prescriptionController.listByUser.bind(prescriptionController)
+);

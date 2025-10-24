@@ -1,7 +1,11 @@
 import { useState, useEffect, useContext } from "react";
 import { AppContext } from "../../context/AppContext";
-import { api } from "../../axios/axiosInstance";
 import { Wallet, ArrowUpRight, ArrowDownLeft, Calendar, Clock } from "lucide-react";
+import {
+  getUserWalletBalanceAPI,
+  getUserWalletTransactionsAPI,
+  getUserWalletDetailsAPI,
+} from "../../services/userWalletServices";
 
 interface WalletTransaction {
   _id: string;
@@ -27,6 +31,16 @@ const MyWallet = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [filters, setFilters] = useState({
+    type: '' as 'credit' | 'debit' | '',
+    startDate: '',
+    endDate: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc'
+  });
+  const [dateError, setDateError] = useState('');
+
+
 
   if (!context) {
     throw new Error("MyWallet must be used within an AppContextProvider");
@@ -39,11 +53,16 @@ const MyWallet = () => {
       fetchWalletDetails();
       fetchTransactions();
     }
-  }, [token, currentPage]);
+  }, [token, currentPage, filters]);
+
+  // Debug effect to log filter changes
+  useEffect(() => {
+    console.log('Filters changed:', filters);
+  }, [filters]);
 
   const fetchWalletDetails = async () => {
     try {
-      const response = await api.get("/api/user/wallet/details");
+      const response = await getUserWalletDetailsAPI();
       if (response.data.success) {
         setWalletDetails(response.data.data);
       }
@@ -52,14 +71,39 @@ const MyWallet = () => {
     }
   };
 
+  
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/user/wallet/transactions?page=${currentPage}&limit=10`);
+      console.log('Fetching transactions with filters:', filters);
+      console.log('API call parameters:', {
+        currentPage,
+        limit: 10,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+        type: filters.type || undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined
+      });
+      
+      const response = await getUserWalletTransactionsAPI(
+        currentPage,
+        10,
+        undefined,
+        filters.sortBy,
+        filters.sortOrder,
+        filters.type || undefined,
+        filters.startDate || undefined,
+        filters.endDate || undefined
+      );
+      console.log('API Response:', response.data);
       if (response.data.success) {
         setTransactions(response.data.data.data);
         setTotalPages(response.data.data.totalPages);
         setTotalCount(response.data.data.totalCount);
+        console.log('Transactions set:', response.data.data.data);
+        console.log('Transaction types:', response.data.data.data.map(tx => tx.type));
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -67,6 +111,8 @@ const MyWallet = () => {
       setLoading(false);
     }
   };
+
+  
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -90,6 +136,35 @@ const MyWallet = () => {
       style: 'currency',
       currency: 'INR'
     }).format(amount);
+  };
+
+  const validateDates = (startDate: string, endDate: string): string => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const today = new Date();
+      
+      if (start > end) {
+        return 'Start date cannot be after end date';
+      }
+      if (start > today) {
+        return 'Start date cannot be in the future';
+      }
+      if (end > today) {
+        return 'End date cannot be in the future';
+      }
+    }
+    return '';
+  };
+
+  const handleFilterChange = (newFilters: typeof filters) => {
+    console.log('Filter change:', newFilters);
+    const error = validateDates(newFilters.startDate, newFilters.endDate);
+    setDateError(error);
+    setFilters(newFilters);
+    console.log('Filters updated to:', newFilters);
+    // Reset to page 1 when filters change
+    setCurrentPage(1);
   };
 
   if (!token) {
@@ -132,6 +207,99 @@ const MyWallet = () => {
             </div>
           </div>
         )}
+
+       
+
+        {/* Filter Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Transactions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+              <select
+                value={filters.type}
+                onChange={(e) => handleFilterChange({ ...filters, type: e.target.value as 'credit' | 'debit' | '' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Types</option>
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={filters.startDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => handleFilterChange({ ...filters, startDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="date"
+                value={filters.endDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => handleFilterChange({ ...filters, endDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => handleFilterChange({ ...filters, sortBy: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="createdAt">Date</option>
+                <option value="amount">Amount</option>
+                <option value="type">Type</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+              <select
+                value={filters.sortOrder}
+                onChange={(e) => handleFilterChange({ ...filters, sortOrder: e.target.value as 'asc' | 'desc' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+            </div>
+          </div>
+          {dateError && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{dateError}</p>
+            </div>
+          )}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => {
+                setDateError('');
+                setFilters({
+                  type: '',
+                  startDate: '',
+                  endDate: '',
+                  sortBy: 'createdAt',
+                  sortOrder: 'desc'
+                });
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+            >
+              Clear Filters
+            </button>
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={!!dateError}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
 
         {/* Transactions Section */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -189,9 +357,9 @@ const MyWallet = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {transaction.type === 'credit' ? 'Credit' : 'Debit'}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              {/* <div className="text-sm text-gray-500">
                                 {transaction.description}
-                              </div>
+                              </div> */}
                             </div>
                           </div>
                         </td>

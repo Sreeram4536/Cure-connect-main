@@ -7,7 +7,7 @@ export class AppointmentRepository implements IAppointmentRepository {
     return appointmentModel.findOne({ docId, slotDate, slotTime }).lean() as any;
   }
   async findById(id: string): Promise<AppointmentDocument | null> {
-    return appointmentModel.findById(id).lean() as any;
+    return appointmentModel.findById(id) as any;
   }
   async findUserDoctor(userId: string, docId: string, slotDate: string, slotTime: string): Promise<AppointmentDocument | null> {
     return appointmentModel.findOne({ userId, docId, slotDate, slotTime }).lean() as any;
@@ -25,5 +25,9 @@ export class AppointmentRepository implements IAppointmentRepository {
   
   async countPaidAppointmentsByDoctor(docId: string): Promise<number> {
     return appointmentModel.countDocuments({ docId, payment: true });
+  }
+
+  async findAppointmentsByCriteria(criteria: any): Promise<AppointmentDocument[]> {
+    return appointmentModel.find(criteria).lean() as any;
   }
 } 

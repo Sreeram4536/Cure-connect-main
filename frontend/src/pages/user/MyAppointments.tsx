@@ -18,6 +18,7 @@ import type {
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, MapPin, User, CreditCard, X, CheckCircle, AlertCircle, Video, Filter, SortAsc, SortDesc } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
+import { getPrescriptionByAppointmentAPI } from "../../services/appointmentServices";
 
 const MyAppointments = () => {
   const context = useContext(AppContext);
@@ -44,6 +45,8 @@ const MyAppointments = () => {
 
   const navigate = useNavigate();
   const itemsPerPage = 2;
+  const [rxOpen, setRxOpen] = useState(false);
+  const [rx, setRx] = useState<any | null>(null);
 
   if (!token) {
     toast.error("Please login to continue...");
@@ -424,9 +427,8 @@ const MyAppointments = () => {
                             {!item.cancelled && item.payment  && (item.docId || item.docData?._id) && (
                               <button
                                 onClick={() => {
-                                  console.log("Appointment item:", item);
+                                  try { sessionStorage.setItem('activeAppointmentId', String((item as any)._id || (item as any).id)); } catch {}
                                   const doctorId = item.docId || item.docData?._id;
-                                  console.log("Navigating to consultation with doctorId:", doctorId);
                                   navigate(`/consultation/${doctorId}`);
                                 }}
                                 className="flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
@@ -443,6 +445,21 @@ const MyAppointments = () => {
                               >
                                 <X className="w-4 h-4" />
                                 Cancel Appointment
+                              </button>
+                            )}
+                            {item.isCompleted && (
+                              <button
+                                onClick={async () => {
+                                  try{
+                                    const id = (item as any)._id || (item as any).appointmentId;
+                                    const { data } = await getPrescriptionByAppointmentAPI(id);
+                                    setRx(data.prescription || null);
+                                    setRxOpen(true);
+                                  } catch{}
+                                }}
+                                className="flex items-center gap-2 bg-white border-2 border-primary text-primary px-6 py-3 rounded-xl font-semibold hover:bg-primary hover:text-white transition-all duration-300"
+                              >
+                                View Prescription
                               </button>
                             )}
                           </div>
@@ -467,6 +484,41 @@ const MyAppointments = () => {
           </div>
         )}
       </div>
+      {rxOpen && rx && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xl font-bold">Prescription</h3>
+              <button onClick={()=>setRxOpen(false)} className="text-gray-500">✕</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="py-2">Medicine</th>
+                    <th className="py-2">Dosage</th>
+                    <th className="py-2">Instructions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(rx.items||[]).map((it:any, idx:number)=> (
+                    <tr key={idx} className="border-t">
+                      <td className="py-2">{it.name}</td>
+                      <td className="py-2">{it.dosage}</td>
+                      <td className="py-2">{it.instructions || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {rx.notes && <div className="mt-3 text-sm text-gray-700">Notes: {rx.notes}</div>}
+            <div className="mt-4 flex gap-2 justify-end">
+              <button onClick={()=>window.print()} className="px-3 py-2 rounded-lg bg-primary text-white">Print</button>
+              <button onClick={()=>setRxOpen(false)} className="px-3 py-2 rounded-lg border">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

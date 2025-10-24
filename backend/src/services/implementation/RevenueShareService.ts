@@ -26,13 +26,13 @@ export class RevenueShareService implements IRevenueShareService {
       const { totalAmount, doctorId, appointmentId } = revenueData;
       const { doctorAmount, adminAmount } = this.calculateRevenueShare(totalAmount);
 
-      // Ensure doctor wallet exists
+      
       await this.walletService.ensureWalletExists(doctorId, 'doctor');
       
-      // Ensure admin wallet exists (using a system admin ID)
+     
       let adminId = process.env.ADMIN_WALLET_ID;
       
-      // If no ADMIN_WALLET_ID is set, try to find the first admin and use their ID
+      
       if (!adminId) {
         const admin = await this.adminRepository.findFirstAdmin();
         if (admin) {

@@ -14,6 +14,8 @@ import DoctorRegister from "../pages/doctor/DoctorRegister";
 import DoctorSlotManager from "../pages/doctor/DoctorSlotManagement";
 import DoctorInbox from "../pages/doctor/DoctorInbox";
 import DoctorWallet from "../pages/doctor/DoctorWallet";
+import PatientHistory from "../pages/doctor/PatientHistory";
+
 
 const DoctorRoutes = () => {
   return (
@@ -84,6 +86,22 @@ const DoctorRoutes = () => {
           </DoctorLayout>
         }
       />
+      <Route
+        path="/doctor/patient-history"
+        element={
+          <DoctorLayout>
+            <PatientHistory />
+          </DoctorLayout>
+        }
+      />
+      {/* <Route
+        path="/doctor/patient-history-test"
+        element={
+          <DoctorLayout>
+            <PatientHistoryTest />
+          </DoctorLayout>
+        }
+      /> */}
     </>
   );
 };

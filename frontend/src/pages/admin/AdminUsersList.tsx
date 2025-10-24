@@ -18,7 +18,7 @@ const AdminUsersList = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   const [loading, setLoading] = useState(false);
-  const itemsPerPage = 6;
+  const itemsPerPage = 3;
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetUser, setTargetUser] = useState<any>(null);
@@ -35,7 +35,7 @@ const AdminUsersList = () => {
       const result = await getUsersPaginated(currentPage, itemsPerPage, searchQuery);
       setUsers(result.data);
       setTotalPages(result.totalPages);
-  // setTotalCount(result.totalCount); // Removed unused state
+  
     } catch (error) {
       console.error("Failed to fetch users:", error);
     } finally {
@@ -53,7 +53,7 @@ const AdminUsersList = () => {
   // Effect for search changes only
   useEffect(() => {
     if (aToken && searchQuery !== "") {
-      setCurrentPage(1); // Reset to first page when searching
+      setCurrentPage(1); 
       fetchUsers();
     }
   }, [aToken, searchQuery]);
@@ -79,10 +79,17 @@ const AdminUsersList = () => {
     setActionLoading(true);
     try {
       await toggleBlockUser(targetUser._id, targetAction === "block");
+       setUsers(prevUsers => 
+      prevUsers.map(user => 
+        user._id === targetUser._id 
+          ? { ...user, isBlocked: targetAction === "block" }
+          : user
+      )
+    );
       setConfirmOpen(false);
       setTargetUser(null);
       setTargetAction(null);
-      fetchUsers();
+      // fetchUsers();
     } catch (error) {
       console.error("Failed to toggle user block:", error);
     } finally {

@@ -103,7 +103,7 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
     }
   };
 
-  // If you have a getAppointmentsPaginated, ensure similar robustness:
+ 
   const getAppointmentsPaginated = async (page: number, limit: number, searchQuery?: string): Promise<PaginationData> => {
     try {
       const { data } = await getDoctorAppointmentsPaginatedAPI(page, limit, searchQuery);

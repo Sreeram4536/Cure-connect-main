@@ -29,8 +29,10 @@ import { WalletRepository } from "../../repositories/implementation/WalletReposi
 import { LeaveManagementService } from "./LeaveManagementService";
 import { Orders } from "razorpay/dist/types/orders";
 import { LeaveManagementRepository } from "../../repositories/implementation/LeaveManagementRepository";
+import { AdminRepository } from "../../repositories/implementation/AdminRepository";
 
-// Extended type for appointments that includes _id from MongoDB documents
+
+
 type AppointmentWithId = AppointmentTypes & { _id?: string };
 
 // Define proper types for slots
@@ -291,8 +293,7 @@ export class UserService implements IUserService {
       if (appointment.payment && appointment.amount > 0) {
         console.log(`Processing refund with revenue reversal: ${appointment.amount}`);
         const walletRepository = new WalletRepository();
-        const adminRepository = require("../../repositories/implementation/AdminRepository").default;
-        const adminRepo = new adminRepository();
+        const adminRepo = new AdminRepository();
         const revenueShare = new RevenueShareService(this._walletService, walletRepository, adminRepo);
         await revenueShare.reverseRevenueShare({
           totalAmount: appointment.amount,

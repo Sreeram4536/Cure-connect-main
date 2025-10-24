@@ -12,6 +12,7 @@ const DoctorSidebar = () => {
     slot_icon: "⏰",
     inbox_icon: "📬",
     wallet_icon: "💰",
+    history_icon: "📋",
   };
 
   const menuItems = [
@@ -26,6 +27,12 @@ const DoctorSidebar = () => {
       icon: assets.appointment_icon,
       label: "Appointments",
       gradient: "from-blue-500 to-primary"
+    },
+    {
+      to: "/doctor/patient-history",
+      icon: assets.history_icon,
+      label: "Patient History",
+      gradient: "from-purple-500 to-pink-600"
     },
     {
       to: "/doctor/profile",

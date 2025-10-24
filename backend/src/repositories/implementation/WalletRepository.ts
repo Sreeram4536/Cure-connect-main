@@ -14,7 +14,7 @@ export class WalletRepository extends BaseRepository<WalletDocumentWithId> imple
   }
 
   async createWallet(userId: string, userRole: UserRole): Promise<WalletDocument> {
-    // Backward-compat: if an old wallet exists with only userId unique index, reuse it and set role
+    
     const existingAny = await (this.model as any).findOne({ userId });
     if (existingAny) {
       if (!existingAny.userRole) {
@@ -28,12 +28,11 @@ export class WalletRepository extends BaseRepository<WalletDocumentWithId> imple
       if (existingAny.userRole === userRole) {
         return existingAny as WalletDocument;
       }
-      // If a legacy unique index on userId exists, creating another document would fail.
-      // In that rare case, reuse the existing wallet for this role as a safe fallback.
+      
       return existingAny as WalletDocument;
     }
 
-    // Use upsert to avoid duplicate key errors if wallet already exists
+    
     await (this.model as any).updateOne(
       { userId, userRole },
       { $setOnInsert: { userId, userRole, balance: 0, transactions: [] } },
@@ -107,53 +106,158 @@ export class WalletRepository extends BaseRepository<WalletDocumentWithId> imple
     return transaction as WalletTransaction;
   }
 
-  async getTransactionsByUserId(
-    userId: string,
-    userRole: UserRole,
-    page: number,
-    limit: number,
-    sortBy: string = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc'
-  ): Promise<PaginationResult<WalletTransaction>> {
-    const wallet = await this.getWalletByUserId(userId, userRole);
-    if (!wallet) {
-      return {
-        data: [],
-        totalCount: 0,
-        currentPage: page,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPrevPage: false
-      };
-    }
+  // async getTransactionsByUserId(
+  //   userId: string,
+  //   userRole: UserRole,
+  //   page: number,
+  //   limit: number,
+  //   sortBy: string = 'createdAt',
+  //   sortOrder: 'asc' | 'desc' = 'desc'
+  // ): Promise<PaginationResult<WalletTransaction>> {
+  //   const wallet = await this.getWalletByUserId(userId, userRole);
+  //   if (!wallet) {
+  //     return {
+  //       data: [],
+  //       totalCount: 0,
+  //       currentPage: page,
+  //       totalPages: 0,
+  //       hasNextPage: false,
+  //       hasPrevPage: false
+  //     };
+  //   }
 
-    const skip = (page - 1) * limit;
-    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+  //   const skip = (page - 1) * limit;
+  //   const sortDirection = sortOrder === 'asc' ? 1 : -1;
     
-    const transactions = wallet.transactions
-      .sort((a, b) => {
-        if (sortBy === 'amount') {
-          return (a.amount - b.amount) * sortDirection;
-        }
-        if (sortBy === 'type') {
-          return a.type.localeCompare(b.type) * sortDirection;
-        }
-        return (a.createdAt.getTime() - b.createdAt.getTime()) * sortDirection;
-      })
-      .slice(skip, skip + limit);
+  //   const transactions = wallet.transactions
+  //     .sort((a, b) => {
+  //       if (sortBy === 'amount') {
+  //         return (a.amount - b.amount) * sortDirection;
+  //       }
+  //       if (sortBy === 'type') {
+  //         return a.type.localeCompare(b.type) * sortDirection;
+  //       }
+  //       return (a.createdAt.getTime() - b.createdAt.getTime()) * sortDirection;
+  //     })
+  //     .slice(skip, skip + limit);
 
-    const totalCount = wallet.transactions.length;
-    const totalPages = Math.ceil(totalCount / limit);
+  //   const totalCount = wallet.transactions.length;
+  //   const totalPages = Math.ceil(totalCount / limit);
 
+  //   return {
+  //     data: transactions,
+  //     totalCount,
+  //     currentPage: page,
+  //     totalPages,
+  //     hasNextPage: page < totalPages,
+  //     hasPrevPage: page > 1
+  //   };
+  // }
+
+  async getTransactionsByUserId(
+  userId: string,
+  userRole: UserRole,
+  page: number,
+  limit: number,
+  sortBy: string = 'createdAt',
+  sortOrder: 'asc' | 'desc' = 'desc',
+  type?: 'credit' | 'debit',
+  startDate?: Date,
+  endDate?: Date
+): Promise<PaginationResult<WalletTransaction>> {
+  const wallet = await this.getWalletByUserId(userId, userRole);
+  if (!wallet) {
     return {
-      data: transactions,
-      totalCount,
+      data: [],
+      totalCount: 0,
       currentPage: page,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1
+      totalPages: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
     };
   }
+
+  // Apply filters
+  let filtered = wallet.transactions;
+  
+  console.log(`[WalletRepository] Filtering transactions:`, {
+    totalTransactions: wallet.transactions.length,
+    type,
+    startDate,
+    endDate,
+    sortBy,
+    sortOrder
+  });
+  console.log(`[WalletRepository] *** DEBUG: About to check type filter. type=${type}, typeof type=${typeof type}`);
+
+  // Universal type filtering for all roles
+  console.log(`[WalletRepository] *** DEBUG: Checking if type filter should be applied. type=${type}, truthy=${!!type}`);
+  
+  // FORCE FILTERING FOR USER - Always apply type filter if provided
+  if (type && (userRole === 'user' || type === 'credit' || type === 'debit')) {
+    const beforeCount = filtered.length;
+    console.log(`[WalletRepository] (ALL roles) Applying type filter: ${type}`);
+    console.log(`[WalletRepository] User role: ${userRole}, Type to filter: ${type}`);
+    console.log(`[WalletRepository] All transaction types before filter:`, filtered.map(tx => ({ type: tx.type, _id: (tx as any)._id })));
+    
+    const normalizedType = type.toLowerCase().trim();
+    console.log(`[WalletRepository] Normalized filter type: "${normalizedType}"`);
+    
+    filtered = filtered.filter((tx) => {
+      const txType = (tx.type ?? '').toLowerCase().trim();
+      const matches = txType === normalizedType;
+      console.log(`[WalletRepository] Transaction _id=${(tx as any)._id} type="${tx.type}" (norm="${txType}") matches "${normalizedType}": ${matches}`);
+      return matches;
+    });
+    console.log(`[WalletRepository] (ALL roles) Type filter applied: ${beforeCount} -> ${filtered.length} transactions`);
+    console.log(`[WalletRepository] Filtered transaction types:`, filtered.map(tx => ({ type: tx.type, _id: (tx as any)._id })));
+  } else {
+    console.log(`[WalletRepository] No type filter applied - type parameter is:`, type);
+  }
+
+  if (startDate || endDate) {
+    const beforeCount = filtered.length;
+    filtered = filtered.filter(tx => {
+      const txDate = new Date(tx.createdAt);
+      if (startDate && endDate) {
+        return txDate >= startDate && txDate <= endDate;
+      } else if (startDate) {
+        return txDate >= startDate;
+      } else if (endDate) {
+        return txDate <= endDate;
+      }
+      return true;
+    });
+    console.log(`[WalletRepository] Date filter applied: ${beforeCount} -> ${filtered.length} transactions`);
+  }
+
+  // Sorting
+  const sortDirection = sortOrder === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    if (sortBy === 'amount') return (a.amount - b.amount) * sortDirection;
+    if (sortBy === 'type') return a.type.localeCompare(b.type) * sortDirection;
+    return (a.createdAt.getTime() - b.createdAt.getTime()) * sortDirection;
+  });
+
+  // Pagination
+  const totalCount = filtered.length;
+  const totalPages = Math.ceil(totalCount / limit);
+  const skip = (page - 1) * limit;
+  const paginated = filtered.slice(skip, skip + limit);
+
+  console.log(`[WalletRepository] FINAL RESULT - Total filtered: ${totalCount}, Paginated: ${paginated.length}`);
+  console.log(`[WalletRepository] FINAL transaction types being returned:`, paginated.map(tx => ({ type: tx.type, _id: (tx as any)._id })));
+
+  return {
+    data: paginated,
+    totalCount,
+    currentPage: page,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
+}
+
 
   async getWalletBalance(userId: string, userRole: UserRole): Promise<number> {
     const wallet = await this.getWalletByUserId(userId, userRole);
@@ -189,18 +293,18 @@ export class WalletRepository extends BaseRepository<WalletDocumentWithId> imple
   }
 
   async deductFromWallet(userId: string, userRole: UserRole, amount: number, appointmentId: string, description: string): Promise<boolean> {
-    // Ensure wallet exists
+    
     let wallet = await this.getWalletByUserId(userId, userRole);
     if (!wallet) {
       wallet = await this.createWallet(userId, userRole);
     }
 
-    // Check if user has sufficient balance
+   
     if (wallet.balance < amount) {
       return false;
     }
 
-    // First, add the transaction
+   
     await this.addTransaction({
       userId,
       userRole,

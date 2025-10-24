@@ -293,9 +293,9 @@ const AdminDashboard = () => {
                     <p className="text-xs text-gray-500">
                       {new Date(transaction.createdAt).toLocaleDateString()} at {new Date(transaction.createdAt).toLocaleTimeString()}
                     </p>
-                    {transaction.appointmentId && (
+                    {/* {transaction.appointmentId && (
                       <p className="text-xs text-gray-400">Appointment #{transaction.appointmentId.slice(-6)}</p>
-                    )}
+                    )} */}
                   </div>
                   <div className="text-right">
                     <p className={`font-bold text-sm ${

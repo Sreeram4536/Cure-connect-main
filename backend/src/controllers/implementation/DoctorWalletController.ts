@@ -1,33 +1,35 @@
 import { Request, Response } from "express";
 import { IWalletService } from "../../services/interface/IWalletService";
+import { IDoctorWalletController } from "../interface/IDoctorWalletController";
 import { AuthRequest } from "../../types/customRequest";
 import { UserRole } from "../../types/wallet";
+import { HttpStatus } from "../../constants/status.constants";
 
-export class DoctorWalletController {
-  private walletService: IWalletService;
+export class DoctorWalletController implements IDoctorWalletController {
+  private _walletService: IWalletService;
 
   constructor(walletService: IWalletService) {
-    this.walletService = walletService;
+    this._walletService = walletService;
   }
 
   async getWalletBalance(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).docId;
       if (!userId) {
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor not authenticated" });
         return;
       }
 
-      const balance = await this.walletService.getWalletBalance(userId, 'doctor');
+      const balance = await this._walletService.getWalletBalance(userId, 'doctor');
       
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: { balance },
         message: "Doctor wallet balance retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting doctor wallet balance:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get doctor wallet balance"
       });
@@ -38,7 +40,7 @@ export class DoctorWalletController {
     try {
       const userId = (req as any).docId;
       if (!userId) {
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor not authenticated" });
         return;
       }
 
@@ -46,24 +48,34 @@ export class DoctorWalletController {
       const limit = parseInt(req.query.limit as string) || 10;
       const sortBy = req.query.sortBy as string || 'createdAt';
       const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const type = req.query.type as 'credit' | 'debit' | undefined;
+      const startDateStr = req.query.startDate as string;
+      const endDateStr = req.query.endDate as string;
 
-      const transactions = await this.walletService.getWalletTransactions(
+      // Parse dates only if present
+      const startDate = startDateStr ? new Date(startDateStr) : undefined;
+      const endDate = endDateStr ? new Date(endDateStr) : undefined;
+
+      const transactions = await this._walletService.getWalletTransactions(
         userId,
         'doctor',
         page,
         limit,
         sortBy,
-        sortOrder
+        sortOrder,
+        type,
+        startDate,
+        endDate
       );
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: transactions,
         message: "Doctor wallet transactions retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting doctor wallet transactions:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get doctor wallet transactions"
       });
@@ -74,20 +86,20 @@ export class DoctorWalletController {
     try {
       const userId = (req as any).docId;
       if (!userId) {
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor not authenticated" });
         return;
       }
 
-      const walletDetails = await this.walletService.getWalletDetails(userId, 'doctor');
+      const walletDetails = await this._walletService.getWalletDetails(userId, 'doctor');
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: walletDetails,
         message: "Doctor wallet details retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting doctor wallet details:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get doctor wallet details"
       });
@@ -98,20 +110,20 @@ export class DoctorWalletController {
     try {
       const userId = (req as any).docId;
       if (!userId) {
-        res.status(401).json({ success: false, message: "Doctor not authenticated" });
+        res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: "Doctor not authenticated" });
         return;
       }
 
-      const walletDTO = await this.walletService.getWalletDTO(userId, 'doctor');
+      const walletDTO = await this._walletService.getWalletDTO(userId, 'doctor');
 
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: walletDTO,
         message: "Doctor wallet DTO retrieved successfully"
       });
     } catch (error) {
       console.error("Error getting doctor wallet DTO:", error);
-      res.status(500).json({
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: error instanceof Error ? error.message : "Failed to get doctor wallet DTO"
       });

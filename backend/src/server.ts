@@ -12,6 +12,8 @@ import chatRouter from "./routes/chatRoute";
 import walletRouter from "./routes/walletRoute";
 import adminWalletRouter from "./routes/adminWalletRoute";
 import doctorWalletRouter from "./routes/doctorWalletRoute";
+import { initializePatientHistoryRoutes } from "./routes/patientHistoryRoute";
+import { patientHistoryService, patientHistoryPopulateService } from "./dependencyhandler/doctor.dependency";
 import "./utils/passport";
 import passport from "passport";
 import { createServer } from "http";
@@ -63,6 +65,10 @@ app.use("/api/chat", chatRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/admin-wallet", adminWalletRouter);
 app.use("/api/doctor-wallet", doctorWalletRouter);
+app.use("/api/doctor/patient-history", initializePatientHistoryRoutes(
+  patientHistoryService,
+  patientHistoryPopulateService
+));
 
 app.get("/", (req, res) => {
   res.send("API WORKING");
