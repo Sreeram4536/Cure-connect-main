@@ -30,6 +30,7 @@ import { LeaveManagementService } from "./LeaveManagementService";
 import { Orders } from "razorpay/dist/types/orders";
 import { LeaveManagementRepository } from "../../repositories/implementation/LeaveManagementRepository";
 import { AdminRepository } from "../../repositories/implementation/AdminRepository";
+import { toUserAuthDTO, toUserProfileDTO } from "../../mapper/user.mapper";
 
 
 
@@ -117,31 +118,31 @@ export class UserService implements IUserService {
     return { token, refreshToken };
   }
 
-  private toUserAuthDTO(user: userData & { _id: string }): UserAuthDTO {
-    return {
-      id: user._id?.toString() ?? "",
-      name: user.name,
-      email: user.email,
-      image: user.image,
-      isBlocked: !!user.isBlocked,
-    };
-  }
+  // private toUserAuthDTO(user: userData & { _id: string }): UserAuthDTO {
+  //   return {
+  //     id: user._id?.toString() ?? "",
+  //     name: user.name,
+  //     email: user.email,
+  //     image: user.image,
+  //     isBlocked: !!user.isBlocked,
+  //   };
+  // }
 
-  private toUserProfileDTO(user: userData & { _id: string; createdAt?: Date; updatedAt?: Date }): UserProfileDTO {
-    return {
-      id: user._id?.toString() ?? "",
-      name: user.name,
-      email: user.email,
-      image: user.image,
-      address: user.address,
-      gender: user.gender,
-      dob: user.dob,
-      phone: user.phone,
-      isBlocked: !!user.isBlocked,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-  }
+  // private toUserProfileDTO(user: userData & { _id: string; createdAt?: Date; updatedAt?: Date }): UserProfileDTO {
+  //   return {
+  //     id: user._id?.toString() ?? "",
+  //     name: user.name,
+  //     email: user.email,
+  //     image: user.image,
+  //     address: user.address,
+  //     gender: user.gender,
+  //     dob: user.dob,
+  //     phone: user.phone,
+  //     isBlocked: !!user.isBlocked,
+  //     createdAt: user.createdAt,
+  //     updatedAt: user.updatedAt,
+  //   };
+  // }
 
   async login(
     email: string,
@@ -160,12 +161,13 @@ export class UserService implements IUserService {
     const token = generateAccessToken(user._id, user.email, "user");
     const refreshToken = generateRefreshToken(user._id, "user");
 
-    return { user: this.toUserAuthDTO(user), token, refreshToken };
+    // return { user: this.toUserAuthDTO(user), token, refreshToken };
+    return { user: toUserAuthDTO(user), token, refreshToken };
   }
 
   async getProfile(userId: string): Promise<UserProfileDTO | null> {
     const user = await this._userRepository.findById(userId);
-    return user ? this.toUserProfileDTO(user) : null;
+    return user ? toUserProfileDTO(user) : null;
   }
 
   async updateProfile(

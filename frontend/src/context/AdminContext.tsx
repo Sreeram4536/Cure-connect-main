@@ -40,6 +40,7 @@ interface PaginationData<T = unknown> {
 }
 
 interface DashData {
+  latestAppointments: any;
   totalUsers: number;
   totalDoctors: number;
   totalAppointments: number;

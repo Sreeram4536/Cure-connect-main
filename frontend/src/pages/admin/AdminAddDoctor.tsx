@@ -56,7 +56,7 @@ const AdminAddDoctor = () => {
         console.log(`${key} : ${value}`);
       });
 
-      const { data } = await adminAddDoctorAPI(formData, aToken);
+      const { data } = await adminAddDoctorAPI(formData);
 
       if (data.success) {
         toast.success(data.message);

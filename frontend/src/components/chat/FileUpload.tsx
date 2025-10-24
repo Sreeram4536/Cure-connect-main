@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { FilePreview, UploadStatus } from '../../types/chat';
+import type { FilePreview, UploadStatus } from '../../types/chat';
 import { formatFileSize, isImageFile, isDocumentFile } from '../../services/chatServices';
 
 interface FileUploadProps {

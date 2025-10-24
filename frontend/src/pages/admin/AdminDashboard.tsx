@@ -66,7 +66,7 @@ const AdminDashboard = () => {
       try {
         setLoadingMetrics(true);
         console.log('Loading admin metrics for range:', range, 'with token:', !!aToken);
-        const { data } = await getAdminMetricsAPI(range, aToken);
+        const { data } = await getAdminMetricsAPI(range);
         console.log('Admin metrics response:', data);
         if (data.success) setMetrics(data.data as MetricsResponse);
       } catch (error) {
@@ -140,7 +140,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-600">Doctors</p>
-                <p className="text-3xl font-bold mt-1 text-purple-800">{dashData.doctors}</p>
+                <p className="text-3xl font-bold mt-1 text-purple-800">{dashData.totalDoctors}</p>
               </div>
               <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xl">👨‍⚕️</span>
@@ -155,7 +155,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-orange-600">Patients</p>
-                <p className="text-3xl font-bold mt-1 text-orange-800">{dashData.patients}</p>
+                <p className="text-3xl font-bold mt-1 text-orange-800">{dashData.totalUsers}</p>
               </div>
               <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xl">👥</span>
@@ -235,7 +235,7 @@ const AdminDashboard = () => {
                     data={latestActivity} 
                     nameKey="type" 
                     outerRadius={80} 
-                    label={({ type, amount }) => `${type}: ₹${amount}`}
+                    label={({ name, value }) => `${name}: ₹${value}`}
                     labelLine={false}
                   >
                     {latestActivity.map((_, idx) => (

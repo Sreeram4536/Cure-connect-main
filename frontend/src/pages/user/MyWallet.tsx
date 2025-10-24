@@ -103,7 +103,7 @@ const MyWallet = () => {
         setTotalPages(response.data.data.totalPages);
         setTotalCount(response.data.data.totalCount);
         console.log('Transactions set:', response.data.data.data);
-        console.log('Transaction types:', response.data.data.data.map(tx => tx.type));
+        console.log('Transaction types:', response.data.data.data.map((tx: { type: any; }) => tx.type));
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChatMessage, Attachment } from '../../types/chat';
+import type { ChatMessage, Attachment } from '../../types/chat';
 import { formatFileSize, getFileUrlAPI, getFileExtension } from '../../services/chatServices';
 
 interface MessageItemProps {
