@@ -103,15 +103,15 @@ const PatientHistory = () => {
         </div>
       ),
     },
-    {
-      key: "age",
-      header: "Age",
-      width: "1fr",
-      hideOnMobile: true,
-      render: (item: PatientHistoryDTO) => (
-        <p>{item.patientDob ? calculateAge(item.patientDob) : '-'} years</p>
-      ),
-    },
+    // {
+    //   key: "age",
+    //   header: "Age",
+    //   width: "1fr",
+    //   hideOnMobile: true,
+    //   render: (item: PatientHistoryDTO) => (
+    //     <p>{item.patientDob ? calculateAge(item.patientDob) : '-'} years</p>
+    //   ),
+    // },
     {
       key: "medicalHistory",
       header: "Medical Records",
