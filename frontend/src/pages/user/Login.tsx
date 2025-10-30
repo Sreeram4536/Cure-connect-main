@@ -15,6 +15,7 @@ const Login = () => {
   const [state, setState] = useState("Sign Up");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -30,13 +31,18 @@ const Login = () => {
   const onSubmitHandler = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!email || !password || (state === "Sign Up" && !name)) {
+    if (!email || !password || (state === "Sign Up" && (!name || !confirmPassword))) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
     if (!isValidEmail(email)) {
       toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (state === "Sign Up" && password !== confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -152,6 +158,21 @@ const Login = () => {
             />
           </div>
 
+          {state === "Sign Up" && (
+            <div className="w-full">
+              <p>Confirm Password</p>
+              <input
+                className="border border-zinc-300 rounded w-full p-2 mt-1"
+                type="password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={confirmPassword}
+                required
+              />
+            </div>
+          )}
+
+           
+
           {state === "Login" && (
             <div className="w-full text-right text-sm mt-1">
               <span
@@ -199,6 +220,7 @@ const Login = () => {
                     setState("Login");
                     setEmail("");
                     setPassword("");
+                    setConfirmPassword("");
                     setName("");
                   }}
                   className="text-primary underline cursor-pointer"
@@ -214,6 +236,7 @@ const Login = () => {
                     setState("Sign Up");
                     setEmail("");
                     setPassword("");
+                    setConfirmPassword("");
                     setName("");
                   }}
                   className="text-primary underline cursor-pointer"

@@ -68,7 +68,7 @@ export const patientHistoryController = new PatientHistoryController(
 );
 
 const prescriptionService = new PrescriptionService(prescriptionRepository, appointmentRepository);
-const feedbackService = new FeedbackService(feedbackRepository,appointmentRepository);
+const feedbackService = new FeedbackService(feedbackRepository,appointmentRepository,userRepository);
 export const prescriptionController = new PrescriptionController(prescriptionService);
 export const feedbackController = new FeedbackController(feedbackService);
 const appointmentCompletionService = new AppointmentCompletionService(appointmentRepository, prescriptionRepository, patientHistoryService, doctorRepository);

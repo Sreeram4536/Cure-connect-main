@@ -1,22 +1,9 @@
-// import { FeedbackRepository } from "../../repositories/implementation/FeedbackRepository";
-// import appointmentModel from "../../models/appointmentModel";
 
-// export class FeedbackService {
-//   constructor(private repo: FeedbackRepository) {}
-
-//   async addFeedback(appointmentId: string, userId: string, rating: number, comment?: string) {
-//     const appt = await appointmentModel.findById(appointmentId);
-//     if (!appt) throw new Error("Appointment not found");
-//     if (String(appt.userId) !== String(userId)) throw new Error("Forbidden");
-//     const existing = await this.repo.findByAppointment(appointmentId);
-//     if (existing) throw new Error("Feedback already submitted");
-//     return this.repo.create({ appointmentId, userId, rating, comment } as any);
-//   }
-// }
 
 import { IFeedbackRepository } from "../../repositories/interface/IFeedbackRepository";
 import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
 import { FeedbackDocument } from "../../models/feedbackModel";
+import { IUserRepository } from "../../repositories/interface/IUserRepository";
 
 export interface FeedbackDTO {
   id: string;
@@ -25,12 +12,19 @@ export interface FeedbackDTO {
   rating: number;
   comment?: string;
   createdAt: Date;
+   userData?: {
+    name: string;
+    image?: string;
+  };
 }
+
+
 
 export class FeedbackService {
   constructor(
     private feedbackRepo: IFeedbackRepository,
-    private appointmentRepo: IAppointmentRepository
+    private appointmentRepo: IAppointmentRepository,
+    private userRepo: IUserRepository
   ) {}
 
   async addFeedback(
@@ -56,7 +50,9 @@ export class FeedbackService {
     return this.toFeedbackDTO(created);
   }
 
-  private toFeedbackDTO(feedback: FeedbackDocument): FeedbackDTO {
+  private async toFeedbackDTO(feedback: FeedbackDocument): Promise<FeedbackDTO> {
+    const user = await this.userRepo.findById(feedback.userId.toString());
+    
     return {
       id: feedback._id.toString(),
       appointmentId: feedback.appointmentId.toString(),
@@ -64,6 +60,10 @@ export class FeedbackService {
       rating: feedback.rating,
       comment: feedback.comment,
       createdAt: feedback.createdAt,
+      userData: user ? {
+        name: user.name,
+        image: user.image
+      } : undefined
     };
   }
 
@@ -89,8 +89,10 @@ export class FeedbackService {
       limit
     );
 
+    const feedbackDTOs = await Promise.all(items.map(f => this.toFeedbackDTO(f)));
+
     return {
-      items: items.map((f) => this.toFeedbackDTO(f)),
+      items: feedbackDTOs,
       total,
       averageRating,
     };

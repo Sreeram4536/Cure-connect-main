@@ -73,7 +73,10 @@ const Appointment = () => {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'wallet'>('razorpay');
   const [isCheckingWallet, setIsCheckingWallet] = useState(false);
-  const [feedbacks, setFeedbacks] = useState<{ id: string; rating: number; comment?: string; createdAt: string }[]>([]);
+  const [feedbacks, setFeedbacks] = useState<{ id: string; rating: number; comment?: string; createdAt: string; userData?: {
+    name: string;
+    image?: string;
+  }; }[]>([]);
   const [feedbackPage, setFeedbackPage] = useState(1);
   const [feedbackTotal, setFeedbackTotal] = useState(0);
   const [feedbackAvg, setFeedbackAvg] = useState(0);
@@ -773,10 +776,28 @@ const Appointment = () => {
           <div className="space-y-4">
             {feedbacks.map((fb, idx) => (
               <div key={fb.id + idx} className="p-4 rounded-xl border border-gray-200 bg-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="font-semibold">{fb.rating}/5</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    {fb.userData?.image ? (
+                      <img 
+                        src={fb.userData.image} 
+                        alt={fb.userData?.name || 'User'} 
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <span className="text-gray-600 text-sm">
+                          {fb.userData?.name?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-900">{fb.userData?.name || 'Anonymous User'}</p>
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        <span className="font-semibold">{fb.rating}/5</span>
+                      </div>
+                    </div>
                   </div>
                   <span className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleDateString()}</span>
                 </div>

@@ -424,7 +424,7 @@ const MyAppointments = () => {
 
                           {/* Action Buttons */}
                           <div className="flex flex-col gap-3 sm:items-end">
-                            {!item.cancelled && item.payment  && (item.docId || item.docData?._id) && (
+                            {!item.cancelled && item.payment && !item.isCompleted && (item.docId || item.docData?._id) && (
                               <button
                                 onClick={() => {
                                   try { sessionStorage.setItem('activeAppointmentId', String((item as any)._id || (item as any).id)); } catch {}
