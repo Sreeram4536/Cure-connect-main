@@ -238,8 +238,8 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
     return list.map(this.toAppointmentDTO);
   }
 
-  async listAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentDTO>> {
-    const res = await this._adminRepository.getAppointmentsPaginated(page, limit, search);
+  async listAppointmentsPaginated(page: number, limit: number, search?: string, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc'): Promise<PaginationResult<AppointmentDTO>> {
+    const res = await this._adminRepository.getAppointmentsPaginated(page, limit, search, sortBy, sortOrder);
     return { ...res, data: res.data.map(this.toAppointmentDTO) };
   }
 

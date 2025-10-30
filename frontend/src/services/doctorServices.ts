@@ -44,8 +44,8 @@ export const getDoctorAppointmentsAPI = () => {
 };
 
 // Get paginated appointments for doctor
-export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number, search?: string) => {
-  let url = `${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}`;
+export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number, search?: string, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc') => {
+  let url = `${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
   return api.get(url);
 };

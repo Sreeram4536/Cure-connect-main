@@ -20,7 +20,7 @@ export interface IAdminService {
   toggleUserBlock(userId: string, block: boolean): Promise<string>;
   toggleDoctorBlock(doctorId: string, block: boolean): Promise<string>;
   listAppointments(): Promise<AppointmentDTO[]>;
-  listAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentDTO>>;
+  listAppointmentsPaginated(page: number, limit: number, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<AppointmentDTO>>;
   cancelAppointment(appointmentId: string): Promise<void>;
   approveDoctor(doctorId: string): Promise<string>;
   rejectDoctor(doctorId: string): Promise<string>;

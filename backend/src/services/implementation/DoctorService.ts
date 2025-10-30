@@ -188,12 +188,12 @@ export class DoctorService implements IDoctorService {
     return list.map(this.toAppointmentDTO);
   }
 
-  async getDoctorAppointmentsPaginated(docId: string, page: number, limit: number, search?: string) {
+  async getDoctorAppointmentsPaginated(docId: string, page: number, limit: number, search?: string, sortOrder: 'asc' | 'desc' = 'desc') {
     const doctor = await this._doctorRepository.findById(docId);
     if (!doctor) {
       throw new Error("Doctor not found");
     }
-    const res = await this._doctorRepository.getAppointmentsPaginated(docId, page, limit, search);
+    const res = await this._doctorRepository.getAppointmentsPaginated(docId, page, limit, search, sortOrder);
     return { ...res, data: res.data.map(this.toAppointmentDTO) };
   }
 

@@ -20,7 +20,7 @@ export interface IDoctorService {
     password: string
   ): Promise<{ token: string; refreshToken: string }>;
   getDoctorAppointments(docId: string): Promise<AppointmentDTO[]>;
-  getDoctorAppointmentsPaginated(docId: string, page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentDTO>>;
+  getDoctorAppointmentsPaginated(docId: string, page: number, limit: number, search?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<AppointmentDTO>>;
   confirmAppointment(docId: string, appointmentId: string): Promise<void>;
   cancelAppointment(docId: string, appointmentId: string): Promise<void>;
   getDoctorProfile(docId: string): Promise<DoctorProfileDTO | null>;

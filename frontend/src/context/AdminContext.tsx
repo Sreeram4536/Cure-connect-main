@@ -40,12 +40,10 @@ interface PaginationData<T = unknown> {
 }
 
 interface DashData {
-  latestAppointments: any;
-  totalUsers: number;
-  totalDoctors: number;
-  totalAppointments: number;
-  totalRevenue: number;
-  // Add other dashboard properties as needed
+  doctors: number;
+  patients: number;
+  appointments: number;
+  latestAppointments: AppointmentTypes[];
 }
 
 interface AdminContextType {
@@ -300,9 +298,9 @@ const AdminContextProvider = ({ children }: AdminContextProviderProps) => {
     }
   };
 
-  const getAppointmentsPaginated = async (page: number, limit: number, searchQuery: string = ""): Promise<PaginationData<AppointmentTypes>> => {
+  const getAppointmentsPaginated = async (page: number, limit: number, searchQuery: string = "", sortOrder: 'asc' | 'desc' = 'desc'): Promise<PaginationData<AppointmentTypes>> => {
     try {
-      const { data } = await getAppointmentsPaginatedAPI(page, limit, searchQuery);
+      const { data } = await getAppointmentsPaginatedAPI(page, limit, searchQuery, 'date', sortOrder);
       if (data.success) {
         return {
           data: data.data,

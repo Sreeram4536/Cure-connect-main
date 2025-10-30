@@ -570,6 +570,13 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
         res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Missing payment details' });
         return;
       }
+
+      // Get doctor details to access fees
+      const doctor = await this._userService.getDoctorById(docId);
+      if (!doctor) {
+        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'Doctor not found' });
+        return;
+      }
       // Fetch order from Razorpay
       let orderInfo;
       try {
@@ -589,11 +596,11 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
         return;
       }
       
-      const doctor = await this._userService.getDoctorById(docId);
-      if (!doctor) {
-        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'Doctor not found' });
-        return;
-      }
+      // const doctor = await this._userService.getDoctorById(docId);
+      // if (!doctor) {
+      //   res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'Doctor not found' });
+      //   return;
+      // }
       
       const user = await this._userService.getUserById(userId);
       
@@ -617,10 +624,25 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
         },
         { new: true }
       );
+
       if (!appointment) {
         res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'No pending appointment found to confirm. It may have expired or been booked by another user.' });
         return;
       }
+
+      // Process revenue sharing
+      try {
+        await this._revenueService.processRevenueShare({
+          totalAmount: doctor.fees,
+          doctorId: docId,
+          appointmentId: appointment._id.toString()
+        });
+        console.log('Revenue share processed successfully');
+      } catch (error) {
+        console.error('Revenue sharing failed:', error);
+        
+      }
+
       res.status(HttpStatus.OK).json({ success: true, message: 'Appointment booked successfully' });
     } catch (error) {
       console.error('finalizeAppointment error:', error);
@@ -811,7 +833,13 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
   async finalizeWalletPayment(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId;
-      const { appointmentId, amount } = req.body;
+      const { appointmentId, amount,docId } = req.body;
+
+       const doctor = await this._userService.getDoctorById(docId);
+      if (!doctor) {
+        res.status(HttpStatus.NOT_FOUND).json({ success: false, message: 'Doctor not found' });
+        return;
+      }
 
       if (!appointmentId || !amount) {
         res.status(HttpStatus.BAD_REQUEST).json({
