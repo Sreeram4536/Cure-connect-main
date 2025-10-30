@@ -64,7 +64,7 @@ interface AdminContextType {
   appointments: AppointmentTypes[];
   setAppointments: React.Dispatch<React.SetStateAction<AppointmentTypes[]>>;
   getAllAppointments: () => Promise<void>;
-  getAppointmentsPaginated: (page: number, limit: number, searchQuery?: string) => Promise<PaginationData<AppointmentTypes>>;
+  getAppointmentsPaginated: (page: number, limit: number, searchQuery?: string,sortOrder?: 'asc' | 'desc') => Promise<PaginationData<AppointmentTypes>>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
   dashData: DashData | false;
   getDashData: () => Promise<void>;

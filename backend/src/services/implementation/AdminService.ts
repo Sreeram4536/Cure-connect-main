@@ -200,6 +200,7 @@ async getAdminById(id: string): Promise<AdminDocument | null> {
       isCompleted: a.isCompleted,
       userData: a.userData,
       docData: a.docData,
+      razorpayOrderId:a.razorpayOrderId?.toString() ?? ""
     };
   }
 

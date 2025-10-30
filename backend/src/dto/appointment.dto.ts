@@ -24,4 +24,5 @@ export interface AppointmentDTO {
     speciality: string;
     image?: string;
   };
+  
 }

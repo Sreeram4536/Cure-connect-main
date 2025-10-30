@@ -27,6 +27,7 @@ export interface AppointmentTypes {
   cancelledBy?: "user" | "doctor" | "admin";
   cancelledAt?: Date;
   cancellationReason?: string;
+  razorpayOrderId:string
 }
 
 export interface WalletPaymentData {
@@ -78,4 +79,5 @@ export interface AppointmentDTO {
     speciality: string;
     image?: string;
   };
+  razorpayOrderId:string
 }

@@ -48,6 +48,7 @@ export class DoctorService implements IDoctorService {
       isCompleted: a.isCompleted,
       userData: a.userData,
       docData: a.docData,
+      razorpayOrderId:a.razorpayOrderId?.toString() ?? ""
     };
   }
 

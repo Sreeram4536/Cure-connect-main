@@ -192,6 +192,7 @@ const DoctorAppointments = () => {
             onClick={(e) => {
               e.stopPropagation();
               setSelectedAppointment(item);
+              console.log(selectedAppointment)
               setShowModal(true);
             }}
             className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-indigo-200 transition"

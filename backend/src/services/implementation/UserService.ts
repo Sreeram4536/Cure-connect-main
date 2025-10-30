@@ -91,6 +91,7 @@ export class UserService implements IUserService {
       isCompleted: a.isCompleted,
       userData: a.userData,
       docData: a.docData,
+      razorpayOrderId:a.razorpayOrderId?.toString() ?? ""
     };
   }
 
