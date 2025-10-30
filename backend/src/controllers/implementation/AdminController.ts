@@ -325,8 +325,11 @@ export class AdminController implements IAdminController {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const search = req.query.search ? (req.query.search as string).trim() : "";
+      const sortBy = (req.query.sortBy as string) || 'date';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      
       if (page && limit) {
-        const result = await this._adminService.listAppointmentsPaginated(page, limit, search);
+        const result = await this._adminService.listAppointmentsPaginated(page, limit, search, sortBy, sortOrder);
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
         const appointments = await this._adminService.listAppointments();

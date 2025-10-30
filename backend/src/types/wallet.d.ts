@@ -55,10 +55,11 @@ export interface WalletBalanceUpdate {
 
 export interface RevenueShareData {
   totalAmount: number;
-  doctorAmount: number;
-  adminAmount: number;
+  doctorAmount?: number;
+  adminAmount?: number;
   doctorId: string;
   appointmentId: string;
+  userId?: string;
 }
 
 // DTOs for exposure

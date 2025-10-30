@@ -128,7 +128,7 @@ export class DoctorRepository
   }
 
 
- async getAppointmentsPaginated(docId: string, page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>> {
+ async getAppointmentsPaginated(docId: string, page: number, limit: number, search?: string, sortOrder: 'asc' | 'desc' = 'desc'): Promise<PaginationResult<AppointmentTypes>> {
     const skip = (page - 1) * limit;
     const query: any = { docId };
     if (search) {
@@ -143,7 +143,7 @@ export class DoctorRepository
       .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: sortOrder === 'asc' ? 1 : -1 });
     data.forEach((appt: any) => {
       if (appt.userId) {
         if (!appt.userData) {

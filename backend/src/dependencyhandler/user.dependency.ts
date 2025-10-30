@@ -1,23 +1,28 @@
 import SlotLockController from "../controllers/implementation/SlotLockController";
 import { UserController } from "../controllers/implementation/UserController";
+import { AdminRepository } from "../repositories/implementation/AdminRepository";
 import { AppointmentRepository } from "../repositories/implementation/AppointmentRepository";
 import { DoctorRepository } from "../repositories/implementation/DoctorRepository";
 import { UserRepository } from "../repositories/implementation/UserRepository";
 import { WalletRepository } from "../repositories/implementation/WalletRepository";
 import { PaymentService } from "../services/implementation/PaymentService";
+import { RevenueShareService } from "../services/implementation/RevenueShareService";
 import { SlotLockService } from "../services/implementation/SlotLockService";
 import { UserService } from "../services/implementation/UserService";
 import { WalletPaymentService } from "../services/implementation/WalletPaymentService";
 import { WalletService } from "../services/implementation/WalletService";
 
 const userRepository = new UserRepository();
+
 const walletRepository = new WalletRepository();
+const adminRepository = new AdminRepository();
 const paymentService = new PaymentService();
 const appointmentRepo = new AppointmentRepository();
 const doctorRepo = new DoctorRepository();
 const slotLockService = new SlotLockService(appointmentRepo, userRepository, doctorRepo);
 const walletService = new WalletService(walletRepository);
+const revenueShareService = new RevenueShareService(walletService,walletRepository,adminRepository)
 const walletPaymentService = new WalletPaymentService(walletService,appointmentRepo);
 const userService = new UserService(walletPaymentService,userRepository, paymentService, slotLockService, walletService);
-export const userController = new UserController(userService, paymentService);
+export const userController = new UserController(userService, paymentService,revenueShareService);
 export const slotLockController = new SlotLockController(slotLockService);

@@ -25,6 +25,13 @@ import {
 
 type Range = 'daily' | 'weekly' | 'monthly';
 
+interface DashData {
+  doctors: number;
+  patients: number;
+  appointments: number;
+  latestAppointments: AppointmentTypes[];
+}
+
 interface MetricsPoint { label: string; value: number }
 interface LatestActivityItem { amount: number; type: 'credit' | 'debit'; description: string; createdAt: string }
 interface WalletTransaction { _id: string; amount: number; type: 'credit' | 'debit'; description: string; createdAt: string; appointmentId?: string }
@@ -125,7 +132,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-600">Total Appointments</p>
-                <p className="text-3xl font-bold mt-1 text-blue-800">{(metrics?.totals.totalAppointments ?? 0).toLocaleString()}</p>
+                <p className="text-3xl font-bold mt-1 text-blue-800">{typeof dashData === 'object' ? dashData.appointments : 0}</p>
               </div>
               <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xl">📅</span>
@@ -140,7 +147,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-600">Doctors</p>
-                <p className="text-3xl font-bold mt-1 text-purple-800">{dashData.totalDoctors}</p>
+                <p className="text-3xl font-bold mt-1 text-purple-800">{typeof dashData === 'object' ? dashData.doctors : 0}</p>
               </div>
               <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xl">👨‍⚕️</span>
@@ -155,7 +162,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-orange-600">Patients</p>
-                <p className="text-3xl font-bold mt-1 text-orange-800">{dashData.totalUsers}</p>
+                <p className="text-3xl font-bold mt-1 text-orange-800">{typeof dashData === 'object' ? dashData.patients : 0}</p>
               </div>
               <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xl">👥</span>

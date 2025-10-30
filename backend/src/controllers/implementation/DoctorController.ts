@@ -221,8 +221,9 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const search = req.query.search as string | undefined;
+      const sortOrder = req.query.sortOrder as 'asc' | 'desc' | undefined;
       if (page && limit) {
-        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit, search);
+        const result = await this._doctorService.getDoctorAppointmentsPaginated(docId, page, limit, search, sortOrder);
         res.status(HttpStatus.OK).json({ success: true, ...result });
       } else {
         const appointments = await this._doctorService.getDoctorAppointments(docId);

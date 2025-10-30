@@ -90,10 +90,18 @@ export const getAllAppointmentsAPI = async () => {
   return await api.get(ADMIN_API.APPOINTMENTS);
 };
 
-export const getAppointmentsPaginatedAPI = async (page: number, limit: number, searchQuery: string = "") => {
+export const getAppointmentsPaginatedAPI = async (
+  page: number,
+  limit: number,
+  searchQuery: string = "",
+  sortBy: string = 'date',
+  sortOrder: 'asc' | 'desc' = 'desc'
+) => {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
+    sortBy,
+    sortOrder
   });
   if (searchQuery.trim()) {
     params.append('search', searchQuery.trim());

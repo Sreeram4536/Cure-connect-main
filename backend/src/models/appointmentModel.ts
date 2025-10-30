@@ -97,7 +97,7 @@ const appointmentSchema: Schema<AppointmentDocument> = new mongoose.Schema({
     type: String,
     default: null,
   },
-});
+}, { timestamps: true });
 
 const appointmentModel: Model<AppointmentDocument> =
   mongoose.model<AppointmentDocument>("appointment", appointmentSchema);

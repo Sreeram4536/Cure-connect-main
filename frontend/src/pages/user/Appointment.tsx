@@ -4,10 +4,8 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { AppContext } from "../../context/AppContext";
 import { assets, type Doctor } from "../../assets/user/assets";
-// import RelatedDoctors from "../../components/user/RelatedDoctors";
 import { toast } from "react-toastify";
 import {
-  // appointmentBookingAPI,
   getAvailableSlotsAPI,
   getAvailableSlotsForDateAPI,
   processWalletPaymentAPI,
