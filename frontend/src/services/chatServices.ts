@@ -9,6 +9,44 @@ const CHAT_API = {
   DOCTOR_CONVERSATIONS: "/api/chat/doctor/conversations",
 };
 
+// File utility functions
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+export const isImageFile = (fileType: string): boolean => {
+  return fileType.startsWith('image/');
+};
+
+export const isDocumentFile = (fileType: string): boolean => {
+  const documentTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain'
+  ];
+  return documentTypes.includes(fileType);
+};
+
+// File utility functions
+export const getFileUrlAPI = (fileName: string): string => {
+  // Assuming your files are served from your backend
+  const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+  return `${baseUrl}/uploads/chat/${fileName}`;
+};
+
+export const getFileExtension = (fileName: string): string => {
+  return fileName.split('.').pop() || '';
+};
+
 // User chat services
 export const createConversationAPI = (doctorId: string) => {
   return api.post(CHAT_API.CONVERSATIONS, { doctorId });
