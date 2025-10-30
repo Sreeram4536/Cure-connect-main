@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import SearchBar from "../../components/common/SearchBar";
 import Pagination from "../../components/common/Pagination";
 import DataTable from "../../components/common/DataTable";
-import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck } from 'react-icons/fa';
 
 const AdminAppointments = () => {
   const navigate = useNavigate();
@@ -29,8 +28,6 @@ const AdminAppointments = () => {
   // const [totalCount, setTotalCount] = useState(0); // Not used
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // default: newest first
-  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Ref to track if we're currently searching to prevent race conditions
   const isSearching = useRef(false);
@@ -39,7 +36,7 @@ const AdminAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery, sortOrder);
+      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery);
       setAppointments(result.data);
       setTotalPages(result.totalPages);
     } catch (error) {
@@ -54,7 +51,7 @@ const AdminAppointments = () => {
     if (aToken) {
       fetchAppointments();
     }
-  }, [aToken, currentPage, sortOrder]);
+  }, [aToken, currentPage]);
 
   // Effect for search changes only
   useEffect(() => {
@@ -195,51 +192,11 @@ const AdminAppointments = () => {
     <div className="w-full max-w-6xl m-5">
       <p className="mb-3 text-lg font-semibold">📅 All Appointments</p>
 
-      <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="max-w-sm w-full">
-          <SearchBar
-            placeholder="Search by patient or doctor name"
-            onSearch={handleSearch}
-          />
-        </div>
-        {/* Modern Sort Dropdown */}
-        <div className="relative">
-          <button
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white shadow hover:bg-indigo-50 transition-colors font-medium text-gray-700"
-            onClick={() => setSortDropdownOpen((open) => !open)}
-            aria-haspopup="listbox"
-            aria-expanded={sortDropdownOpen}
-          >
-            <FaSort className="text-indigo-500" />
-            Sort by Date
-            <FaChevronDown className={`transition-transform ${sortDropdownOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {sortDropdownOpen && (
-            <div className="absolute right-0 z-20 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl animate-fade-in overflow-hidden">
-              {[
-                { label: "Newest First", order: "desc", icon: <FaSortDown className="h-4 w-4 text-indigo-500" /> },
-                { label: "Oldest First", order: "asc", icon: <FaSortUp className="h-4 w-4 text-indigo-500" /> },
-              ].map((opt, idx) => (
-                <button
-                  key={opt.label}
-                  className={`w-full flex items-center gap-2 px-4 py-3 hover:bg-indigo-50 text-left font-medium transition-colors ${
-                    sortOrder === opt.order ? "bg-indigo-100 text-indigo-700" : "text-gray-700"
-                  } ${idx === 0 ? "rounded-t-xl" : ""} ${idx === 1 ? "rounded-b-xl" : ""}`}
-                  onClick={() => {
-                    setSortOrder(opt.order as 'asc' | 'desc');
-                    setSortDropdownOpen(false);
-                    setCurrentPage(1);
-                  }}
-                  aria-pressed={sortOrder === opt.order}
-                >
-                  {opt.icon}
-                  {opt.label}
-                  {sortOrder === opt.order && <FaCheck className="ml-auto text-green-500" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="mb-4">
+        <SearchBar
+          placeholder="Search by patient or doctor name"
+          onSearch={handleSearch}
+        />
       </div>
 
       <DataTable

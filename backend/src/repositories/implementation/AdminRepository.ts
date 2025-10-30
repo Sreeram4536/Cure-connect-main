@@ -131,7 +131,7 @@ export class AdminRepository extends BaseRepository<AdminDocument> implements IA
     return appointmentModel.find({});
   }
 
-  async getAppointmentsPaginated(page: number, limit: number, search?: string, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc'): Promise<PaginationResult<AppointmentTypes>> {
+  async getAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>> {
     const skip = (page - 1) * limit;
     let query: any = {};
     if (search && search.trim()) {
@@ -148,7 +148,7 @@ export class AdminRepository extends BaseRepository<AdminDocument> implements IA
       .populate({ path: 'docId', select: 'name image speciality', model: 'doctor' })
       .skip(skip)
       .limit(limit)
-      .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 });
+      .sort({ createdAt: -1 });
     data.forEach((appt: any) => {
       if (appt.userId) {
         if (!appt.userData) {

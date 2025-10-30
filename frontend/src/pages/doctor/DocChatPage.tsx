@@ -385,7 +385,8 @@ const DocChatPage: React.FC = () => {
 
   // Handle back navigation
   const handleBackToConsultation = () => {
-    navigate(`/consultation/${conversationId}`);
+    // navigate(`/consultation/${conversationId}`);
+    navigate('/doctor/inbox')
   };
 
   if (isLoading) {

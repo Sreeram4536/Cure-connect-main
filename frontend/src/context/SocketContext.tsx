@@ -36,6 +36,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const connect = async () => {
     try {
+      // If already connected or connecting, don't try again
+      if (socket?.connected) {
+        console.log('Socket is already connected');
+        return;
+      }
+
+      if (socket) {
+        console.log('Cleaning up existing socket connection');
+        socket.disconnect();
+        setSocket(null);
+      }
+
       console.log('Socket connection - Starting connection process...');
       console.log('Socket connection - Environment check:', {
         VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
@@ -249,14 +261,38 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    // Auto-connect when component mounts with a small delay
-    const timer = setTimeout(() => {
-      connect();
-    }, 1000); // Reduced delay for better responsiveness
+    let connectionTimer: NodeJS.Timeout;
+    let retryTimer: NodeJS.Timeout;
+
+    const attemptConnection = async () => {
+      try {
+        // First check if token exists
+        const token = await getValidToken();
+        if (!token) {
+          console.log('No token available, retrying in 2 seconds...');
+          retryTimer = setTimeout(attemptConnection, 2000);
+          return;
+        }
+
+        // Token exists, attempt socket connection with a delay
+        console.log('Token found, initiating socket connection...');
+        connectionTimer = setTimeout(() => {
+          connect();
+        }, 2000);
+
+      } catch (error) {
+        console.error('Error in connection attempt:', error);
+        retryTimer = setTimeout(attemptConnection, 2000);
+      }
+    };
+
+    // Start the connection attempt process
+    attemptConnection();
 
     // Cleanup on unmount
     return () => {
-      clearTimeout(timer);
+      if (connectionTimer) clearTimeout(connectionTimer);
+      if (retryTimer) clearTimeout(retryTimer);
       disconnect();
     };
   }, []);

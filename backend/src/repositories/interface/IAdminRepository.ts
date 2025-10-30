@@ -23,7 +23,7 @@ export interface IAdminRepository {
   toggleUserBlock(userId: string,block:boolean): Promise<string>;
   toggleDoctorBlock(doctorId: string, block: boolean): Promise<string>;
   getAllAppointments():Promise<AppointmentDocument[]>;
-  getAppointmentsPaginated(page: number, limit: number, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<AppointmentTypes>>;
+  getAppointmentsPaginated(page: number, limit: number, search?: string): Promise<PaginationResult<AppointmentTypes>>;
   cancelAppointment(appointmentId: string): Promise<void>;
   getAppointmentById(appointmentId: string): Promise<AppointmentDocument | null>;
   findPayableAppointment(appointmentId: string): Promise<AppointmentDocument>;

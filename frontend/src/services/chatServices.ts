@@ -85,44 +85,6 @@ export const doctorDeleteMessageAPI = (messageId: string) => {
   return doctorApi.patch(`${CHAT_API.MESSAGES}/${messageId}/soft-delete`);
 };
 
-// File utility functions
-export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-export const isImageFile = (fileType: string): boolean => {
-  return fileType.startsWith('image/');
-};
-
-export const isDocumentFile = (fileType: string): boolean => {
-  const documentTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain'
-  ];
-  return documentTypes.includes(fileType);
-};
-
-// File utility functions
-export const getFileUrlAPI = (fileName: string): string => {
-  // Assuming your files are served from your backend
-  const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
-  return `${baseUrl}/uploads/chat/${fileName}`;
-};
-
-export const getFileExtension = (fileName: string): string => {
-  return fileName.split('.').pop() || '';
-};
-
 // Doctor chat services
 export const getDoctorConversationsAPI = (page: number = 1, limit: number = 20) => {
   return doctorApi.get(CHAT_API.DOCTOR_CONVERSATIONS, {

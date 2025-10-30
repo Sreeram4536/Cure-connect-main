@@ -75,7 +75,7 @@ const DoctorAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery, sortOrder);
+      const result = await getAppointmentsPaginated(currentPage, itemsPerPage, searchQuery);
       setAppointments(result.data);
       setTotalPages(result.totalPages);
   // setTotalCount(result.totalCount);
