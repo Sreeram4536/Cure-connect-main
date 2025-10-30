@@ -88,7 +88,7 @@ export const getApi = (role: ApiRole) => {
         } catch (refreshErr) {
           roleTokenMap[role].set(null);
          
-          showErrorToast(refreshErr);
+          // showErrorToast(refreshErr);
           return Promise.reject(refreshErr);
         }
       }
