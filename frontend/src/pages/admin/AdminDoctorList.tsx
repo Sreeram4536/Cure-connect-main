@@ -81,6 +81,7 @@ const AdminDoctorList = () => {
   };
 
   const handleToggleBlock = (doctorId: string, isBlocked: boolean) => {
+    
     setTargetDoctor(doctors.find((d) => d._id === doctorId));
     setTargetAction(isBlocked ? "unblock" : "block");
     setConfirmOpen(true);
@@ -91,6 +92,13 @@ const AdminDoctorList = () => {
     setActionLoading(true);
     try {
       await toggleBlockDoctor(targetDoctor._id, targetAction === "block");
+       setDoctors((prevDoctors) =>
+        prevDoctors.map((doc) =>
+          doc._id === targetDoctor._id
+            ? { ...doc, isBlocked: targetAction === "block" }
+            : doc
+        )
+      );
       setConfirmOpen(false);
       setTargetDoctor(null);
       setTargetAction(null);

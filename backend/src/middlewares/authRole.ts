@@ -39,6 +39,7 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
             if (!user || user.isBlocked) {
               res.status(HttpStatus.FORBIDDEN).json({
                 success: false,
+                blocked:true,
                 message: "Access denied or user blocked",
               });
               return;
@@ -51,6 +52,7 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
             if (!doctor) {
               res.status(HttpStatus.FORBIDDEN).json({
                 success: false,
+                blocked:true,
                 message: "Access denied or doctor blocked",
               });
               return;
@@ -125,6 +127,7 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
                 if (!user || user.isBlocked) {
                   res.status(HttpStatus.FORBIDDEN).json({
                     success: false,
+                    blocked:true,
                     message: "Access denied or user blocked",
                   });
                   return;
@@ -137,6 +140,7 @@ const authRole = (allowedRoles: Array<"user" | "doctor" | "admin">) => {
                 if (!doctor) {
                   res.status(HttpStatus.FORBIDDEN).json({
                     success: false,
+                    blocked:true,
                     message: "Access denied or doctor blocked",
                   });
                   return;

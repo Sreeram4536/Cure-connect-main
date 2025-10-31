@@ -5,6 +5,7 @@ import { getAdminAccessToken, updateAdminAccessToken } from "../context/tokenMan
 import { getDoctorAccessToken, updateDoctorAccessToken } from "../context/tokenManagerDoctor";
 import { showErrorToast } from "../utils/errorHandler";
 
+
 export type ApiRole = "user" | "admin" | "doctor";
 
 type TokenGetters = {
@@ -69,6 +70,58 @@ export const getApi = (role: ApiRole) => {
     },
     async (err) => {
       const originalRequest = err.config || {};
+
+      if (!(window as any)._blockedRedirectTriggered) {
+  (window as any)._blockedRedirectTriggered = false;
+}
+
+       if (err.response?.status === 403 && err.response?.data?.blocked) {
+        if (typeof (window as any)._blockedRedirectTriggered === "undefined") {
+    (window as any)._blockedRedirectTriggered = false;
+  }
+
+  // Prevent duplicate handling
+  if ((window as any)._blockedRedirectTriggered) {
+    return Promise.reject(err);
+  }
+
+  // Immediately lock further executions
+  (window as any)._blockedRedirectTriggered = true;
+        console.log(`${role} is blocked by admin`);
+        
+        // Clear token
+        roleTokenMap[role].set(null);
+        
+        // Show error toast
+        showErrorToast(err);
+        
+        // Role-based redirect paths
+        const redirectPaths: Record<ApiRole, string> = {
+          user: "/login",
+          admin: "/admin/login",
+          doctor: "/doctor/login",
+        };
+        
+        // Clear all stored data
+        localStorage.clear();
+        sessionStorage.clear();
+
+         document.cookie.split(";").forEach((cookie) => {
+    document.cookie = cookie
+      .replace(/^ +/, "")
+      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+        
+        // Redirect to appropriate login page
+        setTimeout(() => {
+          // window.location.href = redirectPaths[role];
+          window.location.replace(redirectPaths[role]); 
+        }, 1000); // Small delay to show toast
+        
+        return Promise.reject(err);
+      }
+
+     
       if (err.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
@@ -92,6 +145,8 @@ export const getApi = (role: ApiRole) => {
           return Promise.reject(refreshErr);
         }
       }
+
+  
       
       // showErrorToast(err);
       return Promise.reject(err);
