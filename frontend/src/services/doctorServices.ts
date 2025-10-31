@@ -52,7 +52,7 @@ export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number, s
 
 // Confirm appointment
 export const AppointmentConfirmAPI = (appointmentId: string) => {
-  return api.patch(`/api/doctor/appointment/confirm/${appointmentId}`);
+  return api.patch(`/api/doctor/appointments/${appointmentId}/confirm`);
 };
 
 // Cancel appointment

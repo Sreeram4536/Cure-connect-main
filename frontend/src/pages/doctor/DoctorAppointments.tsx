@@ -3,7 +3,7 @@ import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/admin/assets";
 import { useNavigate } from "react-router-dom";
-// import { motion } from "framer-motion";
+import { motion } from "framer-motion";
 import SearchBar from "../../components/common/SearchBar";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
@@ -90,6 +90,7 @@ const DoctorAppointments = () => {
     try {
       await confirmAppointment(appointmentId); // Use context method
       fetchAppointments();
+      
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
     }
@@ -115,8 +116,7 @@ const DoctorAppointments = () => {
   };
 
 
-
-  const columns = [
+const columns = [
     {
       key: "index",
       header: "SL.NO",
@@ -131,12 +131,15 @@ const DoctorAppointments = () => {
       render: (item: any) => (
         <div className="flex items-center gap-2">
           <img
-            className="w-12 h-12 rounded-full object-cover"
-            src={item.userData?.image ? item.userData.image : "/default-avatar.png"}
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border"
+            src={item.userData?.image || "/default-avatar.png"}
             alt="user"
-            onError={e => { (e.target as HTMLImageElement).src = "/default-avatar.png"; }}
+            onError={(e) => ((e.target as HTMLImageElement).src = "/default-avatar.png")}
           />
-          <p>{item.userData?.name || '-'}</p>
+          <div className="flex flex-col">
+            <p className="font-medium text-gray-800">{item.userData?.name || "-"}</p>
+            <p className="text-gray-500 text-xs sm:text-sm">{item.userData?.email || "-"}</p>
+          </div>
         </div>
       ),
     },
@@ -145,11 +148,13 @@ const DoctorAppointments = () => {
       header: "Payment",
       width: "1fr",
       render: (item: any) => (
-        <div>
-          <p className="text-xs inline border border-primary px-2 rounded-full">
-            {item.payment ? "Paid" : "Pending"}
-          </p>
-        </div>
+        <p
+          className={`text-xs sm:text-sm inline border px-2 py-0.5 rounded-full ${
+            item.payment ? "border-green-500 text-green-600 bg-green-50" : "border-yellow-500 text-yellow-600 bg-yellow-50"
+          }`}
+        >
+          {item.payment ? "Paid" : "Pending"}
+        </p>
       ),
     },
     {
@@ -158,15 +163,15 @@ const DoctorAppointments = () => {
       width: "1fr",
       hideOnMobile: true,
       render: (item: any) => (
-        <p>{item.userData?.dob ? calculateAge(item.userData.dob) : '-'}</p>
+        <p>{item.userData?.dob ? calculateAge(item.userData.dob) : "-"}</p>
       ),
     },
     {
       key: "datetime",
       header: "Date & Time",
-      width: "3fr",
+      width: "2fr",
       render: (item: any) => (
-        <p>
+        <p className="text-gray-700">
           {slotDateFormat(item.slotDate)}, {item.slotTime}
         </p>
       ),
@@ -176,7 +181,7 @@ const DoctorAppointments = () => {
       header: "Fees",
       width: "1fr",
       render: (item: any) => (
-        <p>
+        <p className="font-medium">
           {currencySymbol}
           {item.amount}
         </p>
@@ -185,137 +190,45 @@ const DoctorAppointments = () => {
     {
       key: "actions",
       header: "Action",
-      width: "1fr",
+      width: "2fr",
       render: (item: any) => (
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center justify-start">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setSelectedAppointment(item);
-              console.log(selectedAppointment)
               setShowModal(true);
             }}
-            className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-indigo-200 transition"
+            className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-md text-xs sm:text-sm font-medium hover:bg-indigo-200 transition"
           >
             Info
           </button>
+
           <button
             onClick={(e) => {
               e.stopPropagation();
-              
-              console.log('=== DEBUGGING USER ID EXTRACTION ===');
-              console.log('item.userId type:', typeof item.userId);
-              console.log('item.userId value:', item.userId);
-              console.log('item.userData:', item.userData);
-              console.log('item.userData._id:', item.userData?._id);
-              console.log('item.userData._id type:', typeof item.userData?._id);
-              
-              // Extract the actual user ID string from the object
-              let userId = '';
-              
-              // First try to get from userData._id (most reliable)
-              if (item.userData && item.userData._id) {
-                console.log('userData._id before toString:', item.userData._id);
-                console.log('userData._id constructor:', item.userData._id.constructor?.name);
-                console.log('userData._id has toString:', typeof item.userData._id.toString);
-                
-                // Try different methods to convert to string
-                try {
-                  if (typeof item.userData._id.toString === 'function') {
-                    userId = item.userData._id.toString();
-                    console.log('Using userData._id toString():', userId);
-                  } else {
-                    userId = String(item.userData._id);
-                    console.log('Using userData._id String():', userId);
-                  }
-                } catch (error) {
-                  console.error('Error converting _id to string:', error);
-                  userId = JSON.stringify(item.userData._id);
-                  console.log('Using userData._id JSON.stringify():', userId);
-                }
-                
-                console.log('userId after processing type:', typeof userId);
-                console.log('userId after processing value:', userId);
-              }
-              // If that fails, try item.userId
-              else if (item.userId) {
-                if (typeof item.userId === 'string') {
-                  userId = item.userId;
-                  console.log('Using string userId:', userId);
-                } else if (typeof item.userId === 'object') {
-                  if (item.userId._id) {
-                    userId = item.userId._id.toString();
-                    console.log('Using userId._id:', userId);
-                  } else if (item.userId.id) {
-                    userId = item.userId.id.toString();
-                    console.log('Using userId.id:', userId);
-                  }
-                }
-              }
-              
-              console.log('Final extracted userId:', userId);
-              console.log('Final extracted userId type:', typeof userId);
-              console.log('=== END DEBUGGING ===');
-              
-              if (!userId || typeof userId !== 'string') {
-                console.error('Could not extract userId from item:', item);
-                console.error('userId value:', userId);
-                console.error('userId type:', typeof userId);
-                alert('Error: Could not identify patient ID');
-                return;
-              }
-              
-              // Ensure userId is a clean string (remove any extra whitespace)
-              userId = userId.trim();
-              
-              // Final validation
-              if (!userId || userId.length < 10) {
-                console.error('Invalid userId after processing:', userId);
-                alert('Error: Invalid patient ID');
-                return;
-              }
-              
-              // As a final guard, if someone passes a stringified object, extract 24-char ObjectId
-              const idMatch = userId.match(/[a-fA-F0-9]{24}/);
-              const safeUserId = idMatch ? idMatch[0] : userId;
-
-              console.log('Setting selectedPatientForHistory with:', {
-                userId: safeUserId,
-                patientName: item.userData?.name || 'Unknown',
-                patientEmail: item.userData?.email || ''
-              });
-              
               setSelectedPatientForHistory({
-                userId: safeUserId,
-                patientName: item.userData?.name || 'Unknown',
-                patientEmail: item.userData?.email || ''
+                userId: item.userData?._id || item.userId,
+                patientName: item.userData?.name || "Unknown",
+                patientEmail: item.userData?.email || "",
               });
               setShowPatientHistory(true);
             }}
-            className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-xs font-medium hover:bg-green-200 transition flex items-center gap-1"
+            className="bg-green-100 text-green-700 px-3 py-1 rounded-md text-xs sm:text-sm font-medium hover:bg-green-200 transition flex items-center gap-1"
             title="View Patient History"
           >
-            <FaHistory className="text-xs" />
-            History
+            <FaHistory className="text-xs" /> History
           </button>
+
           {item.cancelled ? (
-            <p className="text-red-500">Cancelled</p>
+            <p className="text-red-500 text-sm">Cancelled</p>
           ) : item.isConfirmed ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                try { sessionStorage.setItem('activeAppointmentId', String(item._id || item.appointmentId)); } catch {}
-                try { sessionStorage.setItem('roleForCall', 'doctor'); } catch {}
-                // Navigate to call page using conversation/appointment identifier if available
-                if (item.conversationId) {
-                  navigate(`/call/${item.conversationId}`);
-                } else if (item.appointmentId) {
-                  navigate(`/call/${item.appointmentId}`);
-                } else {
-                  navigate("/doctor/consultation");
-                }
+                navigate(`/call/${item.conversationId || item.appointmentId}`);
               }}
-              className="bg-primary px-4 py-1.5 text-sm rounded-lg font-medium text-white shadow transition duration-200"
+              className="bg-primary px-4 py-1.5 text-xs sm:text-sm rounded-lg font-medium text-white shadow hover:bg-primary/90 transition"
             >
               Consultation
             </button>
@@ -325,35 +238,37 @@ const DoctorAppointments = () => {
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
-                    try {
-                      const { data } = await getPrescriptionByAppointmentAPI(item._id || item.appointmentId);
-                      setRx(data.prescription || null);
-                      setRxOpen(true);
-                    } catch {}
+                    const { data } = await getPrescriptionByAppointmentAPI(item._id);
+                    setRx(data.prescription || null);
+                    setRxOpen(true);
                   }}
-                  className="bg-white border px-4 py-1.5 text-sm rounded-lg font-medium text-gray-700 shadow"
+                  className="bg-white border px-3 py-1 text-xs sm:text-sm rounded-md font-medium text-gray-700 shadow hover:bg-gray-50 transition"
                 >
                   View Prescription
                 </button>
               )}
-              <img
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCancelAppointment(item._id!);
-                }}
-                className="w-8 cursor-pointer"
-                src={assets.cancel_icon}
-                alt="Cancel"
-              />
-              <img
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmAppointment(item._id!);
-                }}
-                className="w-8 cursor-pointer"
-                src={assets.tick_icon}
-                alt="Confirm"
-              />
+              {!item.cancelled && !item.isConfirmed && !item.isCompleted && (
+                <>
+                  <img
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCancelAppointment(item._id);
+                    }}
+                    className="w-7 cursor-pointer hover:opacity-80 transition"
+                    src={assets.cancel_icon}
+                    alt="Cancel"
+                  />
+                  <img
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleConfirmAppointment(item._id);
+                    }}
+                    className="w-7 cursor-pointer hover:opacity-80 transition"
+                    src={assets.tick_icon}
+                    alt="Confirm"
+                  />
+                </>
+              )}
             </>
           )}
         </div>
@@ -361,17 +276,22 @@ const DoctorAppointments = () => {
     },
   ];
 
-  // Only date sort options
   const sortOptions = [
     { label: "Newest First", order: "desc", icon: <FaSortDown className="h-4 w-4 text-indigo-500" /> },
     { label: "Oldest First", order: "asc", icon: <FaSortUp className="h-4 w-4 text-indigo-500" /> },
   ];
 
   return (
-    <div className="w-full max-w-6xl m-5">
-      <p className="mb-3 text-lg font-medium">All Appointments</p>
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6">
+      <motion.h1
+        className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-6"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        All Appointments
+      </motion.h1>
 
-      {/* 🔍 Left-aligned Search Bar */}
+      {/* Search + Sort */}
       <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="max-w-sm w-full">
           <SearchBar
@@ -379,40 +299,35 @@ const DoctorAppointments = () => {
             onSearch={(query) => {
               if (searchTimeout.current) clearTimeout(searchTimeout.current);
               searchTimeout.current = setTimeout(() => {
-                if (query !== searchQuery) {
-                  setSearchQuery(query);
-                  setCurrentPage(1);
-                }
+                setSearchQuery(query);
+                setCurrentPage(1);
               }, 400);
             }}
           />
         </div>
-        {/* Modern Sort Dropdown */}
         <div className="relative">
           <button
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white shadow hover:bg-indigo-50 transition-colors font-medium text-gray-700"
-            onClick={() => setSortDropdownOpen((open) => !open)}
-            aria-haspopup="listbox"
-            aria-expanded={sortDropdownOpen}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white shadow hover:bg-indigo-50 transition font-medium text-gray-700"
+            onClick={() => setSortDropdownOpen((o) => !o)}
           >
             <FaSort className="text-indigo-500" />
             Sort by Date
-            <FaChevronDown className={`transition-transform ${sortDropdownOpen ? 'rotate-180' : ''}`} />
+            <FaChevronDown className={`transition-transform ${sortDropdownOpen ? "rotate-180" : ""}`} />
           </button>
           {sortDropdownOpen && (
-            <div className="absolute right-0 z-20 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl animate-fade-in overflow-hidden">
-              {sortOptions.map((opt, idx) => (
+            <div className="absolute right-0 z-20 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+              {sortOptions.map((opt, i) => (
                 <button
                   key={opt.label}
-                  className={`w-full flex items-center gap-2 px-4 py-3 hover:bg-indigo-50 text-left font-medium transition-colors ${
-                    sortOrder === opt.order ? "bg-indigo-100 text-indigo-700" : "text-gray-700"
-                  } ${idx === 0 ? "rounded-t-xl" : ""} ${idx === sortOptions.length - 1 ? "rounded-b-xl" : ""}`}
                   onClick={() => {
-                    setSortOrder(opt.order as 'asc' | 'desc');
-                    setCurrentPage(1);
+                    setSortOrder(opt.order as "asc" | "desc");
                     setSortDropdownOpen(false);
                   }}
-                  aria-pressed={sortOrder === opt.order}
+                  className={`flex items-center w-full gap-2 px-4 py-3 text-sm transition ${
+                    sortOrder === opt.order
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "hover:bg-indigo-50 text-gray-700"
+                  }`}
                 >
                   {opt.icon}
                   {opt.label}
@@ -424,149 +339,123 @@ const DoctorAppointments = () => {
         </div>
       </div>
 
+      {/* Table */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
         </div>
-      ) : appointments.length > 0 ? (
+      ) : (
         <>
           <DataTable
             data={appointments}
             columns={columns}
             emptyMessage="No matching appointments found."
-            gridCols="grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr]"
-            containerClassName="max-h-[80vh] min-h-[50vh]"
+            gridCols="grid-cols-[0.5fr_2fr_1fr_1fr_2fr_1fr_2fr]"
+            containerClassName="rounded-lg border border-gray-200 shadow-sm bg-white overflow-x-auto"
           />
+
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(page) => setCurrentPage(page)}
-            />
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           )}
-          {/* Modal for appointment details */}
-         {/* Modal for appointment details */}
-{showModal && selectedAppointment && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 animate-fade-in relative overflow-hidden">
-      
-      {/* Header with patient image */}
-      <div className="flex items-center gap-4 mb-6">
-        <img
-          className="w-20 h-20 rounded-full object-cover border-2 border-indigo-500 shadow"
-          src={selectedAppointment.userData?.image || "/default-avatar.png"}
-          alt="Patient"
-          onError={e => { (e.target as HTMLImageElement).src = "/default-avatar.png"; }}
-        />
-        <div>
-          <h2 className="text-2xl font-bold text-indigo-700">
-            {selectedAppointment.userData?.name || '-'}
-          </h2>
-          <p className="text-gray-500">{selectedAppointment.userData?.email || '-'}</p>
-          {selectedAppointment.userData?.phone && (
-            <p className="text-gray-500">📞 {selectedAppointment.userData.phone}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Appointment Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700">
-        <div className="bg-indigo-50 p-3 rounded-lg shadow-sm">
-          <span className="font-semibold text-gray-900">Date</span>
-          <p className="mt-1">{slotDateFormat(selectedAppointment.slotDate)}</p>
-        </div>
-        <div className="bg-indigo-50 p-3 rounded-lg shadow-sm">
-          <span className="font-semibold text-gray-900">Slot</span>
-          <p className="mt-1">{selectedAppointment.slotTime}</p>
-        </div>
-        <div className="bg-indigo-50 p-3 rounded-lg shadow-sm">
-          <span className="font-semibold text-gray-900">Fees</span>
-          <p className="mt-1">₹{selectedAppointment.amount}</p>
-        </div>
-        <div className="bg-indigo-50 p-3 rounded-lg shadow-sm">
-          <span className="font-semibold text-gray-900">Payment Method</span>
-          <p className="mt-1">{selectedAppointment.razorpayOrderId ? "Razorpay" : "Wallet"}</p>
-        </div>
-        <div className="bg-indigo-50 p-3 rounded-lg shadow-sm">
-          <span className="font-semibold text-gray-900">Status</span>
-          <p className="mt-1 capitalize">{selectedAppointment.status || '-'}</p>
-        </div>
-
-        {selectedAppointment.cancelled && (
-          <div className="sm:col-span-2 bg-red-50 p-3 rounded-lg border border-red-200">
-            <span className="font-semibold text-red-600">Cancelled</span>
-            <p className="mt-1">
-              {selectedAppointment.cancellationReason ? `Reason: ${selectedAppointment.cancellationReason}` : "No reason provided"}
-            </p>
-            {selectedAppointment.cancelledBy && (
-              <p className="mt-1">Cancelled By: {selectedAppointment.cancelledBy}</p>
-            )}
-            {selectedAppointment.cancelledAt && (
-              <p className="mt-1">Cancelled At: {slotDateFormat(selectedAppointment.cancelledAt)}</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Notes / Symptoms */}
-      {selectedAppointment.notes && (
-        <div className="mt-4 bg-gray-50 p-4 rounded-lg shadow-sm">
-          <span className="font-semibold text-gray-900">Notes / Symptoms</span>
-          <p className="mt-1 text-gray-700">{selectedAppointment.notes}</p>
-        </div>
-      )}
-
-      {/* Footer Actions */}
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          onClick={() => setShowModal(false)}
-          className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50 transition font-medium"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
         </>
-      ) : (
-        <div className="text-gray-500 mt-6 text-center w-full">
-          No appointments found.
+      )}
+
+      {/* Responsive Modal */}
+      {showModal && selectedAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 relative">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+              <img
+                src={selectedAppointment.userData?.image || "/default-avatar.png"}
+                alt="Patient"
+                className="w-20 h-20 rounded-full border-2 border-indigo-500 object-cover"
+              />
+              <div className="text-center sm:text-left">
+                <h2 className="text-xl sm:text-2xl font-bold text-indigo-700">
+                  {selectedAppointment.userData?.name || "-"}
+                </h2>
+                <p className="text-gray-500">{selectedAppointment.userData?.email || "-"}</p>
+                {selectedAppointment.userData?.phone && (
+                  <p className="text-gray-500">📞 {selectedAppointment.userData.phone}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InfoCard label="Date" value={slotDateFormat(selectedAppointment.slotDate)} />
+              <InfoCard label="Slot" value={selectedAppointment.slotTime} />
+              <InfoCard label="Fees" value={`₹${selectedAppointment.amount}`} />
+              <InfoCard
+                label="Payment"
+                value={selectedAppointment.razorpayOrderId ? "Razorpay" : "Wallet"}
+              />
+              <InfoCard label="Status" value={selectedAppointment.status || "-"} />
+            </div>
+
+            {selectedAppointment.cancelled && (
+              <div className="mt-4 bg-red-50 border border-red-200 p-3 rounded-lg">
+                <p className="font-semibold text-red-700">Cancelled</p>
+                <p className="text-sm text-red-600 mt-1">
+                  {selectedAppointment.cancellationReason || "No reason provided"}
+                </p>
+              </div>
+            )}
+
+            {selectedAppointment.notes && (
+              <div className="mt-4 bg-gray-50 p-3 rounded-lg">
+                <p className="font-semibold text-gray-800">Notes / Symptoms</p>
+                <p className="text-gray-700 mt-1">{selectedAppointment.notes}</p>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 rounded-xl border hover:bg-gray-50 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Rx Modal */}
       {rxOpen && rx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xl font-bold">Prescription</h3>
-              <button onClick={()=>setRxOpen(false)} className="text-gray-500">✕</button>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">Prescription</h3>
+              <button onClick={() => setRxOpen(false)}>✕</button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto text-sm">
+              <table className="w-full border-t">
                 <thead>
-                  <tr className="text-left text-gray-500">
-                    <th className="py-2">Medicine</th>
-                    <th className="py-2">Dosage</th>
-                    <th className="py-2">Instructions</th>
+                  <tr className="text-gray-500 border-b">
+                    <th className="py-2 text-left">Medicine</th>
+                    <th className="py-2 text-left">Dosage</th>
+                    <th className="py-2 text-left">Instructions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(rx.items||[]).map((it:any, idx:number)=> (
-                    <tr key={idx} className="border-t">
+                  {rx.items.map((it: any, i: number) => (
+                    <tr key={i} className="border-b">
                       <td className="py-2">{it.name}</td>
                       <td className="py-2">{it.dosage}</td>
-                      <td className="py-2">{it.instructions || '-'}</td>
+                      <td className="py-2">{it.instructions || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {rx.notes && <div className="mt-3 text-sm text-gray-700">Notes: {rx.notes}</div>}
-            <div className="mt-4 flex gap-2 justify-end">
-              <button onClick={()=>window.print()} className="px-3 py-2 rounded-lg bg-primary text-white">Print</button>
-              <button onClick={()=>setRxOpen(false)} className="px-3 py-2 rounded-lg border">Close</button>
+            {rx.notes && <p className="mt-2 text-gray-700 text-sm">Notes: {rx.notes}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => window.print()} className="bg-primary text-white px-3 py-2 rounded-lg">
+                Print
+              </button>
+              <button onClick={() => setRxOpen(false)} className="border px-3 py-2 rounded-lg">
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -574,22 +463,27 @@ const DoctorAppointments = () => {
 
       {/* Patient History Modal */}
       {showPatientHistory && selectedPatientForHistory && (
-        <>
-          {console.log('Rendering PatientHistoryModal with:', selectedPatientForHistory)}
-          <PatientHistoryModal
-            isOpen={showPatientHistory}
-            onClose={() => {
-              setShowPatientHistory(false);
-              setSelectedPatientForHistory(null);
-            }}
-            userId={selectedPatientForHistory.userId}
-            patientName={selectedPatientForHistory.patientName}
-            patientEmail={selectedPatientForHistory.patientEmail}
-          />
-        </>
+        <PatientHistoryModal
+          isOpen={showPatientHistory}
+          onClose={() => {
+            setShowPatientHistory(false);
+            setSelectedPatientForHistory(null);
+          }}
+          userId={selectedPatientForHistory.userId}
+          patientName={selectedPatientForHistory.patientName}
+          patientEmail={selectedPatientForHistory.patientEmail}
+        />
       )}
     </div>
   );
 };
+
+// Helper for clean info display
+const InfoCard = ({ label, value }: { label: string; value: string }) => (
+  <div className="bg-indigo-50 p-3 rounded-lg text-sm">
+    <p className="font-semibold text-gray-900">{label}</p>
+    <p className="text-gray-700 mt-1">{value}</p>
+  </div>
+);
 
 export default DoctorAppointments;

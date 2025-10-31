@@ -243,6 +243,7 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
         return;
       }
       const { appointmentId } = req.params;
+      console.log(appointmentId)
 
       await this._doctorService.confirmAppointment(docId, appointmentId);
 
