@@ -4,6 +4,7 @@ import { IFeedbackRepository } from "../../repositories/interface/IFeedbackRepos
 import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
 import { FeedbackDocument } from "../../models/feedbackModel";
 import { IUserRepository } from "../../repositories/interface/IUserRepository";
+import { toFeedbackDTO } from "../../mapper/feedback.mapper";
 
 export interface FeedbackDTO {
   id: string;
@@ -47,26 +48,10 @@ export class FeedbackService {
       comment,
     });
 
-    return this.toFeedbackDTO(created);
+    return toFeedbackDTO(created);
   }
 
-  private async toFeedbackDTO(feedback: FeedbackDocument): Promise<FeedbackDTO> {
-    const user = await this.userRepo.findById(feedback.userId.toString());
-    
-    return {
-      id: feedback._id.toString(),
-      appointmentId: feedback.appointmentId.toString(),
-      userId: feedback.userId.toString(),
-      rating: feedback.rating,
-      comment: feedback.comment,
-      createdAt: feedback.createdAt,
-      userData: user ? {
-        name: user.name,
-        image: user.image
-      } : undefined
-    };
-  }
-
+ 
   async listByDoctor(
     doctorId: string,
     page: number,
@@ -89,7 +74,7 @@ export class FeedbackService {
       limit
     );
 
-    const feedbackDTOs = await Promise.all(items.map(f => this.toFeedbackDTO(f)));
+    const feedbackDTOs = await Promise.all(items.map(f => toFeedbackDTO(f)));
 
     return {
       items: feedbackDTOs,

@@ -51,7 +51,7 @@ export class AppointmentCompletionService implements IAppointmentCompletionServi
       }
     } catch (error) {
       console.error("Error adding medical history:", error);
-      // Don't throw error here as appointment completion should still succeed
+    
     }
   }
 }

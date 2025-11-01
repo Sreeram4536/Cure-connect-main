@@ -1,7 +1,8 @@
 import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
 import bcrypt from "bcrypt";
 import { IDoctorService } from "../interface/IDoctorService";
-import { AppointmentTypes, AppointmentDTO } from "../../types/appointment";
+import { AppointmentTypes } from "../../types/appointment";
+import { AppointmentDTO } from "../../dto/appointment.dto";
 import { DoctorData, DoctorDTO, DoctorProfileDTO, DoctorListDTO } from "../../types/doctor";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
@@ -16,6 +17,8 @@ import { AppointmentRepository } from "../../repositories/implementation/Appoint
 import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
 import { IWalletService } from "../interface/IWalletService";
 import { ISlotLockService } from "../interface/ISlotLockService";
+import { toAppointmentDTO } from "../../mapper/appointment.mapper";
+import { toDoctorListDTO, toDoctorProfileDTO } from "../../mapper/doctor.mapper";
 
 // Extended type that includes _id from MongoDB documents
 type AppointmentWithId = AppointmentTypes & { _id?: string };
@@ -31,26 +34,7 @@ export class DoctorService implements IDoctorService {
     private readonly _slotLockService:ISlotLockService
   ) {}
 
-  private toAppointmentDTO(a: AppointmentWithId): AppointmentDTO {
-    return {
-      id: a._id?.toString() ?? "",
-      _id: a._id?.toString() ?? "",
-      userId: String(a.userId),
-      docId: String(a.docId),
-      slotDate: a.slotDate,
-      slotTime: a.slotTime,
-      amount: a.amount,
-      date: a.date,
-      cancelled: a.cancelled,
-      payment: a.payment,
-      status: a.status,
-      isConfirmed: a.isConfirmed,
-      isCompleted: a.isCompleted,
-      userData: a.userData,
-      docData: a.docData,
-      razorpayOrderId:a.razorpayOrderId?.toString() ?? ""
-    };
-  }
+
 
   async registerDoctor(data: DoctorDTO): Promise<void> {
     const {
@@ -118,48 +102,16 @@ export class DoctorService implements IDoctorService {
     await this._doctorRepository.updateAvailability(docId, !doc.available);
   }
 
-  private toDoctorProfileDTO(doc: Partial<DoctorData>): DoctorProfileDTO {
-    return {
-      id: doc._id?.toString() ?? "",
-      _id: doc._id?.toString() ?? "",
-      name: doc.name ?? "",
-      email: doc.email ?? "",
-      image: doc.image ?? "",
-      speciality: doc.speciality ?? "",
-      degree: doc.degree ?? "",
-      experience: doc.experience ?? "",
-      about: doc.about ?? "",
-      fees: doc.fees ?? 0,
-      address: doc.address ?? { line1: "", line2: "" },
-      available: doc.available ?? false,
-      status: doc.status ?? "pending",
-    };
-  }
-
-  private toDoctorListDTO(doc: Partial<DoctorData>): DoctorListDTO {
-    return {
-      id: doc._id?.toString() ?? "",
-      _id: doc._id?.toString() ?? "",
-      name: doc.name ?? "",
-      image: doc.image ?? "",
-      speciality: doc.speciality ?? "",
-      degree: doc.degree ?? "",
-      experience: doc.experience ?? "",
-      fees: doc.fees ?? 0,
-      available: doc.available ?? false,
-      isBlocked: doc.isBlocked ?? false,
-      status: doc.status ?? "pending",
-    };
-  }
+ 
 
   async getAllDoctors(): Promise<DoctorListDTO[]> {
     const list = await this._doctorRepository.findAllDoctors();
-    return list.map(this.toDoctorListDTO);
+    return list.map(toDoctorListDTO);
   }
 
   async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') {
     const result = await this._doctorRepository.getDoctorsPaginated(page, limit, speciality, search, sortBy, sortOrder);
-    return { ...result, data: result.data.map(this.toDoctorListDTO) };
+    return { ...result, data: result.data.map(toDoctorListDTO) };
   }
 
   async loginDoctor(
@@ -185,7 +137,7 @@ export class DoctorService implements IDoctorService {
     }
 
     const list = await this._doctorRepository.findAppointmentsByDoctorId(docId);
-    return list.map(this.toAppointmentDTO);
+    return list.map(toAppointmentDTO);
   }
 
   async getDoctorAppointmentsPaginated(docId: string, page: number, limit: number, search?: string, sortOrder: 'asc' | 'desc' = 'desc') {
@@ -194,7 +146,7 @@ export class DoctorService implements IDoctorService {
       throw new Error("Doctor not found");
     }
     const res = await this._doctorRepository.getAppointmentsPaginated(docId, page, limit, search, sortOrder);
-    return { ...res, data: res.data.map(this.toAppointmentDTO) };
+    return { ...res, data: res.data.map(toAppointmentDTO) };
   }
 
   async confirmAppointment(
@@ -260,7 +212,7 @@ export class DoctorService implements IDoctorService {
   async getDoctorProfile(docId: string): Promise<DoctorProfileDTO | null> {
     const doctor = await this._doctorRepository.getDoctorProfileById(docId);
     if (!doctor) throw new Error("Doctor not found");
-    return this.toDoctorProfileDTO(doctor);
+    return toDoctorProfileDTO(doctor);
   }
 
   async updateDoctorProfile(data: {
@@ -309,7 +261,7 @@ export class DoctorService implements IDoctorService {
 
   async getDoctorsByStatusAndLimit(status: string, limit: number): Promise<DoctorListDTO[]> {
     const docs = await this._doctorRepository.getDoctorsByStatusAndLimit(status, limit);
-    return docs.map(this.toDoctorListDTO);
+    return docs.map(toDoctorListDTO);
   }
 
   async getDoctorDashboard(docId: string): Promise<{

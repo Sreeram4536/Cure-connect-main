@@ -2,47 +2,13 @@ import { IPatientHistoryService, PatientHistoryDTO, MedicalHistoryEntryDTO } fro
 import { IPatientHistoryRepository } from "../../repositories/interface/IPatientHistoryRepository";
 import { PatientHistoryDocument, PatientHistoryItem } from "../../models/patientHistoryModel";
 import { PaginationResult } from "../../repositories/interface/IUserRepository";
+import { toMedicalHistoryDTO, toPatientHistoryDTO } from "../../mapper/patienthistory.mapper";
 
 export class PatientHistoryService implements IPatientHistoryService {
   constructor(private patientHistoryRepository: IPatientHistoryRepository) {}
 
-  private mapToDTO(document: PatientHistoryDocument): PatientHistoryDTO {
-    return {
-      id: document._id.toString(),
-      userId: document.userId,
-      patientName: document.patientName,
-      patientEmail: document.patientEmail,
-      patientPhone: document.patientPhone,
-      patientDob: document.patientDob?.toISOString(),
-      patientGender: document.patientGender,
-      medicalHistory: document.medicalHistory.map(entry => this.mapMedicalHistoryToDTO(entry)),
-      allergies: document.allergies,
-      chronicConditions: document.chronicConditions,
-      emergencyContact: document.emergencyContact,
-      createdAt: document.createdAt.toISOString(),
-      updatedAt: document.updatedAt.toISOString(),
-    };
-  }
 
-  private mapMedicalHistoryToDTO(entry: PatientHistoryItem): MedicalHistoryEntryDTO {
-    return {
-      appointmentId: entry.appointmentId,
-      doctorId: entry.doctorId,
-      doctorName: entry.doctorName,
-      doctorSpeciality: entry.doctorSpeciality,
-      appointmentDate: entry.appointmentDate.toISOString(),
-      diagnosis: entry.diagnosis,
-      symptoms: entry.symptoms,
-      treatment: entry.treatment,
-      prescription: entry.prescription,
-      vitalSigns: entry.vitalSigns,
-      followUpRequired: entry.followUpRequired,
-      followUpDate: entry.followUpDate?.toISOString(),
-      notes: entry.notes,
-      createdAt: entry.createdAt.toISOString(),
-    };
-  }
-
+  
   async createOrUpdatePatient(
     userId: string,
     patientData: {
@@ -61,7 +27,7 @@ export class PatientHistoryService implements IPatientHistoryService {
     }
   ): Promise<PatientHistoryDTO> {
     const result = await this.patientHistoryRepository.createOrUpdatePatientHistory(userId, patientData);
-    return this.mapToDTO(result);
+    return toPatientHistoryDTO(result);
   }
 
   async addMedicalHistoryFromAppointment(
@@ -117,12 +83,12 @@ export class PatientHistoryService implements IPatientHistoryService {
       medicalEntry
     );
 
-    return result ? this.mapToDTO(result) : null;
+    return result ? toPatientHistoryDTO(result) : null;
   }
 
   async getPatientHistoryByUserId(userId: string): Promise<PatientHistoryDTO | null> {
     const result = await this.patientHistoryRepository.getPatientHistoryByUserId(userId);
-    return result ? this.mapToDTO(result) : null;
+    return result ? toPatientHistoryDTO(result) : null;
   }
 
   async getPatientsByDoctorId(
@@ -134,7 +100,7 @@ export class PatientHistoryService implements IPatientHistoryService {
     
     return {
       ...result,
-      data: result.data.map(doc => this.mapToDTO(doc))
+      data: result.data.map(doc => toPatientHistoryDTO(doc))
     };
   }
 
@@ -143,7 +109,7 @@ export class PatientHistoryService implements IPatientHistoryService {
     userId: string
   ): Promise<PatientHistoryDTO | null> {
     const result = await this.patientHistoryRepository.getPatientHistoryForDoctor(doctorId, userId);
-    return result ? this.mapToDTO(result) : null;
+    return result ? toPatientHistoryDTO(result) : null;
   }
 
   async searchPatients(
@@ -156,7 +122,7 @@ export class PatientHistoryService implements IPatientHistoryService {
     
     return {
       ...result,
-      data: result.data.map(doc => this.mapToDTO(doc))
+      data: result.data.map(doc => toPatientHistoryDTO(doc))
     };
   }
 
@@ -178,12 +144,12 @@ export class PatientHistoryService implements IPatientHistoryService {
     }
   ): Promise<PatientHistoryDTO | null> {
     const result = await this.patientHistoryRepository.updatePatientBasicInfo(userId, updateData);
-    return result ? this.mapToDTO(result) : null;
+    return result ? toPatientHistoryDTO(result) : null;
   }
 
   async getMedicalHistoryByAppointmentId(appointmentId: string): Promise<MedicalHistoryEntryDTO | null> {
     const result = await this.patientHistoryRepository.getMedicalHistoryByAppointmentId(appointmentId);
-    return result ? this.mapMedicalHistoryToDTO(result) : null;
+    return result ? toMedicalHistoryDTO(result) : null;
   }
 
   async updateMedicalHistoryEntry(
@@ -200,7 +166,7 @@ export class PatientHistoryService implements IPatientHistoryService {
     };
     
     const result = await this.patientHistoryRepository.updateMedicalHistoryEntry(userId, appointmentId, repositoryUpdateData);
-    return result ? this.mapToDTO(result) : null;
+    return result ? toPatientHistoryDTO(result) : null;
   }
 
   async deleteMedicalHistoryEntry(
@@ -208,7 +174,7 @@ export class PatientHistoryService implements IPatientHistoryService {
     appointmentId: string
   ): Promise<PatientHistoryDTO | null> {
     const result = await this.patientHistoryRepository.deleteMedicalHistoryEntry(userId, appointmentId);
-    return result ? this.mapToDTO(result) : null;
+    return result ? toPatientHistoryDTO(result) : null;
   }
 
   async getPatientMedicalHistoryByDateRange(
@@ -225,7 +191,7 @@ export class PatientHistoryService implements IPatientHistoryService {
         entry.appointmentDate >= startDate && entry.appointmentDate <= endDate
       )
       .sort((a, b) => b.appointmentDate.getTime() - a.appointmentDate.getTime())
-      .map(entry => this.mapMedicalHistoryToDTO(entry));
+      .map(entry => toMedicalHistoryDTO(entry));
   }
 
   async getRecentMedicalHistory(
@@ -239,6 +205,6 @@ export class PatientHistoryService implements IPatientHistoryService {
     return patientHistory.medicalHistory
       .sort((a, b) => b.appointmentDate.getTime() - a.appointmentDate.getTime())
       .slice(0, limit)
-      .map(entry => this.mapMedicalHistoryToDTO(entry));
+      .map(entry => toMedicalHistoryDTO(entry));
   }
 }

@@ -20,5 +20,8 @@ export const toAppointmentDTO=(a: AppointmentWithId): AppointmentDTO =>{
       isCompleted: a.isCompleted,
       userData: a.userData,
       docData: a.docData,
+      razorpayOrderId:a.razorpayOrderId?.toString() ?? ""
     };
   }
+
+  

@@ -2,6 +2,7 @@ import { IWalletService } from "../interface/IWalletService";
 import { WalletRepository } from "../../repositories/implementation/WalletRepository";
 import { WalletTransaction, WalletDTO, WalletTransactionDTO, UserRole } from "../../types/wallet";
 import { IWalletRepository, PaginationResult, WalletDocument } from "../../repositories/interface/IWalletRepository";
+import { toWalletDTO } from "../../mapper/wallet.mapper";
 
 
 interface TransactionWithId extends WalletTransaction {
@@ -9,26 +10,7 @@ interface TransactionWithId extends WalletTransaction {
 }
 
 export class WalletService implements IWalletService {
-  private toWalletTransactionDTO(tx: TransactionWithId): WalletTransactionDTO {
-    return {
-      id: tx._id?.toString() ?? "",
-      type: tx.type,
-      amount: tx.amount,
-      description: tx.description,
-      appointmentId: tx.appointmentId,
-      revenueShare: tx.revenueShare,
-      createdAt: tx.createdAt,
-    };
-  }
-
-  private toWalletDTO(wallet: WalletDocument): WalletDTO {
-    return {
-      userId: wallet.userId,
-      userRole: wallet.userRole,
-      balance: wallet.balance,
-      transactions: (wallet.transactions || []).map(this.toWalletTransactionDTO),
-    };
-  }
+ 
   
   constructor(private _walletRepository: IWalletRepository) {
     
@@ -169,7 +151,7 @@ export class WalletService implements IWalletService {
   async getWalletDTO(userId: string, userRole: UserRole): Promise<WalletDTO | null> {
     try {
       const wallet = await this._walletRepository.getWalletByUserId(userId, userRole);
-      return wallet ? this.toWalletDTO(wallet) : null;
+      return wallet ? toWalletDTO(wallet) : null;
     } catch (error) {
       throw new Error(`Failed to get wallet DTO: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -180,7 +162,7 @@ export class WalletService implements IWalletService {
       const result = await this._walletRepository.getWalletsByRole(userRole, page, limit);
       return {
         ...result,
-        data: result.data.map(this.toWalletDTO)
+        data: result.data.map(toWalletDTO)
       };
     } catch (error) {
       throw new Error(`Failed to get wallets by role: ${error instanceof Error ? error.message : 'Unknown error'}`);
