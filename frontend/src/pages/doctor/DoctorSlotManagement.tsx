@@ -620,10 +620,10 @@ const DoctorSlotManager = () => {
                   <span className="w-4 h-4 rounded-full bg-yellow-300"></span>
                   Partial Leave Day
                 </span>
-                <span className="flex items-center gap-2 text-sm">
+                {/* <span className="flex items-center gap-2 text-sm">
                   <span className="w-4 h-4 rounded-full bg-orange-400"></span>
                   Custom Leave Day
-                </span>
+                </span> */}
               </div>
 
               {/* Calendar Grid */}
@@ -803,7 +803,7 @@ const DoctorSlotManager = () => {
                     >
                       <option value="full">Full Day Leave</option>
                       <option value="break">Partial Leave (Break)</option>
-                      <option value="custom">Custom Leave</option>
+                      {/* <option value="custom">Custom Leave</option> */}
                     </select>
                   </div>
                   
