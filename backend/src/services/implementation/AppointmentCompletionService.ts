@@ -1,15 +1,15 @@
-import { AppointmentRepository } from "../../repositories/implementation/AppointmentRepository";
-import { PrescriptionRepository } from "../../repositories/implementation/PrescriptionRepository";
 import { IAppointmentCompletionService } from "../interface/IAppointmentCompletionService";
 import { IPatientHistoryService } from "../interface/IPatientHistoryService";
-import { DoctorRepository } from "../../repositories/implementation/DoctorRepository";
+import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
+import { IPrescriptionRepository } from "../../repositories/interface/IPrescriptionRepository";
+import { IDoctorRepository } from "../../repositories/interface/IDoctorRepository";
 
 export class AppointmentCompletionService implements IAppointmentCompletionService {
   constructor(
-    private appointmentRepo: AppointmentRepository,
-    private prescriptionRepo: PrescriptionRepository,
+    private appointmentRepo: IAppointmentRepository,
+    private prescriptionRepo: IPrescriptionRepository,
     private patientHistoryService: IPatientHistoryService,
-    private doctorRepo: DoctorRepository
+    private doctorRepo: IDoctorRepository
   ) {}
 
   async completeAppointment(appointmentId: string): Promise<void> {
