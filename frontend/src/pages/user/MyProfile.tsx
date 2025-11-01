@@ -37,13 +37,25 @@ const MyProfile = () => {
   const validateField = (field: string, value: string) => {
     switch (field) {
       case 'name':
-        if (!isValidName(value)) {
-          setErrors(prev => ({ ...prev, name: "Please enter a valid name" }));
-          return false;
-        } else {
-          setErrors(prev => ({ ...prev, name: undefined }));
-          return true;
-        }
+        // if (!isValidName(value)) {
+        //   setErrors(prev => ({ ...prev, name: "Please enter a valid name" }));
+        //   return false;
+        // } else {
+        //   setErrors(prev => ({ ...prev, name: undefined }));
+        //   return true;
+        // }
+         if (value.trim().length > 25) {
+        toast.error("Name is too long (maximum 25 characters)");
+        setErrors(prev => ({ ...prev, name: "Name is too long" }));
+        return false;
+      }
+      if (!isValidName(value)) {
+        setErrors(prev => ({ ...prev, name: "Please enter a valid name (only letters, min 4 chars)" }));
+        return false;
+      } else {
+        setErrors(prev => ({ ...prev, name: undefined }));
+        return true;
+      }
       case 'phone':
         if (!isValidPhone(value)) {
           setErrors(prev => ({ ...prev, phone: "Phone number must be exactly 10 digits" }));
@@ -53,15 +65,30 @@ const MyProfile = () => {
           return true;
         }
       case 'dob':
-        if (!isValidDateOfBirth(value)) {
-          setErrors(prev => ({ ...prev, dob: "Please enter a valid birth date" }));
-          return false;
-        } else {
-          setErrors(prev => ({ ...prev, dob: undefined }));
-          return true;
-        }
-      default:
-        return true;
+      //   if (!isValidDateOfBirth(value)) {
+      //     setErrors(prev => ({ ...prev, dob: "Please enter a valid birth date" }));
+      //     return false;
+      //   } else {
+      //     setErrors(prev => ({ ...prev, dob: undefined }));
+      //     return true;
+      //   }
+      // default:
+      //   return true;
+      const result = isValidDateOfBirth(value);
+
+  if (!result.valid) {
+    if (result.reason === "invalid" || result.reason === "future") {
+      toast.error("Please enter a valid birth date");
+      setErrors(prev => ({ ...prev, dob: "Please enter a valid birth date" }));
+    } else if (result.reason === "underage") {
+      toast.error("You must be at least 18 years old");
+      setErrors(prev => ({ ...prev, dob: "You must be at least 18 years old" }));
+    }
+    return false;
+  }
+
+  setErrors(prev => ({ ...prev, dob: undefined }));
+  return true;
     }
   };
 
