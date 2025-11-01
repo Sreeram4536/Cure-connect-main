@@ -25,3 +25,53 @@ html, body, #root,* {
     }
 }
 
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #prescription,
+  #prescription * {
+    visibility: visible !important;
+  }
+
+  /* #prescription {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 20mm;
+    background: white !important;
+    box-shadow: none !important;
+    page-break-after: always;
+  } */
+
+    #prescription {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;           /* A4 width */
+    height: 200mm;          /* A4 height */
+    max-height: 297mm;
+    margin: 0;
+    padding: 15mm;          /* Inner space */
+    overflow: hidden;       /* prevent content overflow to next page */
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+}
+
+
+

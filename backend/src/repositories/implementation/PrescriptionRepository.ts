@@ -8,7 +8,9 @@ export class PrescriptionRepository implements IPrescriptionRepository {
   }
 
   async findByAppointment(appointmentId: string): Promise<PrescriptionDocument | null> {
-    return prescriptionModel.findOne({ appointmentId });
+    return prescriptionModel.findOne({ appointmentId })
+     .populate("doctorId", "name speciality")  
+    .populate("userId", "name dob gender"); 
   }
 
   async listByUser(userId: string) {

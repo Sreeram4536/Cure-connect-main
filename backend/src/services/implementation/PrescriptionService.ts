@@ -1,6 +1,7 @@
 import { IPrescriptionRepository } from "../../repositories/interface/IPrescriptionRepository";
 import { IAppointmentRepository } from "../../repositories/interface/IAppointmentRepository";
 import { IPrescriptionService, PrescriptionDTO } from "../interface/IPrescriptionService";
+import mongoose from "mongoose";
 
 export class PrescriptionService implements IPrescriptionService {
   constructor(
@@ -17,8 +18,12 @@ export class PrescriptionService implements IPrescriptionService {
     
     const existing = await this.repo.findByAppointment(appointmentId);
     if (existing) throw new Error("Prescription already exists");
+
+     const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
     
-    const created = await this.repo.create({ appointmentId, doctorId, userId, items, notes } as any);
+    const created = await this.repo.create({ appointmentId,  doctorId: doctorObjectId,
+      userId: userObjectId, items, notes } as any);
     return this.toPrescriptionDTO(created);
   }
 
@@ -37,17 +42,50 @@ export class PrescriptionService implements IPrescriptionService {
     return prescriptions.map(p => this.toPrescriptionDTO(p));
   }
 
-  private toPrescriptionDTO(prescription: any): PrescriptionDTO {
+  // private toPrescriptionDTO(prescription: any): PrescriptionDTO {
+  //   return {
+  //     id: prescription._id.toString(),
+  //     appointmentId: prescription.appointmentId,
+  //     doctorId: prescription.doctorId,
+  //     userId: prescription.userId,
+  //     items: prescription.items,
+  //     notes: prescription.notes,
+  //     createdAt: prescription.createdAt
+  //   };
+  // }
+   private toPrescriptionDTO(prescription: any): PrescriptionDTO {
     return {
       id: prescription._id.toString(),
       appointmentId: prescription.appointmentId,
-      doctorId: prescription.doctorId,
-      userId: prescription.userId,
+      doctorId:
+        typeof prescription.doctorId === "object"
+          ? prescription.doctorId._id?.toString()
+          : prescription.doctorId.toString(),
+      userId:
+        typeof prescription.userId === "object"
+          ? prescription.userId._id?.toString()
+          : prescription.userId.toString(),
+      doctor:
+        prescription.doctorId && typeof prescription.doctorId === "object"
+          ? {
+              name: prescription.doctorId.name,
+              specialization: prescription.doctorId.speciality,
+            }
+          : undefined,
+      patient:
+        prescription.userId && typeof prescription.userId === "object"
+          ? {
+              name: prescription.userId.name,
+              dob: prescription.userId.dob,
+              gender: prescription.userId.gender,
+            }
+          : undefined,
       items: prescription.items,
       notes: prescription.notes,
-      createdAt: prescription.createdAt
+      createdAt: prescription.createdAt,
     };
   }
+
 }
 
 

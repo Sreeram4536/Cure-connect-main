@@ -438,7 +438,7 @@ const MyAppointments = () => {
                               </button>
                             )}
 
-                            {!item.cancelled && (
+                            {!item.cancelled && !item.isCompleted &&(
                               <button
                                 onClick={() => cancelAppointment((item._id || (item as any).id) as string)}
                                 className="flex items-center gap-2 bg-white border-2 border-red-500 text-red-500 px-6 py-3 rounded-xl font-semibold hover:bg-red-500 hover:text-white transition-all duration-300"
@@ -484,41 +484,118 @@ const MyAppointments = () => {
           </div>
         )}
       </div>
-      {rxOpen && rx && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xl font-bold">Prescription</h3>
-              <button onClick={()=>setRxOpen(false)} className="text-gray-500">✕</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500">
-                    <th className="py-2">Medicine</th>
-                    <th className="py-2">Dosage</th>
-                    <th className="py-2">Instructions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(rx.items||[]).map((it:any, idx:number)=> (
-                    <tr key={idx} className="border-t">
-                      <td className="py-2">{it.name}</td>
-                      <td className="py-2">{it.dosage}</td>
-                      <td className="py-2">{it.instructions || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {rx.notes && <div className="mt-3 text-sm text-gray-700">Notes: {rx.notes}</div>}
-            <div className="mt-4 flex gap-2 justify-end">
-              <button onClick={()=>window.print()} className="px-3 py-2 rounded-lg bg-primary text-white">Print</button>
-              <button onClick={()=>setRxOpen(false)} className="px-3 py-2 rounded-lg border">Close</button>
-            </div>
-          </div>
+     {rxOpen && rx && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 print:bg-transparent print:static">
+    <div
+      id="prescription"
+      className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 font-sans text-gray-800 print:shadow-none print:border print:rounded-none print:w-[210mm] print:h-[297mm] print:p-10"
+    >
+      {/* CureConnect Header */}
+      <div className="border-b-4 border-primary pb-4 mb-6 text-center">
+        <h1 className="text-3xl font-extrabold text-primary uppercase tracking-wide">
+          CureConnect
+        </h1>
+        <p className="text-gray-500 text-sm">Your Trusted Digital Health Partner</p>
+      </div>
+
+      {/* Doctor and Patient Info */}
+      <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8 text-sm">
+        <div className="text-left">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Dr. {rx?.doctor?.name || "Unknown Doctor"}
+          </h2>
+          <p className="text-gray-600">{rx?.doctor?.specialization || "General Physician"}</p>
+          <p className="text-gray-500 mt-1">Date: {new Date().toLocaleDateString()}</p>
+        </div>
+
+        <div className="text-right">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {rx?.patient?.name || "Patient Name"}
+          </h2>
+          <p className="text-gray-600">
+            Gender:{" "}
+            {rx?.patient?.gender||undefined}
+          </p>
+          <p className="text-gray-600">
+            DOB:{" "}
+            {rx?.patient?.dob
+              ? new Date(rx.patient.dob).toLocaleDateString()
+              : "Not Provided"}
+          </p>
+        </div>
+      </div>
+
+      {/* Prescription Table */}
+      <div className="overflow-x-auto mb-6">
+        <table className="w-full border border-gray-300 text-sm rounded-lg overflow-hidden">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="py-2 px-3 border-r text-left w-1/3">Medicine</th>
+              <th className="py-2 px-3 border-r text-left w-1/4">Dosage</th>
+              <th className="py-2 px-3 text-left w-2/5">Instructions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(rx.items || []).length > 0 ? (
+              rx.items.map((it: any, idx: number) => (
+                <tr key={idx} className="border-t hover:bg-gray-50">
+                  <td className="py-2 px-3 border-r">{it.name}</td>
+                  <td className="py-2 px-3 border-r">{it.dosage}</td>
+                  <td className="py-2 px-3">{it.instructions || "-"}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="text-center py-4 text-gray-500 italic"
+                >
+                  No medicines prescribed.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Doctor’s Notes */}
+      {rx.notes && (
+        <div className="bg-gray-50 border-l-4 border-primary px-4 py-3 rounded text-gray-700 text-sm mb-8">
+          <strong className="text-primary">Doctor’s Notes:</strong> {rx.notes}
         </div>
       )}
+
+      {/* Footer */}
+      <div className="mt-10 flex justify-between items-center text-sm">
+        <div className="text-gray-500">
+          <p>© {new Date().getFullYear()} CureConnect Healthcare</p>
+        </div>
+        {/* <div className="text-right">
+          <p className="font-semibold text-gray-800">______________________</p>
+          <p className="text-gray-500 text-xs">Doctor’s Signature</p>
+        </div> */}
+      </div>
+
+      {/* Buttons (Hidden in Print) */}
+      <div className="mt-6 flex gap-3 justify-end print:hidden">
+        <button
+          onClick={() => window.print()}
+          className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition"
+        >
+          🖨 Print
+        </button>
+        <button
+          onClick={() => setRxOpen(false)}
+          className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
     </div>
   );
 };
