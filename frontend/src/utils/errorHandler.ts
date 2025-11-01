@@ -23,6 +23,22 @@ export const showErrorToast = (error: unknown): void => {
   if (axios.isAxiosError(error)) {
     const errorMsg =
       error.response?.data?.message || error.message || "Something went wrong";
+       const ignoredMessages: string[] = [
+      "refresh token not provided",
+      "invalid refresh token",
+      "token refresh failed",
+      "jwt expired",
+      "no refresh token",
+    ];
+
+    if (
+      ignoredMessages.some((msg) =>
+        errorMsg.toLowerCase().includes(msg.toLowerCase())
+      )
+    ) {
+      console.warn("Ignored refresh token message:", errorMsg);
+      return;
+    }
     toast.error(errorMsg);
   } else if (error instanceof Error) {
     toast.error(error.message);

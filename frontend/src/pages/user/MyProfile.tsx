@@ -45,7 +45,7 @@ const MyProfile = () => {
         //   return true;
         // }
          if (value.trim().length > 25) {
-        toast.error("Name is too long (maximum 25 characters)");
+        // toast.error("Name is too long (maximum 25 characters)");
         setErrors(prev => ({ ...prev, name: "Name is too long" }));
         return false;
       }
@@ -78,10 +78,10 @@ const MyProfile = () => {
 
   if (!result.valid) {
     if (result.reason === "invalid" || result.reason === "future") {
-      toast.error("Please enter a valid birth date");
+      // toast.error("Please enter a valid birth date");
       setErrors(prev => ({ ...prev, dob: "Please enter a valid birth date" }));
     } else if (result.reason === "underage") {
-      toast.error("You must be at least 18 years old");
+      // toast.error("You must be at least 18 years old");
       setErrors(prev => ({ ...prev, dob: "You must be at least 18 years old" }));
     }
     return false;
