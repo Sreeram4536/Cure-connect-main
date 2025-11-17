@@ -47,8 +47,18 @@ export const setupSocketHandlers = (io: Server) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
         console.log('Socket auth - Token verified for user:', decoded.id, 'role:', decoded.role);
         
-        socket.userId = decoded.id; 
-        socket.userType = decoded.role; 
+        socket.userId = decoded.id;
+        
+        // ✅ CRITICAL FIX: Normalize role to ensure it's "user" or "doctor"
+        const role = decoded.role?.toLowerCase()?.trim();
+        if (role === "doctor" || role === "user") {
+          socket.userType = role as "user" | "doctor";
+        } else {
+          console.warn(`Invalid role in JWT: ${decoded.role}, defaulting to "user"`);
+          socket.userType = "user"; // Default fallback
+        }
+        
+        console.log('Socket auth - Normalized userType:', socket.userType);
         
         next();
       } catch (jwtError: any) {
@@ -57,8 +67,13 @@ export const setupSocketHandlers = (io: Server) => {
           console.log('Socket auth - Token expired, checking payload');
           if (jwtError.payload) {
             socket.userId = jwtError.payload.id;
-            socket.userType = jwtError.payload.role;
-            console.log('Socket auth - Using expired token payload');
+            const role = jwtError.payload.role?.toLowerCase()?.trim();
+            if (role === "doctor" || role === "user") {
+              socket.userType = role as "user" | "doctor";
+            } else {
+              socket.userType = "user";
+            }
+            console.log('Socket auth - Using expired token payload, userType:', socket.userType);
             next();
           } else {
             console.log('Socket auth - No payload in expired token');
@@ -104,7 +119,22 @@ export const setupSocketHandlers = (io: Server) => {
         console.log("Received send_message event:", data);
         const { conversationId, message, messageType = "text", attachments = [] } = data;
 
-        console.log(`Processing message from ${socket.userType} ${socket.userId} to conversation ${conversationId}`);
+        // ✅ CRITICAL FIX: Ensure senderType is correctly set
+        let senderType: "user" | "doctor" = "user"; // Default fallback
+        
+        if (socket.userType) {
+          const normalizedType = socket.userType.toLowerCase().trim();
+          if (normalizedType === "doctor" || normalizedType === "user") {
+            senderType = normalizedType as "user" | "doctor";
+          } else {
+            console.warn(`Invalid userType from socket: ${socket.userType}, defaulting to "user"`);
+          }
+        } else {
+          console.warn("socket.userType is undefined, defaulting to 'user'");
+        }
+
+        console.log(`Processing message from ${senderType} ${socket.userId} to conversation ${conversationId}`);
+        console.log(`Original socket.userType: ${socket.userType}, Normalized senderType: ${senderType}`);
 
         
         const attachmentUrls = (attachments as any[]).map((a) => (typeof a === "string" ? a : a?.filePath)).filter(Boolean);
@@ -112,7 +142,7 @@ export const setupSocketHandlers = (io: Server) => {
         const newMessage = new ChatMessage({
           conversationId,
           senderId: socket.userId,
-          senderType: socket.userType,
+          senderType: senderType, // ✅ Use normalized senderType
           message,
           messageType,
           attachments: attachmentUrls,
@@ -126,11 +156,20 @@ export const setupSocketHandlers = (io: Server) => {
 
         
         const lastMessagePreview = message || `${attachments.length} file(s)`;
-        await Conversation.findByIdAndUpdate(conversationId, {
+        
+        // ✅ CRITICAL FIX: Only increment unreadCount if message is from user (not from doctor)
+        // When doctor sends a message, unreadCount should NOT increase
+        const updateData: any = {
           lastMessage: lastMessagePreview,
           lastMessageTime: new Date(),
-          $inc: { unreadCount: 1 },
-        });
+        };
+        
+        // Only increment unreadCount if sender is a user (not doctor)
+        if (senderType === 'user') {
+          updateData.$inc = { unreadCount: 1 };
+        }
+        
+        const updatedConversation = await Conversation.findByIdAndUpdate(conversationId, updateData, { new: true });
 
         
         console.log(`Emitting new message to conversation ${conversationId}:`, {
@@ -138,8 +177,8 @@ export const setupSocketHandlers = (io: Server) => {
           senderId: newMessage.senderId,
           senderType: newMessage.senderType,
           message: newMessage.message,
-          
         });
+        console.log(`Message senderType verification: ${newMessage.senderType} (should be "user" or "doctor")`);
         
         const roomName = `conversation_${conversationId}`;
         console.log(`Emitting to room: ${roomName}`);
@@ -175,6 +214,17 @@ export const setupSocketHandlers = (io: Server) => {
           },
           conversationId,
         });
+
+        // ✅ CRITICAL: Emit conversation_updated event ONLY when unreadCount changes (i.e., when user sends message)
+        // When doctor sends a message, unreadCount doesn't change, so don't emit this event
+        if (updatedConversation && senderType === 'user') {
+          io.to(roomName).emit("conversation_updated", {
+            conversationId,
+            unreadCount: updatedConversation.unreadCount || 0,
+            lastMessage: updatedConversation.lastMessage,
+            lastMessageTime: updatedConversation.lastMessageTime,
+          });
+        }
 
         // Emit typing stopped event
         socket.to(roomName).emit("typing_stopped", {
@@ -316,15 +366,21 @@ export const setupSocketHandlers = (io: Server) => {
         );
 
         // Reset unread count for conversation
-        await Conversation.findByIdAndUpdate(conversationId, {
+        const updatedConversation = await Conversation.findByIdAndUpdate(conversationId, {
           unreadCount: 0,
-        });
+        }, { new: true });
 
         // Notify other users in conversation
         socket.to(`conversation_${conversationId}`).emit("messages_read", {
           messageIds,
           conversationId,
           readBy: socket.userId,
+        });
+
+        // ✅ CRITICAL: Emit conversation_updated event to all users (including sender) using io.to()
+        io.to(`conversation_${conversationId}`).emit("conversation_updated", {
+          conversationId,
+          unreadCount: 0,
         });
 
       } catch (error) {

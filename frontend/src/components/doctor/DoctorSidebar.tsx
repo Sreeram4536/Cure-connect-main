@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useSocket } from '../../context/SocketContext';
+import { getDoctorConversationsAPI } from '../../services/chatServices';
+import { toast } from 'react-toastify';
+import type { Conversation } from '../../types/chat';
 
 const DoctorSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const { socket, isConnected } = useSocket();
 
   const assets = {
     home_icon: "🏠",
@@ -13,6 +19,83 @@ const DoctorSidebar = () => {
     inbox_icon: "📬",
     wallet_icon: "💰",
     history_icon: "📋",
+  };
+
+  // Fetch initial unread count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await getDoctorConversationsAPI(1, 100); // Get all conversations
+        if (response.data.success) {
+          const conversations = response.data.conversations || [];
+          const totalUnread = conversations.reduce(
+            (sum: number, conv: Conversation) => sum + (conv.unreadCount || 0),
+            0
+          );
+          setUnreadCount(totalUnread);
+        }
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
+      }
+    };
+
+    fetchUnreadCount();
+    
+    // Refresh unread count every 30 seconds as fallback
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Listen for real-time new messages
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewMessage = (data: { message: any; conversationId: string }) => {
+      // Only update if message is from a user (not from doctor)
+      if (data.message.senderType === 'user') {
+        setUnreadCount(prev => prev + 1);
+        
+        // Show toast notification
+        toast.info('New message received', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      }
+    };
+
+    // Listen for conversation updates (when unread count changes)
+    const handleConversationUpdate = (data?: { conversationId?: string; unreadCount?: number }) => {
+      // Refresh unread count when conversation is updated
+      // Only refresh if the update indicates a change in unread count
+      // If data is provided and unreadCount is 0, it means messages were read (decrease count)
+      // If no data or unreadCount > 0, refresh from API
+      getDoctorConversationsAPI(1, 100)
+        .then(response => {
+          if (response.data.success) {
+            const conversations = response.data.conversations || [];
+            const totalUnread = conversations.reduce(
+              (sum: number, conv: Conversation) => sum + (conv.unreadCount || 0),
+              0
+            );
+            setUnreadCount(totalUnread);
+          }
+        })
+        .catch(error => console.error('Error refreshing unread count:', error));
+    };
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('conversation_updated', handleConversationUpdate);
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('conversation_updated', handleConversationUpdate);
+    };
+  }, [socket, isConnected]);
+
+  // Reset unread count when navigating to inbox (optional - can be removed if you want count to persist)
+  const handleInboxClick = () => {
+    // Don't reset count here - let it update naturally when messages are read
+    // The count will decrease when messages are marked as read in the inbox
   };
 
   const menuItems = [
@@ -50,7 +133,8 @@ const DoctorSidebar = () => {
       to: "/doctor/inbox",
       icon: assets.inbox_icon,
       label: "Messages",
-      gradient: "from-blue-500 to-primary"
+      gradient: "from-blue-500 to-primary",
+      hasNotification: true // Mark this item for notification badge
     },
     {
       to: "/doctor/wallet",
@@ -104,6 +188,7 @@ const DoctorSidebar = () => {
             <li key={index} className="group/item">
               <NavLink
                 to={item.to}
+                onClick={item.hasNotification ? handleInboxClick : undefined}
                 className={({ isActive }) =>
                   `relative flex items-center gap-4 p-3 rounded-xl transition-all duration-300 group-hover/item:transform group-hover/item:scale-105 overflow-hidden ${
                     isActive
@@ -130,17 +215,35 @@ const DoctorSidebar = () => {
                       }`}>
                         {item.icon}
                       </span>
+                      
+                      {/* Notification Badge */}
+                      {item.hasNotification && unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg animate-pulse">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
                     </div>
 
                     {!isCollapsed && (
-                      <span className="font-medium text-sm transition-colors duration-300 group-hover/item:text-gray-800">
+                      <span className="font-medium text-sm transition-colors duration-300 group-hover/item:text-gray-800 relative flex-1">
                         {item.label}
+                        {/* Badge for expanded sidebar - alternative position */}
+                        {item.hasNotification && unreadCount > 0 && (
+                          <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
+                        )}
                       </span>
                     )}
 
                     {isCollapsed && (
                       <div className="absolute left-full ml-4 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all duration-300 whitespace-nowrap z-50">
                         {item.label}
+                        {item.hasNotification && unreadCount > 0 && (
+                          <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-4 flex items-center justify-center px-1">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
+                        )}
                         <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                       </div>
                     )}

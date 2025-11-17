@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getDoctorConversationsAPI, getDoctorConversationWithUserAPI } from "../../services/chatServices";
 import { DoctorContext } from "../../context/DoctorContext";
+import { useSocket } from "../../context/SocketContext";
 import type { Conversation } from "../../types/chat";
 
 const DoctorInbox: React.FC = () => {
   const navigate = useNavigate();
   const { loading: contextLoading } = useContext(DoctorContext);
+  const { socket, isConnected } = useSocket();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [userInfoByConversation, setUserInfoByConversation] = useState<Record<string, { name: string; avatar: string }>>({});
@@ -18,6 +20,52 @@ const DoctorInbox: React.FC = () => {
   useEffect(() => {
     loadConversations();
   }, [currentPage]);
+
+  // Listen for real-time new messages and conversation updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewMessage = (data: { message: any; conversationId: string }) => {
+      // Only update if message is from a user (not from doctor)
+      if (data.message.senderType === 'user') {
+        // Update the conversation list in real-time
+        setConversations(prev => {
+          const updated = prev.map(conv => {
+            if (conv.id === data.conversationId) {
+              return {
+                ...conv,
+                lastMessage: data.message.message || `${data.message.attachments?.length || 0} file(s)`,
+                lastMessageTime: new Date(data.message.timestamp),
+                unreadCount: (conv.unreadCount || 0) + 1
+              };
+            }
+            return conv;
+          });
+          
+          // If conversation doesn't exist in current page, refresh the list
+          const exists = updated.some(conv => conv.id === data.conversationId);
+          if (!exists) {
+            loadConversations();
+          }
+          
+          return updated;
+        });
+      }
+    };
+
+    const handleConversationUpdate = () => {
+      // Refresh conversations when updated
+      loadConversations();
+    };
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('conversation_updated', handleConversationUpdate);
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('conversation_updated', handleConversationUpdate);
+    };
+  }, [socket, isConnected]);
 
   const loadConversations = async () => {
     try {

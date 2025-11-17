@@ -201,6 +201,15 @@ export class ChatService implements IChatService {
 
     const result = await this.chatRepository.markConversationAsRead(conversationId, userId);
     console.log("markConversationAsRead result:", result);
+    
+    // ✅ CRITICAL: Emit conversation_updated event when conversation is marked as read
+    if (result) {
+      emitToConversation(conversationId, "conversation_updated", {
+        conversationId,
+        unreadCount: 0,
+      });
+    }
+    
     return result;
   }
 

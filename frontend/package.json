@@ -18,6 +18,8 @@
     "axios": "^1.9.0",
     "emoji-picker-react": "^4.13.2",
     "framer-motion": "^12.18.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
     "lucide-react": "^0.516.0",
     "react": "^19.1.0",
     "react-calendar": "^6.0.0",

@@ -16,9 +16,10 @@ import type {
   RazorpayPaymentResponse,
 } from "../../types/razorpay";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, MapPin, User, CreditCard, X, CheckCircle, AlertCircle, Video, Filter, SortAsc, SortDesc } from "lucide-react";
+import { Calendar, Clock, MapPin, User, CreditCard, X, CheckCircle, AlertCircle, Video, Filter, SortAsc, SortDesc, Download } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
 import { getPrescriptionByAppointmentAPI } from "../../services/appointmentServices";
+import { downloadPrescriptionAsPDF } from "../../utils/prescriptionDownload";
 
 const MyAppointments = () => {
   const context = useContext(AppContext);
@@ -577,7 +578,25 @@ const MyAppointments = () => {
       </div>
 
       {/* Buttons (Hidden in Print) */}
-      <div className="mt-6 flex gap-3 justify-end print:hidden">
+      <div className="mt-6 flex gap-3 justify-end print:hidden" id="prescription-buttons">
+        <button
+          onClick={async () => {
+            try {
+              const doctorName = rx?.doctor?.name || "Unknown";
+              const date = new Date().toISOString().split('T')[0];
+              const filename = `Prescription_${doctorName.replace(/\s+/g, '_')}_${date}.pdf`;
+              await downloadPrescriptionAsPDF('prescription', filename);
+              toast.success('Prescription downloaded successfully');
+            } catch (error) {
+              toast.error('Failed to download prescription');
+              console.error(error);
+            }
+          }}
+          className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Download PDF
+        </button>
         <button
           onClick={() => window.print()}
           className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition"

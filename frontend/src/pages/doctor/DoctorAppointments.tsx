@@ -8,8 +8,11 @@ import SearchBar from "../../components/common/SearchBar";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
 import { FaSort, FaSortUp, FaSortDown, FaChevronDown, FaCheck, FaHistory } from 'react-icons/fa';
+import { Download } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { getPrescriptionByAppointmentAPI } from "../../services/appointmentServices";
 import PatientHistoryModal from "../../components/doctor/PatientHistoryModal";
+import { downloadPrescriptionAsPDF } from "../../utils/prescriptionDownload";
 // import { AppointmentConfirmAPI, AppointmentCancelAPI } from "../../services/doctorServices";
 
 const DoctorAppointments = () => {
@@ -423,7 +426,7 @@ const columns = [
       {/* Rx Modal */}
       {rxOpen && rx && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+          <div id="prescription-doctor" className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">Prescription</h3>
               <button onClick={() => setRxOpen(false)}>✕</button>
@@ -449,7 +452,25 @@ const columns = [
               </table>
             </div>
             {rx.notes && <p className="mt-2 text-gray-700 text-sm">Notes: {rx.notes}</p>}
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2" id="prescription-buttons-doctor">
+              <button
+                onClick={async () => {
+                  try {
+                    const patientName = rx?.patient?.name || "Patient";
+                    const date = new Date().toISOString().split('T')[0];
+                    const filename = `Prescription_${patientName.replace(/\s+/g, '_')}_${date}.pdf`;
+                    await downloadPrescriptionAsPDF('prescription-doctor', filename);
+                    toast.success('Prescription downloaded successfully');
+                  } catch (error) {
+                    toast.error('Failed to download prescription');
+                    console.error(error);
+                  }
+                }}
+                className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
               <button onClick={() => window.print()} className="bg-primary text-white px-3 py-2 rounded-lg">
                 Print
               </button>
