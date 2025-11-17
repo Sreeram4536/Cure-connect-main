@@ -13,6 +13,10 @@ import {
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import { AuthRequest, JwtPayloadExt } from "../../types/customRequest";
+import { otpStore } from "../../utils/otpStore";
+import { sendOTP } from "../../utils/mail.util";
+import { generateOTP } from "../../utils/otp.util";
+import { isValidPassword } from "../../utils/validator";
 
 export class DoctorController implements IDoctorController {
   constructor(
@@ -34,7 +38,12 @@ export class DoctorController implements IDoctorController {
         address,
       } = req.body;
 
-      const imageFile = req.file;
+       const files = req.files as {
+      image?: Express.Multer.File[];
+      license?: Express.Multer.File[];
+    };
+       const imageFile = files?.image?.[0];
+    const licenseFile = files?.license?.[0];
 
       if (!imageFile) {
         res.status(HttpStatus.BAD_REQUEST).json({
@@ -43,6 +52,14 @@ export class DoctorController implements IDoctorController {
         });
         return;
       }
+
+      if (!licenseFile) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Doctor license file is required",
+      });
+      return;
+    }
 
       const doctorDTO: DoctorDTO = {
         name,
@@ -55,6 +72,7 @@ export class DoctorController implements IDoctorController {
         fees: Number(fees),
         address: JSON.parse(address),
         imagePath: imageFile.path,
+        licensePath: licenseFile.path,
       };
 
       await this._doctorService.registerDoctor(doctorDTO);
@@ -110,6 +128,7 @@ export class DoctorController implements IDoctorController {
   async loginDoctor(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
+      
 
       const { token: accessToken, refreshToken } =
         await this._doctorService.loginDoctor(email, password);
@@ -129,7 +148,15 @@ export class DoctorController implements IDoctorController {
         refreshToken,
         message: HttpResponse.LOGIN_SUCCESS,
       });
-    } catch (error) {
+    } catch (error:any) {
+      if (error.code === "DOCTOR_BLOCKED") {
+       res.status(403).json({
+        success: false,
+        blocked: true,           // <--- ADD THIS FLAG
+        role: "doctor",
+        message: "Your account has been blocked by the admin",
+      });
+    }
       res.status(HttpStatus.UNAUTHORIZED).json({
         success: false,
         message: HttpResponse.UNAUTHORIZED,
@@ -442,6 +469,124 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
         success: false, 
         message: (error as Error).message 
       });
+    }
+  }
+
+  async forgotPasswordRequest(req: Request, res: Response): Promise<void> {
+    const { email } = req.body;
+
+    try {
+      const doctorExists = await this._doctorService.checkEmailExists(email);
+      if (!doctorExists) {
+        res
+          .status(HttpStatus.NOT_FOUND)
+          .json({ success: false, message: HttpResponse.USER_OR_DOCTOR_NOT_FOUND });
+        return;
+      }
+
+      const otp = generateOTP();
+      console.log(otp);
+      otpStore.set(email, { otp, purpose: "reset-password", email });
+
+      await sendOTP(email, otp);
+      res
+        .status(HttpStatus.OK)
+        .json({ success: true, message: HttpResponse.RESET_EMAIL_SENT });
+    } catch (err) {
+      console.error("Error sending OTP:", err);
+      res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: HttpResponse.OTP_SEND_FAILED });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    const { email, newPassword } = req.body;
+
+    if (!isValidPassword(newPassword)) {
+      res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ success: false, message: HttpResponse.INVALID_PASSWORD });
+      return;
+    }
+
+    const record = otpStore.get(email);
+    if (
+      !record ||
+      record.purpose !== "reset-password" ||
+      record.otp !== "VERIFIED"
+    ) {
+      res
+        .status(HttpStatus.UNAUTHORIZED)
+        .json({ success: false, message: HttpResponse.OTP_EXPIRED_OR_INVALID });
+      return;
+    }
+
+    const hashed = await this._doctorService.hashPassword(newPassword);
+    const updated = await this._doctorService.resetPassword(email, hashed);
+
+    if (!updated) {
+      res
+        .status(HttpStatus.NOT_FOUND)
+        .json({ success: false, message: HttpResponse.USER_OR_DOCTOR_NOT_FOUND });
+      return;
+    }
+
+    otpStore.delete(email);
+    res
+      .status(HttpStatus.OK)
+      .json({ success: true, message: HttpResponse.PASSWORD_UPDATED });
+  }
+
+  async verifyOtp(req: Request, res: Response): Promise<void> {
+    const { email, otp } = req.body;
+    const record = otpStore.get(email);
+
+    if (!record || record.otp !== otp) {
+      res
+        .status(HttpStatus.UNAUTHORIZED)
+        .json({ success: false, message: HttpResponse.OTP_INVALID });
+      return;
+    }
+
+    if (record.purpose === "reset-password") {
+      otpStore.set(email, { ...record, otp: "VERIFIED" });
+      res
+        .status(HttpStatus.OK)
+        .json({ success: true, message: HttpResponse.OTP_VERIFIED });
+      return;
+    }
+
+    res
+      .status(HttpStatus.BAD_REQUEST)
+      .json({ success: false, message: HttpResponse.BAD_REQUEST });
+  }
+
+  async resendOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      const record = otpStore.get(email);
+
+      if (!record) {
+        res
+          .status(HttpStatus.NOT_FOUND)
+          .json({ success: false, message: HttpResponse.OTP_NOT_FOUND });
+        return;
+      }
+
+      const newOtp = generateOTP();
+      console.log(newOtp);
+      otpStore.set(email, { ...record, otp: newOtp });
+
+      await sendOTP(email, newOtp);
+      res
+        .status(HttpStatus.OK)
+        .json({ success: true, message: HttpResponse.OTP_RESENT });
+    } catch (error) {
+      console.error("Resend OTP error:", error);
+      res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: HttpResponse.OTP_SEND_FAILED });
     }
   }
 

@@ -15,6 +15,9 @@ import DoctorSlotManager from "../pages/doctor/DoctorSlotManagement";
 import DoctorInbox from "../pages/doctor/DoctorInbox";
 import DoctorWallet from "../pages/doctor/DoctorWallet";
 import PatientHistory from "../pages/doctor/PatientHistory";
+import DoctorEmailVerificationPage from "../pages/doctor/DoctorEmailVerify";
+import DoctorOtpVerificationPage from "../pages/doctor/DoctorOTPVerification";
+import DoctorNewPasswordPage from "../pages/doctor/DoctorSetNewPassword";
 
 
 const DoctorRoutes = () => {
@@ -22,6 +25,9 @@ const DoctorRoutes = () => {
     <>
       <Route path="/doctor/register" element={<DoctorRegister />} />
       <Route path="/doctor/login" element={<DoctorLogin />} />
+      <Route path="/doctor/verify-email" element={<DoctorEmailVerificationPage />} />
+      <Route path="/doctor/verify-otp" element={<DoctorOtpVerificationPage />} />
+      <Route path="/doctor/reset-password" element={<DoctorNewPasswordPage />} />
       <Route
         path="/doctor/dashboard"
         element={

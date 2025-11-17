@@ -47,7 +47,7 @@ interface AppContextType {
   loadUserProfileData: () => Promise<void>;
   calculateAge: (dob: string) => number;
   slotDateFormat: (slotDate: string) => string;
-  authLoading:boolean
+  authLoading: boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -77,6 +77,7 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     dob: "",
   });
   const [authLoading, setAuthLoading] = useState(true);
+  const [isLoggedOut, setIsLoggedOut] = useState(false);
 
   const getDoctorsData = async () => {
     try {
@@ -115,25 +116,44 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
 
   const loadUserProfileData = async () => {
     try {
+      const path = window.location.pathname;
+      const isOnUserRoutes = !path.startsWith("/admin") && !path.startsWith("/doctor");
+
       const accessToken = getUserAccessToken();
       if (!accessToken) {
-        toast.error("Please login to continue...");
+        // Only show login error on user routes
+        if (isOnUserRoutes) {
+          toast.error("Please login to continue...");
+        }
         return;
       }
 
       const { data } = await getUserProfileAPI(accessToken);
       if (data.success) {
-        if (data.userData.isBlocked) {
-          toast.error("Your account has been blocked. Logging out.");
+        // Always set user data (needed for cross-role usage)
+        setUserData(data.userData);
+        
+        // Only check blocked status and logout if on user routes
+        if (data.userData.isBlocked && isOnUserRoutes) {
+          toast.error("Your account has been blocked by admin.");
           clearToken();
+          setIsLoggedOut(true);
+          localStorage.setItem("isUserLoggedOut", "true");
           return;
         }
-        setUserData(data.userData);
       } else {
-        toast.error(data.message);
+        // Only show error if on user routes
+        if (isOnUserRoutes) {
+          toast.error(data.message);
+        }
       }
     } catch (error) {
-      showErrorToast(error);
+      const path = window.location.pathname;
+      // Only show error if on user routes
+      if (!path.startsWith("/admin") && !path.startsWith("/doctor")) {
+        showErrorToast(error);
+      }
+      // Note: We don't throw here to allow other functionality to continue
     }
   };
 
@@ -141,111 +161,192 @@ const AppContextProvider: React.FC<AppContextProviderProps> = ({
     setTokenState(newToken);
     if (newToken) {
       updateUserAccessToken(newToken);
+      setAuthLoading(false);
     } else {
       clearUserAccessToken();
+      setAuthLoading(false);
+      setIsLoggedOut(true);
     }
   };
 
   const clearToken = () => {
     setTokenState(null);
     clearUserAccessToken();
+    setUserData({
+      name: "",
+      email: "",
+      phone: "",
+      image: `${assets.upload_image}`,
+      address: {
+        line1: "",
+        line2: "",
+      },
+      gender: "",
+      dob: "",
+    });
   };
+
   const calculateAge = (dob: string): number => {
     const today = new Date();
     const birthDate = new Date(dob);
     return today.getFullYear() - birthDate.getFullYear();
   };
 
-  const months = [
-    "",
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-
-  // const slotDateFormat = (slotDate: string): string => {
-  //   if (!slotDate) return "N/A";
-  //   const dateArray = slotDate.split("_");
-  //   if (dateArray.length < 3) return "N/A";
-  //   const day = dateArray[0];
-  //   const monthIndex = Number(dateArray[1]);
-  //   const year = dateArray[2];
-  //   if (isNaN(monthIndex) || !months[monthIndex]) return "N/A";
-  //   return `${day} ${months[monthIndex]} ${year}`;
-  // };
   const slotDateFormat = (slotDate: string): string => {
-  if (!slotDate) return "N/A";
-  // Try to handle both "DD_MM_YYYY" and "YYYY-MM-DD"
-  let day, monthIndex, year;
-  if (slotDate.includes("_")) {
-    const dateArray = slotDate.split("_");
-    if (dateArray.length < 3) return "N/A";
-    day = dateArray[0];
-    monthIndex = Number(dateArray[1]);
-    year = dateArray[2];
-  } else if (slotDate.includes("-")) {
-    const dateArray = slotDate.split("-");
-    if (dateArray.length < 3) return "N/A";
-    year = dateArray[0];
-    monthIndex = Number(dateArray[1]);
-    day = dateArray[2];
-  } else {
-    return "N/A";
-  }
-  const months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  if (isNaN(monthIndex) || !months[monthIndex]) return "N/A";
-  return `${day} ${months[monthIndex]} ${year}`;
-};
+    if (!slotDate) return "N/A";
+    let day, monthIndex, year;
+    if (slotDate.includes("_")) {
+      const dateArray = slotDate.split("_");
+      if (dateArray.length < 3) return "N/A";
+      day = dateArray[0];
+      monthIndex = Number(dateArray[1]);
+      year = dateArray[2];
+    } else if (slotDate.includes("-")) {
+      const dateArray = slotDate.split("-");
+      if (dateArray.length < 3) return "N/A";
+      year = dateArray[0];
+      monthIndex = Number(dateArray[1]);
+      day = dateArray[2];
+    } else {
+      return "N/A";
+    }
+    const months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    if (isNaN(monthIndex) || !months[monthIndex]) return "N/A";
+    return `${day} ${months[monthIndex]} ${year}`;
+  };
 
   useEffect(() => {
+    const path = window.location.pathname;
+
+    // ✅ CRITICAL FIX: Skip token refresh on public/auth pages
+    const publicPaths = ["/login", "/register", "/"];
+    const isPublicPath = publicPaths.some(p => path === p || path.startsWith(p + "/"));
+    
+    // ✅ Also skip on admin and doctor routes
+    if (isPublicPath || path.startsWith("/admin") || path.startsWith("/doctor")) {
+      console.log("AppContext: On public/other role routes, skipping user token refresh");
+      setAuthLoading(false);
+      return;
+    }
+
+    // ✅ Skip if user was logged out
+    if (isLoggedOut) {
+      console.log("AppContext: User logged out, skipping refresh");
+      setAuthLoading(false);
+      return;
+    }
+
+    const handleBlockedOrLogout = () => {
+      if (getUserAccessToken()) {
+        clearToken();
+        setIsLoggedOut(true);
+        localStorage.setItem("isUserLoggedOut", "true");
+        toast.error("Your account has been blocked by admin.");
+      }
+    };
+
     const tryRefresh = async () => {
       try {
+        console.log("AppContext: Attempting token refresh");
         const res = await refreshAccessTokenAPI();
         const newToken = res.data?.token;
 
         if (newToken) {
           setToken(newToken);
-          await loadUserProfileData();
+          const profileRes = await getUserProfileAPI(newToken);
+          const currentPath = window.location.pathname;
+          const isOnUserRoutes = !currentPath.startsWith("/admin") && !currentPath.startsWith("/doctor");
+          
+          // Always set user data (needed for cross-role usage)
+          if (profileRes.data?.success) {
+            setUserData(profileRes.data.userData);
+            
+            // Only check blocked status and logout if on user routes
+            if (profileRes.data.userData?.isBlocked && isOnUserRoutes) {
+              handleBlockedOrLogout();
+              return;
+            }
+          } else {
+            // Only handle logout if on user routes
+            if (isOnUserRoutes) {
+              handleBlockedOrLogout();
+            }
+          }
         } else {
-          clearToken();
+          console.log("AppContext: No token from refresh");
+          const currentPath = window.location.pathname;
+          // Only handle logout if on user routes
+          if (!currentPath.startsWith("/admin") && !currentPath.startsWith("/doctor")) {
+            handleBlockedOrLogout();
+          }
         }
       } catch (err: any) {
         console.warn(
           "User token refresh failed",
           err.response?.data || err.message
         );
-        clearToken();
+        handleBlockedOrLogout();
       } finally {
-        setAuthLoading(false); 
+        setAuthLoading(false);
       }
     };
 
-      const wasLoggedOut = localStorage.getItem("isUserLoggedOut") === "true";
+    const wasLoggedOut = localStorage.getItem("isUserLoggedOut") === "true";
+    const currentToken = getUserAccessToken();
 
-    if (!getUserAccessToken()) {
-       if (!wasLoggedOut) {
-      tryRefresh();
-    }else{
-      setAuthLoading(false);
-    }
+    if (!currentToken) {
+      if (!wasLoggedOut) {
+        console.log("AppContext: No token and not logged out, trying refresh");
+        tryRefresh();
+      } else {
+        console.log("AppContext: No token and was logged out, not refreshing");
+        setAuthLoading(false);
+      }
     } else {
-      loadUserProfileData().finally(() => setAuthLoading(false));
+      console.log("AppContext: Token exists, loading profile");
+      getUserProfileAPI(currentToken)
+        .then(profileRes => {
+          const currentPath = window.location.pathname;
+          const isOnUserRoutes = !currentPath.startsWith("/admin") && !currentPath.startsWith("/doctor");
+          
+          // Always set user data (needed for cross-role usage)
+          if (profileRes.data?.success) {
+            setUserData(profileRes.data.userData);
+            
+            // Only check blocked status and logout if on user routes
+            if (profileRes.data.userData?.isBlocked && isOnUserRoutes) {
+              handleBlockedOrLogout();
+            }
+          } else {
+            // Only handle logout if on user routes
+            if (isOnUserRoutes) {
+              handleBlockedOrLogout();
+            }
+          }
+        })
+        .catch(err => {
+          const currentPath = window.location.pathname;
+          // Only show error and logout if on user routes
+          if (!currentPath.startsWith("/admin") && !currentPath.startsWith("/doctor")) {
+            showErrorToast(err);
+            handleBlockedOrLogout();
+          }
+          // Note: We don't throw here to allow other functionality to continue
+        })
+        .finally(() => setAuthLoading(false));
     }
-
   }, []);
 
   useEffect(() => {
     if (token) {
-      loadUserProfileData();
+      // Only load profile if we're not on public/other role routes
+      const path = window.location.pathname;
+      const publicPaths = ["/login", "/register", "/"];
+      const isPublicPath = publicPaths.some(p => path === p || path.startsWith(p + "/"));
+      
+      if (!isPublicPath && !path.startsWith("/admin") && !path.startsWith("/doctor")) {
+        loadUserProfileData();
+      }
     } else {
       setUserData({
         name: "",

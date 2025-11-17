@@ -1,11 +1,11 @@
 import { getApi } from "../axios/axiosInstance";
 import { DOCTOR_API } from "../constants/apiRoutes";
 
-const api = getApi("doctor");
+// const api = getApi("doctor");
 
 // Get all doctors
 export const getDoctorsAPI = () => {
-  return api.get(DOCTOR_API.BASE);
+  return getApi("doctor").get(DOCTOR_API.BASE);
 };
 
 // Get paginated doctors
@@ -15,44 +15,44 @@ export const getDoctorsPaginatedAPI = (page: number, limit: number, speciality?:
   if (search) url += `&search=${encodeURIComponent(search)}`;
   if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
   if (sortOrder) url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
-  return api.get(url);
+  return getApi("doctor").get(url);
 };
 
 // Register doctor
 export const registerDoctorAPI = (formData: FormData) => {
-  return api.post(DOCTOR_API.REGISTER, formData);
+  return getApi("doctor").post(DOCTOR_API.REGISTER, formData);
 };
 
 // Doctor login
 export const doctorLoginAPI = (email: string, password: string) => {
-  return api.post(DOCTOR_API.LOGIN, { email, password });
+  return getApi("doctor").post(DOCTOR_API.LOGIN, { email, password });
 };
 
 // Doctor logout
 export const logoutDoctorAPI = () => {
-  return api.post(DOCTOR_API.LOGOUT);
+  return getApi("doctor").post(DOCTOR_API.LOGOUT);
 };
 
 // Refresh token
 export const refreshDoctorAccessTokenAPI = () => {
-  return api.post(DOCTOR_API.REFRESH);
+  return getApi("doctor").post(DOCTOR_API.REFRESH);
 };
 
 // Get appointments for doctor
 export const getDoctorAppointmentsAPI = () => {
-  return api.get(DOCTOR_API.APPOINTMENTS);
+  return getApi("doctor").get(DOCTOR_API.APPOINTMENTS);
 };
 
 // Get paginated appointments for doctor
 export const getDoctorAppointmentsPaginatedAPI = (page: number, limit: number, search?: string, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc') => {
   let url = `${DOCTOR_API.APPOINTMENTS}?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
-  return api.get(url);
+  return getApi("doctor").get(url);
 };
 
 // Confirm appointment
 export const AppointmentConfirmAPI = (appointmentId: string) => {
-  return api.patch(`/api/doctor/appointments/${appointmentId}/confirm`);
+  return getApi("doctor").patch(`/api/doctor/appointments/${appointmentId}/confirm`);
 };
 
 // Cancel appointment
@@ -61,26 +61,26 @@ export const AppointmentCancelAPI = (appointmentId: string, page?: number, limit
   if (page && limit) {
     url += `?page=${page}&limit=${limit}`;
   }
-  return api.patch(url);
+  return getApi("doctor").patch(url);
 };
 
 export const ReleaseSlotLockAPI = (appointmentId: string) => {
-  return api.patch(`/api/doctor/slot/release/${appointmentId}`);
+  return getApi("doctor").patch(`/api/doctor/slot/release/${appointmentId}`);
 };
 
 // Get doctor profile
 export const getDoctorProfileAPI = () => {
-  return api.get(DOCTOR_API.PROFILE);
+  return getApi("doctor").get(DOCTOR_API.PROFILE);
 };
 
 // Get doctor dashboard data
 export const doctorDashboardAPI = () => {
-  return api.get("/api/doctor/dashboard");
+  return getApi("doctor").get("/api/doctor/dashboard");
 };
 
 // Doctor metrics (daily | weekly | monthly)
 export const getDoctorMetricsAPI = (range: 'daily' | 'weekly' | 'monthly' = 'monthly', token?: string) => {
-  return api.get(`/api/doctor/dashboard/metrics?range=${encodeURIComponent(range)}`, {
+  return getApi("doctor").get(`/api/doctor/dashboard/metrics?range=${encodeURIComponent(range)}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 };
@@ -105,7 +105,7 @@ export const updateDoctorProfileAPI = (
     data.append("image", image);
   }
 
-  return api.patch(DOCTOR_API.PROFILE_UPDATE, data, {
+  return getApi("doctor").patch(DOCTOR_API.PROFILE_UPDATE, data, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -128,38 +128,61 @@ export const updateDoctorProfileAPI = (
 // };
 
 export const getDoctorSlotRuleAPI = () => {
-  return api.get(DOCTOR_API.SLOTS);
+  return getApi("doctor").get(DOCTOR_API.SLOTS);
 };
 export const setDoctorSlotRuleAPI = (rule: any) => {
-  return api.post(DOCTOR_API.SLOTS, rule);
+  return getApi("doctor").post(DOCTOR_API.SLOTS, rule);
 };
 
 export const getDoctorPreviewSlotsAPI = (year: number, month: number) => {
-  return api.get(`/api/doctor/slots?year=${year}&month=${month}`);
+  return getApi("doctor").get(`/api/doctor/slots?year=${year}&month=${month}`);
 };
 
 export const getDoctorSlotsForDateAPI = (date: string) => {
-  return api.get(`/api/doctor/slots/date?date=${date}`);
+  return getApi("doctor").get(`/api/doctor/slots/date?date=${date}`);
 };
 
 // Get top doctors with filtering and limiting
 export const getTopDoctorsAPI = (status = "approved", limit = 10) => {
-  return api.get(`/api/doctor/top?status=${status}&limit=${limit}`);
+  return getApi("doctor").get(`/api/doctor/top?status=${status}&limit=${limit}`);
 };
 
 export const updateDoctorCustomSlotAPI = (date: string, start: string, duration: number) => {
-  return api.patch(DOCTOR_API.UPDATE_CUSTOM_SLOT, { date, start, duration });
+  return getApi("doctor").patch(DOCTOR_API.UPDATE_CUSTOM_SLOT, { date, start, duration });
 };
 
 export const cancelDoctorCustomSlotAPI = (date: string, start: string) => {
-  return api.patch(DOCTOR_API.CANCEL_CUSTOM_SLOT, { date, start });
+  return getApi("doctor").patch(DOCTOR_API.CANCEL_CUSTOM_SLOT, { date, start });
 };
 
 export const removeDoctorLeaveAPI = (date: string) => {
-  return api.delete(`/api/doctor/leave/remove/${date}`);
+  return getApi("doctor").delete(`/api/doctor/leave/remove/${date}`);
 };
 
 export const setDoctorLeaveAPI = (date: string, leaveType: 'full' | 'break' | 'custom', slots?: any[]) => {
-  return api.post('/api/doctor/leave/set', { date, leaveType, slots });
+  return getApi("doctor").post('/api/doctor/leave/set', { date, leaveType, slots });
+};
+
+// Forgot password
+export const verifyDoctorEmailAPI = async (email: string) => {
+  return getApi("doctor").post(DOCTOR_API.FORGOT_PASSWORD, { email });
+};
+
+// Reset password
+export const resetDoctorPasswordAPI = async (
+  email: string,
+  newPassword: string
+) => {
+  return getApi("doctor").post(DOCTOR_API.RESET_PASSWORD, { email, newPassword });
+};
+
+// OTP Verification
+export const verifyDoctorOtpAPI = async (email: string, otp: string) => {
+  return getApi("doctor").post(DOCTOR_API.OTP_VERIFY, { email, otp });
+};
+
+// Resend OTP
+export const resendDoctorOtpAPI = async (email: string) => {
+  return getApi("doctor").post(DOCTOR_API.OTP_RESEND, { email });
 };
 

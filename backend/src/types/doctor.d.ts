@@ -12,6 +12,7 @@ export interface DoctorData {
   name: string;
   email: string;
   image?: string;
+  license?:string;
   password: string;
   speciality: string;
   degree: string;
@@ -39,6 +40,7 @@ export interface DoctorDTO {
   fees: number;
   address: Address;
   imagePath?: string;
+  licensePath?:string
   isBlocked?: boolean;
 }
 
@@ -65,7 +67,10 @@ export interface DoctorListDTO {
   id: string;
   _id?: string; 
   name: string;
+  email:string;
   image?: string;
+  license?:string;
+  address:Object;
   speciality: string;
   degree: string;
   experience: string;

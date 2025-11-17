@@ -29,7 +29,7 @@ export const verifyAccessToken = (token: string): JwtPayload => {
 };
 
 
-export const verifyRefreshToken = (token: string): { id: string; role?: Role } => {
-  return jwt.verify(token, JWT_REFRESH_SECRET) as { id: string; role?: Role };
+export const verifyRefreshToken = (token: string): { id: string; role?: Role,email:string } => {
+  return jwt.verify(token, JWT_REFRESH_SECRET) as { id: string; role?: Role,email:string };
 };
 

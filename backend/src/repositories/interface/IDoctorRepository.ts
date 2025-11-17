@@ -17,6 +17,7 @@ export interface IDoctorRepository {
   findAllDoctors(): Promise<Partial<DoctorData>[]>;
   getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<Partial<DoctorData>>>;
   findByEmail(email: string): Promise<DoctorData | null>;
+  updatePasswordByEmail(email: string, newHashedPassword: string): Promise<boolean>;
   save(doctor: DoctorDocument): Promise<void>;
   findAppointmentsByDoctorId(docId: string): Promise<AppointmentTypes[]>;
   getAppointmentsPaginated(docId: string, page: number, limit: number, search?: string, sortOrder?: "asc" | "desc"): Promise<PaginationResult<AppointmentTypes>>;

@@ -101,6 +101,7 @@ export const refreshToken = async (): Promise<string | null> => {
 
     if (response.ok) {
       const data = await response.json();
+      console.log('Refresh response:', data);
       // Handle role-specific token fields
       const refreshedToken = (() => {
         switch (role) {

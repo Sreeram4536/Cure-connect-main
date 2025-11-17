@@ -48,6 +48,7 @@ export class DoctorService implements IDoctorService {
       fees,
       address,
       imagePath,
+      licensePath,
     } = data;
 
     if (
@@ -77,6 +78,25 @@ export class DoctorService implements IDoctorService {
       imageUrl = uploadResult.secure_url;
     }
 
+   let licenseUrl = "";
+if (licensePath) {
+  const uploadResult = await cloudinary.uploader.upload(licensePath, {
+    resource_type: "auto",        // required for PDF / DOC / DOCX
+    use_filename: true,          // keep original name
+    unique_filename: false, 
+  });
+
+   console.log("✅ Cloudinary upload result:", {
+      secure_url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
+      resource_type: uploadResult.resource_type,
+      format: uploadResult.format,
+      original_filename: uploadResult.original_filename
+    });
+  // licenseUrl = uploadResult.secure_url;
+  licenseUrl = uploadResult.secure_url 
+}
+
     const doctorData: DoctorData = {
       name,
       email,
@@ -88,6 +108,7 @@ export class DoctorService implements IDoctorService {
       fees,
       address,
       image: imageUrl,
+      license: licenseUrl,
       date: new Date(),
       status: "pending",
     };
@@ -120,6 +141,13 @@ export class DoctorService implements IDoctorService {
   ): Promise<{ token: string; refreshToken: string }> {
     const doctor = await this._doctorRepository.findByEmail(email);
     if (!doctor) throw new Error("Doctor not found");
+    
+    // 🔴 BLOCKED CHECK ADDED HERE
+  if (doctor.isBlocked) {
+    const error: any = new Error("Your account has been blocked");
+    error.code = "DOCTOR_BLOCKED"; // custom code so frontend can detect
+    throw error;
+  }
 
     const match = await bcrypt.compare(password, doctor.password);
     if (!match) throw new Error("Incorrect password");
@@ -312,5 +340,24 @@ export class DoctorService implements IDoctorService {
       console.error(`Error in getDoctorDashboard:`, error);
       throw error;
     }
+  }
+
+  async checkEmailExists(email: string): Promise<boolean> {
+    const doctor = await this._doctorRepository.findByEmail(email);
+    return !!doctor;
+  }
+
+  async hashPassword(password: string): Promise<string> {
+    return await bcrypt.hash(password, 10);
+  }
+
+  async resetPassword(
+    email: string,
+    newHashedPassword: string
+  ): Promise<boolean> {
+    return await this._doctorRepository.updatePasswordByEmail(
+      email,
+      newHashedPassword
+    );
   }
 }

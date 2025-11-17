@@ -35,4 +35,7 @@ export interface IDoctorService {
     address: DoctorData["address"];
     imagePath?: string;
   }): Promise<void>;
+  checkEmailExists(email: string): Promise<boolean>;
+  hashPassword(password: string): Promise<string>;
+  resetPassword(email: string, newHashedPassword: string): Promise<boolean>;
 }

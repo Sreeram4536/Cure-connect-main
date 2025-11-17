@@ -69,6 +69,7 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
   );
   const [dashData, setDashData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggedOut, setIsLoggedOut] = useState(false);
 
   const setDToken = (newToken: string | null) => {
     console.log("DoctorContext: setDToken called with:", newToken);
@@ -86,6 +87,7 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
       console.log("DoctorContext: Token cleared from localStorage");
       // Set loading to false when token is cleared
       setLoading(false);
+      setIsLoggedOut(true); 
     }
   };
 
@@ -172,12 +174,34 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
 
   const getProfileData = async () => {
     try {
+      const path = window.location.pathname;
+      const isOnDoctorRoutes = path.startsWith("/doctor");
+
       const { data } = await getDoctorProfileAPI();
       if (data.success) {
+        // Always set profile data (needed for cross-role usage)
         setProfileData(data.profileData);
+        
+        // ❗️BLOCKED DOCTOR LOGOUT - Only logout on doctor routes
+        // Note: Toast is handled by axios interceptor, don't show duplicate
+        if (data.profileData.isBlocked && isOnDoctorRoutes) {
+          setDToken(null);
+          return;
+        }
       }
     } catch (error) {
-      showErrorToast(error);
+      // Only show error toast if on doctor routes and it's not a blocked error
+      // (blocked errors are handled by axios interceptor)
+      const path = window.location.pathname;
+      if (path.startsWith("/doctor")) {
+        const axiosError = error as any;
+        // Don't show toast if it's a blocked error (403 with blocked: true)
+        // The axios interceptor will handle it
+        if (!(axiosError.response?.status === 403 && axiosError.response?.data?.blocked)) {
+          showErrorToast(error);
+        }
+      }
+      // Note: We don't throw here to allow other functionality to continue
     }
   };
 
@@ -200,6 +224,28 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
   };
 
   useEffect(() => {
+     const path = window.location.pathname;
+
+  // ✅ Skip token checks on login/register pages and forgot password pages
+  const publicPaths = ["/doctor/login", "/doctor/register", "/doctor/verify-email", "/doctor/verify-otp", "/doctor/reset-password"];
+  if (publicPaths.includes(path)) {
+    setLoading(false);
+    return;
+  }
+    if (isLoggedOut) {
+    console.log("DoctorContext: User logged out, skipping refresh");
+    setLoading(false);
+    return;
+  }
+   const handleBlockedOrLogout = () => {
+     if (getDoctorAccessToken()) { // prevent double execution
+      setDToken(null);
+      setIsLoggedOut(true);
+      localStorage.setItem("isDoctorLoggedOut", "true");
+      // toast.error("Your account has been blocked by admin.");
+      // window.location.replace("/doctor/login");
+    }
+  };
     console.log("DoctorContext: useEffect running");
     const tryRefresh = async () => {
       try {
@@ -210,10 +256,32 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
         if (newToken) {
           console.log("DoctorContext: Setting token from refresh");
           setDToken(newToken);
-          await getProfileData();
+          const profileRes = await getDoctorProfileAPI();
+          const currentPath = window.location.pathname;
+          const isOnDoctorRoutes = currentPath.startsWith("/doctor");
+          
+          // Always set profile data (needed for cross-role usage)
+          if (profileRes.data?.success) {
+            setProfileData(profileRes.data.profileData);
+            
+            // Only check blocked status and logout if on doctor routes
+            // Note: Toast is handled by axios interceptor if API returns 403, don't show duplicate
+            if (profileRes.data.profileData?.isBlocked && isOnDoctorRoutes) {
+              // Just logout, don't show toast (axios interceptor handles it)
+              handleBlockedOrLogout();
+              return;
+            }
+          } else {
+            // Only handle logout if on doctor routes
+            if (isOnDoctorRoutes) {
+              handleBlockedOrLogout();
+            }
+          }
+          // await getProfileData();
         } else {
           console.log("DoctorContext: No token from refresh, clearing");
-          setDToken(null);
+          // setDToken(null);
+          handleBlockedOrLogout();
         }
       } catch (err: any) {
         console.warn(
@@ -221,7 +289,8 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
           err.response?.data || err.message
         );
         console.log("DoctorContext: Refresh failed, clearing token");
-        setDToken(null);
+        // setDToken(null);
+        handleBlockedOrLogout();
       } finally {
         setLoading(false);
       }
@@ -242,7 +311,44 @@ const DoctorContextProvider = ({ children }: DoctorContextProviderProps) => {
       }
     } else {
       console.log("DoctorContext: Token exists, getting profile data");
-      getProfileData().finally(() => setLoading(false));
+      // getProfileData().finally(() => setLoading(false));
+      getDoctorProfileAPI()
+      .then(profileRes => {
+        const currentPath = window.location.pathname;
+        const isOnDoctorRoutes = currentPath.startsWith("/doctor");
+        
+        // Always set profile data (needed for cross-role usage)
+        if (profileRes.data?.success) {
+          setProfileData(profileRes.data.profileData);
+          
+          // Only check blocked status and logout if on doctor routes
+          // Note: Toast is handled by axios interceptor if API returns 403, don't show duplicate
+          if (profileRes.data.profileData?.isBlocked && isOnDoctorRoutes) {
+            // Just logout, don't show toast (axios interceptor handles it)
+            handleBlockedOrLogout();
+          }
+        } else {
+          // Only handle logout if on doctor routes
+          if (isOnDoctorRoutes) {
+            handleBlockedOrLogout();
+          }
+        }
+      })
+      .catch(err => {
+        const currentPath = window.location.pathname;
+        // Only show error and logout if on doctor routes
+        if (currentPath.startsWith("/doctor")) {
+          const axiosError = err as any;
+          // Don't show toast if it's a blocked error (403 with blocked: true)
+          // The axios interceptor will handle it
+          if (!(axiosError.response?.status === 403 && axiosError.response?.data?.blocked)) {
+            showErrorToast(err);
+          }
+          handleBlockedOrLogout();
+        }
+        // Note: We don't throw here to allow other functionality to continue
+      })
+      .finally(() => setLoading(false));
     }
   }, []);
 

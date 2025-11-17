@@ -23,6 +23,17 @@ export class DoctorRepository
     return this.findOne({ email });
   }
 
+  async updatePasswordByEmail(
+    email: string,
+    newHashedPassword: string
+  ): Promise<boolean> {
+    const updatedDoctor = await doctorModel.findOneAndUpdate(
+      { email },
+      { $set: { password: newHashedPassword } }
+    );
+    return !!updatedDoctor;
+  }
+
   async save(doctor: DoctorDocument): Promise<void> {
     await doctor.save();
   }
@@ -32,7 +43,7 @@ export class DoctorRepository
   }
 
   async findAllDoctors(): Promise<Partial<DoctorData>[]> {
-    return doctorModel.find({}).select("-password -email");
+    return doctorModel.find({isBlocked:false}).select("-password -email");
   }
 
   async findAppointmentsByDoctorId(docId: string): Promise<AppointmentTypes[]> {
@@ -101,7 +112,7 @@ export class DoctorRepository
 
    async getDoctorsPaginated(page: number, limit: number, speciality?: string, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginationResult<Partial<DoctorData>>> {
     const skip = (page - 1) * limit;
-    const query: any = { status: "approved" };
+    const query: any = { status: "approved",isBlocked: false };
     if (speciality) {
       query.speciality = speciality;
     }

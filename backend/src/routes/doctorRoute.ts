@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
-import upload from "../middlewares/multer";
+import upload, { doctorUpload } from "../middlewares/multer";
 import authRole from "../middlewares/authRole";
 import {doctorController,slotLockController,slotRuleController} from "../dependencyhandler/doctor.dependency"
 import { DoctorMetricsController } from "../controllers/implementation/DoctorMetricsController";
@@ -17,7 +17,7 @@ function asyncHandler(fn: any) {
 doctorRouter.get("/", doctorController.getDoctorsPaginated.bind(doctorController));
 doctorRouter.post(
   "/register",
-  upload.single("image"),
+  doctorUpload,
   doctorController.registerDoctor.bind(doctorController)
 );
 doctorRouter.patch(
@@ -33,6 +33,26 @@ doctorRouter.post(
 doctorRouter.post(
   "/refresh-token",
   doctorController.refreshDoctorToken.bind(doctorController)
+);
+
+doctorRouter.post(
+  "/password/forgot",
+  doctorController.forgotPasswordRequest.bind(doctorController)
+);
+
+doctorRouter.post(
+  "/password/reset",
+  doctorController.resetPassword.bind(doctorController)
+);
+
+doctorRouter.post(
+  "/otp/verify",
+  doctorController.verifyOtp.bind(doctorController)
+);
+
+doctorRouter.post(
+  "/otp/resend",
+  doctorController.resendOtp.bind(doctorController)
 );
 
 doctorRouter.post(

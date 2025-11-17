@@ -28,6 +28,12 @@ const doctorSchema: Schema<DoctorDocument> = new mongoose.Schema(
       required: true,
     },
 
+    license: {
+  type: String,
+  required: true,
+},
+
+
     speciality: {
       type: String,
       required: true,

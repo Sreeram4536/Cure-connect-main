@@ -90,6 +90,7 @@ const Appointment = () => {
     }
     const doc = doctors.find((doc) => doc._id === docId);
     setDocInfo(doc);
+    console.log("docinfo is",docInfo)
   };
 
   const getAvailableSlots = async () => {

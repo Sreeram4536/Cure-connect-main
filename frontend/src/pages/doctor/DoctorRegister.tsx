@@ -9,6 +9,7 @@ import { DoctorContext } from "../../context/DoctorContext";
 
 const DoctorRegister = () => {
   const [docImg, setDocImg] = useState<File | null>(null);
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,10 +36,32 @@ const DoctorRegister = () => {
       if (dToken) navigate("/doctor/dashboard");
     }, [dToken, navigate]);
 
+     const handleLicenseFile = (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "application/msword", // .doc
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only PDF, Word (.doc/.docx), or Image files (jpg/png) are allowed.");
+      return;
+    }
+
+    setLicenseFile(file);
+  };
+
+
   const onSubmitHandler = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!docImg) return toast.error("Please upload a profile image.");
+    if(!licenseFile)return toast.error("Please upload license")
     if (!name || !email || !password || !fees || !about || !degree || !address1) {
       return toast.error("Please fill in all required fields.");
     }
@@ -55,6 +78,7 @@ const DoctorRegister = () => {
 
       const formData = new FormData();
       formData.append("image", docImg);
+      formData.append("license", licenseFile);
       formData.append("name", name);
       formData.append("email", email);
       formData.append("password", password);
@@ -110,6 +134,31 @@ const DoctorRegister = () => {
               <p className="text-sm font-medium">Upload Profile Image</p>
               <p className="text-xs text-gray-500">Click image to upload</p>
             </div>
+          </div>
+
+           <div className="mt-2">
+            <label className="block mb-1 font-medium">Upload Medical License</label>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,image/*"
+              onChange={handleLicenseFile}
+              className="w-full border px-3 py-1.5 rounded focus:outline-none"
+            />
+
+            {/* Show preview only if it's an image */}
+            {licenseFile && licenseFile.type.startsWith("image/") && (
+              <img
+                src={URL.createObjectURL(licenseFile)}
+                alt="License Preview"
+                className="w-32 mt-2 border rounded"
+              />
+            )}
+
+            {licenseFile && !licenseFile.type.startsWith("image/") && (
+              <p className="text-sm mt-1 text-green-700">
+                📄 {licenseFile.name} uploaded successfully
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

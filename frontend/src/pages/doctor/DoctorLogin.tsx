@@ -63,8 +63,19 @@ const DoctorLogin = () => {
         console.error("Doctor login: Login failed:", data.message);
         toast.error(data.message);
       }
-    } catch (error) {
+    } catch (error:any) {
       console.error("Doctor login: Error during login:", error);
+      if (error.response) {
+    const status = error.response.status;
+    const message = error.response.data?.message;
+    const code = error.response.data?.code;
+
+    // Doctor is blocked
+    if (status === 403 && code === "DOCTOR_BLOCKED") {
+      toast.error("Your account is blocked. Please contact admin.");
+      return;
+    }
+  }
       showErrorToast(error);
     }
   };
@@ -112,6 +123,15 @@ const DoctorLogin = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+
+            <div className="w-full text-right">
+              <span
+                onClick={() => navigate("/doctor/verify-email")}
+                className="text-primary underline cursor-pointer text-sm"
+              >
+                Forgot Password?
+              </span>
             </div>
 
             <button className="bg-primary text-white w-full py-2 rounded-md text-base">

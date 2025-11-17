@@ -69,6 +69,11 @@ export const DOCTOR_API = {
 
   PROFILE: "/api/doctor/profile",
   PROFILE_UPDATE: "/api/doctor/profile/update",
+
+  OTP_VERIFY: "/api/doctor/otp/verify",
+  OTP_RESEND: "/api/doctor/otp/resend",
+  FORGOT_PASSWORD: "/api/doctor/password/forgot",
+  RESET_PASSWORD: "/api/doctor/password/reset",
 };
 
 export const PAYMENT_API = {

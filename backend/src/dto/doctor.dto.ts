@@ -23,6 +23,9 @@ export interface DoctorListDTO {
   id: string;
   _id?: string; 
   name: string;
+  email:string,
+  license?:string,
+  address:string,
   image?: string;
   speciality: string;
   degree: string;
@@ -31,4 +34,6 @@ export interface DoctorListDTO {
   available?: boolean;
   isBlocked?: boolean;
   status?: "pending" | "approved" | "rejected";
+  about:string;
+  
 }

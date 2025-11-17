@@ -9,174 +9,191 @@ const AdminDoctorRequests = () => {
   const navigate = useNavigate();
   const context = useContext(AdminContext);
 
-  if (!context) {
-    throw new Error("AdminContext must be used within AdminContextProvider");
-  }
+  if (!context) throw new Error("AdminContext must be used within AdminContextProvider");
 
-  const {
-    aToken,
-    getDoctorsPaginated,
-    approveDoctor,
-    rejectDoctor,
-  } = context;
+  const { aToken, getDoctorsPaginated, approveDoctor, rejectDoctor } = context;
 
   const [currentPage, setCurrentPage] = useState(1);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 6;
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Ref to track if we're currently searching to prevent race conditions
-  const isSearching = useRef(false);
+  const openModal = (doctor: any) => {
+    setSelectedDoctor(doctor);
+    setIsModalOpen(true);
+  };
 
-  // Simple fetch function without useCallback
+  const closeModal = () => {
+    setSelectedDoctor(null);
+    setIsModalOpen(false);
+  };
+
+  // Dynamic preview for PDFs / Docs / Images
+  const renderFilePreview = (url: string) => {
+    if (!url) return null;
+    const ext = url.split(".").pop()?.toLowerCase() || "";
+
+    if (["pdf", "doc", "docx"].includes(ext)) {
+      const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      return (
+        <iframe
+          src={viewerUrl}
+          title="Document Preview"
+          className="w-full h-64 border rounded mt-2"
+        />
+      );
+    }
+
+    if (["jpg", "jpeg", "png", "webp"].includes(ext)) {
+      return (
+        <img
+          src={url}
+          alt="Preview"
+          className="mt-2 max-h-40 border rounded shadow-sm"
+        />
+      );
+    }
+
+    return null;
+  };
+
   const fetchDoctors = async () => {
     try {
       setLoading(true);
       const result = await getDoctorsPaginated(currentPage, itemsPerPage);
       setDoctors(result.data);
       setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
-    } catch (error) {
-      console.error("Failed to fetch doctors:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Effect for page changes only
-  useEffect(() => {
-    if (aToken) {
-      fetchDoctors();
-    }
-  }, [aToken, currentPage]);
+  useEffect(() => { if (aToken) fetchDoctors(); }, [aToken, currentPage]);
+  useEffect(() => { if (!aToken) navigate("/admin/login"); }, [aToken, navigate]);
 
-  // Effect for search changes only
-  useEffect(() => {
-    if (aToken && searchQuery !== "") {
-      setCurrentPage(1); // Reset to first page when searching
-      fetchDoctors();
-    }
-  }, [aToken, searchQuery]);
+  const handleApproveDoctor = async (id: string) => { await approveDoctor(id); fetchDoctors(); };
+  const handleRejectDoctor = async (id: string) => { await rejectDoctor(id); fetchDoctors(); };
 
-  useEffect(() => {
-    if (!aToken) {
-      navigate("/admin/login");
-    }
-  }, [aToken, navigate]);
+  const pendingDoctors = doctors.filter(d => d.status === "pending")
+    .filter(d => d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                 d.speciality?.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
-  const handleApproveDoctor = async (doctorId: string) => {
-    try {
-      await approveDoctor(doctorId);
-      // Refresh current page after approval
-      fetchDoctors();
-    } catch (error) {
-      console.error("Failed to approve doctor:", error);
-    }
-  };
-
-  const handleRejectDoctor = async (doctorId: string) => {
-    try {
-      await rejectDoctor(doctorId);
-      // Refresh current page after rejection
-      fetchDoctors();
-    } catch (error) {
-      console.error("Failed to reject doctor:", error);
-    }
-  };
-
-  const pendingDoctors = doctors
-    .filter((doc) => doc.status === "pending")
-    .filter((doc) =>
-      doc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.speciality?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-  // Debounce search
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const handleSearch = (query: string) => {
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
-    }
-    searchTimeout.current = setTimeout(() => {
-      setSearchQuery(query);
-    }, 300);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => setSearchQuery(query), 300);
   };
 
   return (
     <div className="m-5 max-h-[90vh] overflow-y-scroll">
-      <h1 className="text-lg font-medium mb-3">Doctor Requests</h1>
+      <h1 className="text-xl font-semibold mb-4">Doctor Requests</h1>
 
-      {/* 🔍 Left-aligned search bar */}
       <div className="mb-5 max-w-sm">
-        <SearchBar
-          placeholder="Search by name or speciality"
-          onSearch={(query) => handleSearch(query)}
-        />
+        <SearchBar placeholder="Search by name or speciality" onSearch={handleSearch} />
       </div>
 
       {loading ? (
-        <div className="text-center py-10 text-gray-500 text-sm">
-          Loading doctor requests...
-        </div>
+        <div className="text-center py-10 text-gray-500 text-sm">Loading doctor requests...</div>
       ) : pendingDoctors.length > 0 ? (
         <>
-          <div className="w-full flex flex-wrap gap-4 pt-2 gap-y-6">
-            {pendingDoctors.map((item, index) => (
+          <div className="flex flex-wrap gap-4">
+            {pendingDoctors.map((doc, idx) => (
               <motion.div
-                className="border border-indigo-200 rounded-xl max-w-56 overflow-hidden transition-transform duration-300 hover:-translate-y-1"
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
+                key={idx}
+                onClick={() => openModal(doc)}
+                className="cursor-pointer border border-indigo-200 rounded-xl overflow-hidden hover:shadow-lg transition transform hover:-translate-y-1"
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
+                transition={{ delay: idx * 0.1 }}
               >
-                <img className="bg-indigo-50" src={item.image} alt="" />
+                <img className="w-full h-36 object-cover bg-indigo-50" src={doc.image} alt="" />
                 <div className="p-4">
-                  <p className="text-neutral-800 text-lg font-medium">{item.name}</p>
-                  <p className="text-zinc-600 text-sm">{item.speciality}</p>
-
-                  <div className="mt-4 flex justify-end gap-2">
+                  <p className="text-lg font-medium text-neutral-800">{doc.name}</p>
+                  <p className="text-sm text-zinc-600">{doc.speciality}</p>
+                  <div className="mt-3 flex justify-end gap-2">
                     <button
-                      onClick={() => handleApproveDoctor(item._id)}
-                      className="bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium px-4 py-1.5 rounded-md shadow-md hover:shadow-lg transform hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"
-                    >
-                      Approve
-                    </button>
+                      onClick={(e) => { e.stopPropagation(); handleApproveDoctor(doc._id); }}
+                      className="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-1.5 rounded-md"
+                    >Approve</button>
                     <button
-                      onClick={() => handleRejectDoctor(item._id)}
-                      className="bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium px-4 py-1.5 rounded-md shadow-md hover:shadow-lg transform hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"
-                    >
-                      Reject
-                    </button>
+                      onClick={(e) => { e.stopPropagation(); handleRejectDoctor(doc._id); }}
+                      className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-1.5 rounded-md"
+                    >Reject</button>
                   </div>
                 </div>
               </motion.div>
             ))}
           </div>
-
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(page) => setCurrentPage(page)}
-            />
-          )}
+          {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
         </>
-      ) : (
-        <div className="text-gray-500 mt-6 text-center w-full">
-          No matching doctor requests found.
-        </div>
+      ) : <div className="text-gray-500 mt-6 text-center">No doctor requests found.</div>}
+
+      {/* Modal */}
+      {isModalOpen && selectedDoctor && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+        >
+          <motion.div
+            initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 120 }}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[85vh] overflow-y-auto relative"
+          >
+            <button onClick={closeModal} className="absolute top-3 right-3 text-gray-600 bg-gray-200 hover:bg-gray-300 w-8 h-8 flex items-center justify-center rounded-full">✕</button>
+
+            <h2 className="text-2xl font-semibold text-indigo-700 text-center mb-5">Doctor Details</h2>
+
+            <div className="flex justify-center mb-4">
+              <img src={selectedDoctor.image} alt="Doctor" className="w-32 h-32 rounded-full border-4 border-indigo-200 shadow-md" />
+            </div>
+
+            <div className="space-y-2 text-gray-700 text-sm px-2">
+              <p><strong className="text-indigo-700">Name:</strong> {selectedDoctor.name}</p>
+              <p><strong className="text-indigo-700">Email:</strong> {selectedDoctor.email}</p>
+              <p><strong className="text-indigo-700">Speciality:</strong> {selectedDoctor.speciality}</p>
+              <p><strong className="text-indigo-700">Degree:</strong> {selectedDoctor.degree}</p>
+              <p><strong className="text-indigo-700">Experience:</strong> {selectedDoctor.experience} years</p>
+              <p><strong className="text-indigo-700">Fees:</strong> ₹{selectedDoctor.fees}</p>
+              <div>
+                <strong className="text-indigo-700">Address:</strong>
+                <div className="mt-1 pl-2 border-l-2 border-indigo-300">
+                  <p>{selectedDoctor.address?.line1}</p>
+                  <p>{selectedDoctor.address?.line2}</p>
+                </div>
+              </div>
+
+              {/* License Button & Preview */}
+              <div className="mt-3">
+                <strong className="text-indigo-700">License Document:</strong>
+                <a
+                  href={selectedDoctor.license}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-md transition transform hover:scale-105"
+                >
+                  📄 View License Document
+                </a>
+                <div className="mt-2 border rounded-lg p-2 bg-gray-50 shadow-inner">
+                  {renderFilePreview(selectedDoctor.license)}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-center gap-4">
+              <button onClick={() => handleApproveDoctor(selectedDoctor._id)} className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md">Approve</button>
+              <button onClick={() => handleRejectDoctor(selectedDoctor._id)} className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md">Reject</button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
+
     </div>
   );
 };
 
 export default AdminDoctorRequests;
-
