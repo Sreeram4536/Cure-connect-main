@@ -28,7 +28,7 @@ const AdminUsersList = () => {
   // Ref to track if we're currently searching to prevent race conditions
   const isSearching = useRef(false);
 
-  // Simple fetch function without useCallback
+  
   const fetchUsers = async () => {
     try {
       setLoading(true);

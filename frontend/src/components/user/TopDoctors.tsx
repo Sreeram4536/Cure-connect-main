@@ -24,58 +24,40 @@ const TopDoctors = () => {
         Simply browse through our extensive list of trusted doctors.
       </p>
 
-      {/* ⭐ FIXED GRID ⭐ */}
+      {/* ⭐ Responsive horizontal scroll of up to 5 doctors ⭐ */}
       <div
-        className="
-          w-full 
-          grid 
-          grid-cols-1 
-          sm:grid-cols-2 
-          md:grid-cols-3 
-          lg:grid-cols-4 
-          gap-6 
-          pt-5 
-          px-3 sm:px-0
-        "
+        className="w-full max-w-full overflow-x-auto pb-4 [-webkit-overflow-scrolling:_touch]"
       >
-        {doctors.map((item: Doctor, index: number) => (
-          <div
-            onClick={() => {
-              navigate(`/appointment/${item._id}`);
-              scrollTo(0, 0);
-            }}
-            key={index}
-            className="
-              border border-blue-200 
-              rounded-xl 
-              overflow-hidden 
-              cursor-pointer 
-              hover:-translate-y-2 
-              transition-all 
-              duration-500 
-              bg-white
-            "
-          >
-            <img className="bg-blue-50 w-full h-56 object-cover" src={item.image} alt="" />
-
-            <div className="p-4">
-              {item.available ? (
-                <div className="flex items-center gap-2 text-sm text-green-500">
-                  <p className="w-2 h-2 bg-green-500 rounded-full"></p>
-                  <p>Available</p>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-red-500">
-                  <p className="w-2 h-2 bg-red-500 rounded-full"></p>
-                  <p>Not Available</p>
-                </div>
-              )}
-
-              <p className="text-gray-900 text-lg font-medium">{item.name}</p>
-              <p className="text-gray-600 text-sm">{item.speciality}</p>
+        <div className="flex gap-6 min-w-[350px] md:min-w-0 justify-start md:justify-center">
+          {doctors.slice(0, 5).map((item: Doctor, index: number) => (
+            <div
+              onClick={() => {
+                navigate(`/appointment/${item._id}`);
+                scrollTo(0, 0);
+              }}
+              key={index}
+              className="flex-shrink-0 w-64 sm:w-60 md:w-56 border border-blue-200 rounded-2xl overflow-hidden cursor-pointer hover:-translate-y-2 hover:shadow-xl transition-all duration-500 bg-white shadow-md"
+              style={{ minWidth: 220 }}
+            >
+              <img className="bg-blue-50 w-full h-44 object-cover" src={item.image} alt="" />
+              <div className="p-4">
+                {item.available ? (
+                  <div className="flex items-center gap-2 text-sm text-green-500 mb-1">
+                    <p className="w-2 h-2 bg-green-500 rounded-full"></p>
+                    <p>Available</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-red-500 mb-1">
+                    <p className="w-2 h-2 bg-red-500 rounded-full"></p>
+                    <p>Not Available</p>
+                  </div>
+                )}
+                <p className="text-gray-900 text-lg font-semibold truncate">{item.name}</p>
+                <p className="text-gray-600 text-sm truncate">{item.speciality}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <button
@@ -83,9 +65,9 @@ const TopDoctors = () => {
           navigate("/doctors");
           scrollTo(0, 0);
         }}
-        className="bg-blue-50 text-gray-600 px-12 py-3 rounded-full mt-10"
+        className="bg-blue-50 text-gray-600 px-12 py-3 rounded-full mt-10 shadow hover:bg-blue-100 transition"
       >
-        more
+        More Doctors
       </button>
     </div>
   );
