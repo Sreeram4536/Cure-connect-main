@@ -1,30 +1,62 @@
 // Token refresh utility for Socket.IO connections
-import { getUserAccessToken, updateUserAccessToken } from '../context/tokenManagerUser';
-import { getDoctorAccessToken, updateDoctorAccessToken } from '../context/tokenManagerDoctor';
-import { getAdminAccessToken, updateAdminAccessToken } from '../context/tokenManagerAdmin';
+import { getUserAccessToken, updateUserAccessToken } from "../context/tokenManagerUser";
+import { getDoctorAccessToken, updateDoctorAccessToken } from "../context/tokenManagerDoctor";
+import { getAdminAccessToken, updateAdminAccessToken } from "../context/tokenManagerAdmin";
+import { getActiveRole } from "../context/activeRole";
 
 // Determine current user role based on which token exists and current URL
-const getCurrentUserRole = (): 'user' | 'doctor' | 'admin' | null => {
-  // Check URL to determine context
-  const currentPath = window.location.pathname;
-  
-  if (currentPath.includes('/doctor') || currentPath.includes('/doc-')) {
-    return 'doctor';
-  } else if (currentPath.includes('/admin')) {
-    return 'admin';
-  } else if (currentPath.includes('/user') || currentPath.includes('/chat') || currentPath.includes('/appointment')) {
-    return 'user';
+const getCurrentUserRole = (): "user" | "doctor" | "admin" | null => {
+  const path = window.location.pathname.toLowerCase();
+  const hasUserToken = !!getUserAccessToken();
+  const hasDoctorToken = !!getDoctorAccessToken();
+  const hasAdminToken = !!getAdminAccessToken();
+  const activeRole = getActiveRole();
+
+  const isAdminPath = path.startsWith("/admin");
+  const isDoctorPath =
+    path.startsWith("/doctor") ||
+    path.startsWith("/doc-") ||
+    path.includes("/doctor/dashboard") ||
+    path.includes("/doctor-panel");
+  const isUserPath =
+    path.includes("/user") ||
+    path.includes("/chat") ||
+    path.includes("/chats") ||
+    path.includes("/appointment") ||
+    path.includes("/consultation");
+
+  if (isAdminPath) {
+    return "admin";
   }
-  
-  // Fallback: check which token exists
-  if (getDoctorAccessToken()) {
-    return 'doctor';
-  } else if (getAdminAccessToken()) {
-    return 'admin';
-  } else if (getUserAccessToken()) {
-    return 'user';
+
+  if (isUserPath) {
+    return "user";
   }
-  
+
+  if (isDoctorPath) {
+    return "doctor";
+  }
+
+  if (activeRole === "user" && hasUserToken) {
+    return "user";
+  }
+  if (activeRole === "doctor" && hasDoctorToken) {
+    return "doctor";
+  }
+  if (activeRole === "admin" && hasAdminToken) {
+    return "admin";
+  }
+
+  if (hasUserToken) {
+    return "user";
+  }
+  if (hasDoctorToken) {
+    return "doctor";
+  }
+  if (hasAdminToken) {
+    return "admin";
+  }
+
   return null;
 };
 

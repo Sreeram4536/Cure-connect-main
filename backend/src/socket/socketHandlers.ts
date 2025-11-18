@@ -119,18 +119,31 @@ export const setupSocketHandlers = (io: Server) => {
         console.log("Received send_message event:", data);
         const { conversationId, message, messageType = "text", attachments = [] } = data;
 
-        // ✅ CRITICAL FIX: Ensure senderType is correctly set
-        let senderType: "user" | "doctor" = "user"; // Default fallback
-        
-        if (socket.userType) {
+        const conversation = await Conversation.findById(conversationId).lean();
+        if (!conversation) {
+          console.warn(`Conversation ${conversationId} not found for socket user ${socket.userId}`);
+          socket.emit("message_error", { error: "Conversation not found" });
+          return;
+        }
+
+        // ✅ CRITICAL FIX: Ensure senderType is derived from conversation participants
+        let senderType: "user" | "doctor" | null = null;
+
+        if (conversation.userId?.toString() === socket.userId) {
+          senderType = "user";
+        } else if (conversation.doctorId?.toString() === socket.userId) {
+          senderType = "doctor";
+        } else if (socket.userType) {
           const normalizedType = socket.userType.toLowerCase().trim();
           if (normalizedType === "doctor" || normalizedType === "user") {
             senderType = normalizedType as "user" | "doctor";
-          } else {
-            console.warn(`Invalid userType from socket: ${socket.userType}, defaulting to "user"`);
           }
-        } else {
-          console.warn("socket.userType is undefined, defaulting to 'user'");
+        }
+
+        if (!senderType) {
+          console.warn(`Unauthorized send_message attempt by ${socket.userId} for conversation ${conversationId}`);
+          socket.emit("message_error", { error: "Unauthorized conversation access" });
+          return;
         }
 
         console.log(`Processing message from ${senderType} ${socket.userId} to conversation ${conversationId}`);
