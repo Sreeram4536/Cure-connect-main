@@ -276,7 +276,8 @@ const MyProfile = () => {
                     ) : (
                       <div className="flex items-center bg-white/70 rounded-lg px-4 py-3 border border-gray-200">
                         <Phone className="w-4 h-4 text-gray-500 mr-3" />
-                        <span className="text-gray-800">{userData.phone}</span>
+                        {/* <span className="text-gray-800">{userData.phone}</span> */}
+                        <span>{userData.phone || 'Enter phone number'}</span>
                       </div>
                     )}
                   </div>
