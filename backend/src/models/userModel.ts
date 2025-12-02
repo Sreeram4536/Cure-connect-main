@@ -49,7 +49,7 @@ const userSchema: Schema<userDocument> = new mongoose.Schema({
 
   phone: {
     type: String,
-    default: "",
+    // default: "",
   },
 
   isBlocked: {
