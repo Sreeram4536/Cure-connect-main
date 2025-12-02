@@ -37,7 +37,7 @@ const MyProfile = () => {
   const validateField = (field: string, value: string) => {
   switch (field) {
     case "name":
-      // ✅ Only show field error, not toast
+      
       if (value.trim().length > 25) {
         setErrors((prev) => ({ ...prev, name: "Name is too long (max 25 characters)" }));
         return false;
@@ -53,7 +53,7 @@ const MyProfile = () => {
       return true;
 
     case "phone":
-      // ✅ Keep showing field error only
+      
       if (!isValidPhone(value)) {
         setErrors((prev) => ({ ...prev, phone: "Phone number must be exactly 10 digits" }));
         return false;
@@ -62,7 +62,7 @@ const MyProfile = () => {
       return true;
 
     case "dob":
-      // ✅ Show field-level error for DOB, not toast
+      
       const result = isValidDateOfBirth(value);
       if (!result.valid) {
         if (result.reason === "invalid" || result.reason === "future") {

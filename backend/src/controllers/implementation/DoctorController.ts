@@ -13,9 +13,9 @@ import {
 import { addTokenToBlacklist } from "../../utils/tokenBlacklist.util";
 import jwt from "jsonwebtoken";
 import { AuthRequest, JwtPayloadExt } from "../../types/customRequest";
-import { otpStore } from "../../utils/otpStore";
+import { OTP_EXPIRY_DURATION, otpStore } from "../../utils/otpStore";
 import { sendOTP } from "../../utils/mail.util";
-import { generateOTP } from "../../utils/otp.util";
+import { generateOTP, isOtpExpired, validateOtp } from "../../utils/otp.util";
 import { isValidPassword } from "../../utils/validator";
 
 export class DoctorController implements IDoctorController {
@@ -486,7 +486,7 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
 
       const otp = generateOTP();
       console.log(otp);
-      otpStore.set(email, { otp, purpose: "reset-password", email });
+      otpStore.set(email, { otp, purpose: "reset-password", email,expiresAt: Date.now() + OTP_EXPIRY_DURATION });
 
       await sendOTP(email, otp);
       res
@@ -522,6 +522,21 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
       return;
     }
 
+      if (isOtpExpired(record)) {
+    otpStore.delete(email);
+    res
+      .status(HttpStatus.UNAUTHORIZED)
+      .json({ success: false, message: "OTP has expired. Please request a new one." });
+    return;
+  }
+
+  if (record.otp !== "VERIFIED") {
+    res
+      .status(HttpStatus.UNAUTHORIZED)
+      .json({ success: false, message: "Please verify OTP first" });
+    return;
+  }
+
     const hashed = await this._doctorService.hashPassword(newPassword);
     const updated = await this._doctorService.resetPassword(email, hashed);
 
@@ -540,6 +555,13 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
 
   async verifyOtp(req: Request, res: Response): Promise<void> {
     const { email, otp } = req.body;
+     const validation = validateOtp(email, otp);
+     if (!validation.valid) {
+    res
+      .status(HttpStatus.UNAUTHORIZED)
+      .json({ success: false, message: validation.message });
+    return;
+  }
     const record = otpStore.get(email);
 
     if (!record || record.otp !== otp) {
@@ -550,7 +572,7 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
     }
 
     if (record.purpose === "reset-password") {
-      otpStore.set(email, { ...record, otp: "VERIFIED" });
+      otpStore.set(email, { ...record, otp: "VERIFIED",expiresAt: Date.now() + (1 * 60 * 1000) });
       res
         .status(HttpStatus.OK)
         .json({ success: true, message: HttpResponse.OTP_VERIFIED });
@@ -573,6 +595,15 @@ async updateDaySlot(req: Request, res: Response): Promise<void> {
           .json({ success: false, message: HttpResponse.OTP_NOT_FOUND });
         return;
       }
+
+       // Check if previous OTP expired
+    if (isOtpExpired(record)) {
+      otpStore.delete(email);
+      res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ success: false, message: "Previous OTP expired. Please restart the process." });
+      return;
+    }
 
       const newOtp = generateOTP();
       console.log(newOtp);

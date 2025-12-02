@@ -3,9 +3,9 @@ import { IUserService } from "../../services/interface/IUserService";
 import { HttpStatus } from "../../constants/status.constants";
 import { HttpResponse } from "../../constants/responseMessage.constants";
 import { IUserController } from "../interface/IuserController.interface";
-import { otpStore } from "../../utils/otpStore";
+import { OTP_EXPIRY_DURATION, otpStore } from "../../utils/otpStore";
 import { sendOTP } from "../../utils/mail.util";
-import { generateOTP } from "../../utils/otp.util";
+import { generateOTP, isOtpExpired, validateOtp } from "../../utils/otp.util";
 import {
   isValidName,
   isValidEmail,
@@ -76,6 +76,7 @@ export class UserController implements IUserController {
     otpStore.set(email, {
       otp,
       purpose: "register",
+      expiresAt: Date.now() + OTP_EXPIRY_DURATION,
       userData: { name, email, password: hashed },
     });
 
@@ -95,7 +96,24 @@ export class UserController implements IUserController {
   async verifyOtp(req: Request, res: Response): Promise<void> {
     const { email, otp } = req.body;
 
-    const record = otpStore.get(email);
+     const validation = validateOtp(email, otp);
+  
+  if (!validation.valid) {
+    res
+      .status(HttpStatus.UNAUTHORIZED)
+      .json({ success: false, message: validation.message });
+    return;
+  }
+ const record = validation.data!;
+ if (isOtpExpired(record)) {
+  otpStore.delete(email);
+  res
+    .status(HttpStatus.UNAUTHORIZED)
+    .json({ success: false, message: "OTP expired. Please request a new OTP." });
+  return;
+}
+
+    // const record = otpStore.get(email);
     if (!record || record.otp !== otp) {
       res
         .status(HttpStatus.UNAUTHORIZED)
@@ -128,7 +146,7 @@ export class UserController implements IUserController {
     }
 
     if (record.purpose === "reset-password") {
-      otpStore.set(email, { ...record, otp: "VERIFIED" });
+      otpStore.set(email, { ...record, otp: "VERIFIED",expiresAt: Date.now() + (1 * 60 * 1000) });
       res
         .status(HttpStatus.OK)
         .json({ success: true, message: HttpResponse.OTP_VERIFIED });
@@ -152,9 +170,17 @@ export class UserController implements IUserController {
         return;
       }
 
+    //    if (isOtpExpired(record)) {
+    //   otpStore.delete(email);
+    //   res
+    //     .status(HttpStatus.BAD_REQUEST)
+    //     .json({ success: false, message: "Previous OTP expired. Please restart the process." });
+    //   return;
+    // }
+
       const newOtp = generateOTP();
       console.log(newOtp);
-      otpStore.set(email, { ...record, otp: newOtp });
+      otpStore.set(email, { ...record, otp: newOtp,expiresAt: Date.now() + OTP_EXPIRY_DURATION });
 
       await sendOTP(email, newOtp);
       res
@@ -182,7 +208,7 @@ export class UserController implements IUserController {
 
       const otp = generateOTP();
       console.log(otp);
-      otpStore.set(email, { otp, purpose: "reset-password", email });
+      otpStore.set(email, { otp, purpose: "reset-password", email,expiresAt: Date.now() + OTP_EXPIRY_DURATION });
 
       await sendOTP(email, otp);
       res
