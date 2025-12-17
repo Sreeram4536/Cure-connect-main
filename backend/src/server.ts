@@ -28,7 +28,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173","https://cure-connect-main.vercel.app"],
+    origin: ["http://localhost:5173","https://cure-connect-main-1.onrender.com"],
     credentials: true,
   },
 });

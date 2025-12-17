@@ -65,6 +65,9 @@ const AdminDoctorRequests = () => {
     try {
       setLoading(true);
       const result = await getDoctorsPaginated(currentPage, itemsPerPage);
+      console.log("🔍 Total Count:", result.totalCount); // ✅ Add this
+    console.log("🔍 Total Pages:", result.totalPages); // ✅ Add this
+      console.log("🔍 Fetched doctors:", result.data)
       setDoctors(result.data);
       setTotalPages(result.totalPages);
     } catch (err) {

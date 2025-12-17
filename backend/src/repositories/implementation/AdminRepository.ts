@@ -47,7 +47,7 @@ export class AdminRepository extends BaseRepository<AdminDocument> implements IA
       };
     }
     const totalCount = await doctorModel.countDocuments(query);
-    const data = await doctorModel.find(query).select("-password").skip(skip).limit(limit);
+    const data = await doctorModel.find(query).select("-password").skip(skip).limit(limit).sort({ date: -1 });;
     const totalPages = Math.ceil(totalCount / limit);
     return {
       data,
