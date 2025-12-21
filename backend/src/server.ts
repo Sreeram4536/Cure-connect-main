@@ -26,12 +26,20 @@ dotenv.config();
 // app config
 const app = express();
 const server = createServer(app);
+// const io = new Server(server, {
+//   cors: {
+//     origin: ["http://localhost:5173","https://cure-connect-main-1.onrender.com"],
+//     credentials: true,
+//   },
+// });
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173","https://cure-connect-main-1.onrender.com"],
+    origin: "https://cure-connect-main-1.onrender.com",
     credentials: true,
+    methods: ["GET", "POST"],
   },
 });
+
 setIO(io);
 
 const PORT = process.env.PORT || 4000;
@@ -46,12 +54,33 @@ setupSocketHandlers(io);
 app.use(express.json());
 app.use(morgan("dev"))
 app.use(cookieParser());
-app.use(
-  cors({
-    origin:["http://localhost:5173","https://cure-connect-main-1.onrender.com"],
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin:["http://localhost:5173","https://cure-connect-main-1.onrender.com"],
+//     credentials: true,
+//   })
+// );
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://cure-connect-main-1.onrender.com",
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS not allowed"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// 🔥 REQUIRED FOR RENDER
+app.options("*", cors());
+
 
 // initialize passport
 app.use(passport.initialize());
