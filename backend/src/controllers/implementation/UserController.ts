@@ -131,7 +131,8 @@ export class UserController implements IUserController {
     httpOnly: true,
     path: "/",
     secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    sameSite: "none",
     maxAge : Number(process.env.COOKIE_MAX_AGE),
   });
 
@@ -294,7 +295,8 @@ export class UserController implements IUserController {
         httpOnly: true,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none",
         maxAge : Number(process.env.COOKIE_MAX_AGE), // 7 days
       });
 
@@ -341,7 +343,8 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
         httpOnly: true,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none",
         maxAge : Number(process.env.COOKIE_MAX_AGE), // 7 days
       });
 
@@ -372,7 +375,8 @@ const newRefreshToken = generateRefreshToken(user._id, "user");
       httpOnly: true,
       path: "/",
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: "none",
     });
     res.status(HttpStatus.OK).json({
       success: true,

@@ -36,7 +36,8 @@ export class AdminController implements IAdminController {
         .cookie("refreshToken_admin", refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+          // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+          sameSite: "none",
           path: "/",
           maxAge : Number(process.env.COOKIE_MAX_AGE)
           
@@ -104,7 +105,8 @@ export class AdminController implements IAdminController {
         httpOnly: true,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none",
         // maxAge: 7 * 24 * 60 * 60 * 1000,
         maxAge : Number(process.env.COOKIE_MAX_AGE)
        
@@ -145,7 +147,8 @@ export class AdminController implements IAdminController {
       httpOnly: true,
       path: "/",
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: "none",
     });
 
     res.status(HttpStatus.OK).json({

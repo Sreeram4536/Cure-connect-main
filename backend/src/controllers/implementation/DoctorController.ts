@@ -137,7 +137,8 @@ export class DoctorController implements IDoctorController {
         httpOnly: true,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none",
         // maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         maxAge : Number(process.env.COOKIE_MAX_AGE)
       });
@@ -193,7 +194,8 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
         httpOnly: true,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none",
         // maxAge: 7 * 24 * 60 * 60 * 1000,
         maxAge : Number(process.env.COOKIE_MAX_AGE),
       });
@@ -229,7 +231,8 @@ const newRefreshToken = generateRefreshToken(doctor.id, "doctor");
       httpOnly: true,
       path: "/",
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      // sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: "none",
     });
     res.status(HttpStatus.OK).json({
       success: true,
