@@ -79,7 +79,7 @@ app.use(cors({
 }));
 
 // 🔥 REQUIRED FOR RENDER
-app.options("/*", cors());
+app.options("(.*)", cors());
 
 
 // initialize passport
